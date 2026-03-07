@@ -110,10 +110,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 6. **「Run」** ボタンをクリック（またはキーボードで Ctrl + Enter）
 7. 画面下部に **「Success. No rows returned」** と表示されれば成功です
 
+8. **`supabase/migrations/002_add_email_to_applications.sql`** も同様に開き、内容をコピーして SQL エディタに貼り付け、**「Run」** で実行する  
+   - 申込フォームのメールアドレス保存・メール送信機能に必要です
+
 #### 確認
 
 1. 左側メニューの **「Table Editor」** をクリック
 2. `competitions`、`applications`、`news` の3つのテーブルが表示されていればOKです
+3. `applications` テーブルに `email` カラムが含まれていればOKです（002 実行後）
 
 ### 方法2：Supabase CLI を使う（上級者向け）
 

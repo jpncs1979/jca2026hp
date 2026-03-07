@@ -30,6 +30,7 @@ export interface Application {
   user_id: string | null;
   name: string;
   furigana: string;
+  email: string | null;
   birth_date: string;
   age_at_reference: number;
   member_type: ApplicationMemberType;

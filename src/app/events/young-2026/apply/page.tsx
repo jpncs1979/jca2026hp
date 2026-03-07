@@ -35,6 +35,7 @@ function calculateAge(birthDate: Date): number {
 const formSchema = z.object({
   name: z.string().min(1, "お名前を入力してください"),
   furigana: z.string().min(1, "ふりがなを入力してください"),
+  email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
   member_type: z.enum(["会員", "非会員", "同時入会"]),
   member_number: z.string().optional(),
@@ -133,31 +134,36 @@ export default function ApplyPage() {
     const birth = new Date(values.birth_date);
     const age = calculateAge(birth);
 
-    const { error: insertError } = await supabase.from("applications").insert({
-      competition_id: competitionId,
-      name: values.name,
-      furigana: values.furigana,
-      birth_date: values.birth_date,
-      age_at_reference: age,
-      member_type: values.member_type,
-      member_number: values.member_type === "会員" ? values.member_number || null : null,
-      category: values.category,
-      selected_piece_preliminary: values.selected_piece_preliminary || null,
-      selected_piece_final:
-        values.category === "ジュニアB" || values.category === "ヤング"
-          ? values.selected_piece_final || null
+    const res = await fetch("/api/events/young-2026/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        competition_id: competitionId,
+        name: values.name,
+        furigana: values.furigana,
+        email: values.email,
+        birth_date: values.birth_date,
+        age_at_reference: age,
+        member_type: values.member_type,
+        member_number: values.member_type === "会員" ? values.member_number || null : null,
+        category: values.category,
+        selected_piece_preliminary: values.selected_piece_preliminary || null,
+        selected_piece_final:
+          values.category === "ジュニアB" || values.category === "ヤング"
+            ? values.selected_piece_final || null
+            : null,
+        video_url: YOUNG_2026.requiresVideo.includes(values.category as "ジュニアA" | "ジュニアB")
+          ? values.video_url || null
           : null,
-      video_url: YOUNG_2026.requiresVideo.includes(values.category as "ジュニアA" | "ジュニアB")
-        ? values.video_url || null
-        : null,
-      accompanist_info: values.accompanist_info || null,
-      payment_status: "pending",
+        accompanist_info: values.accompanist_info || null,
+      }),
     });
 
+    const data = await res.json().catch(() => ({}));
     setSubmitting(false);
 
-    if (insertError) {
-      setError(insertError.message);
+    if (!res.ok) {
+      setError(data.error ?? "申込の送信に失敗しました。しばらくしてから再度お試しください。");
       return;
     }
 
@@ -263,6 +269,22 @@ export default function ApplyPage() {
                     </FormControl>
                     <FormDescription>
                       {YOUNG_2026.referenceDate.replace(/-/g, "/")}時点の年齢で部門の適合判定を行います
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>メールアドレス *</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} placeholder="example@email.com" />
+                    </FormControl>
+                    <FormDescription>
+                      申込内容の確認メールをお送りします
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
