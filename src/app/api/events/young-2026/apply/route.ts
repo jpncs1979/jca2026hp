@@ -142,15 +142,15 @@ export async function POST(request: Request) {
       accompanist_info,
     });
 
-    const gmailUser = process.env.GMAIL_USER;
-    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    const emailUser = process.env.EMAIL_USER;
+    const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
 
-    if (gmailUser && gmailAppPassword) {
+    if (emailUser && emailAppPassword) {
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: gmailUser,
-          pass: gmailAppPassword,
+          user: emailUser,
+          pass: emailAppPassword.replace(/\s/g, ""), // スペースを除去
         },
       });
 
@@ -175,13 +175,13 @@ export async function POST(request: Request) {
       try {
         await Promise.all([
           transporter.sendMail({
-            from: `"日本クラリネット協会" <${gmailUser}>`,
+            from: `"日本クラリネット協会" <${emailUser}>`,
             to: email,
             subject: participantSubject,
             html: participantHtml,
           }),
           transporter.sendMail({
-            from: `"日本クラリネット協会" <${gmailUser}>`,
+            from: `"日本クラリネット協会" <${emailUser}>`,
             to: OFFICE_EMAIL,
             subject: officeSubject,
             html: officeHtml,

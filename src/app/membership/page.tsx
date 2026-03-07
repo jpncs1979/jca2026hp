@@ -1,0 +1,85 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Check, UserPlus, ArrowRight, Gift } from "lucide-react";
+
+export const metadata = {
+  title: "入会案内 | 日本クラリネット協会",
+  description:
+    "一般社団法人日本クラリネット協会への入会方法、会員特典をご案内します。",
+};
+
+export default function MembershipPage() {
+  return (
+    <div className="font-soft">
+      <div className="border-b border-border bg-muted/30 py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <h1 className="text-3xl font-bold text-navy md:text-4xl">
+            入会案内
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            日本クラリネット協会の会員になりませんか
+          </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-12 md:py-16">
+        <div className="mx-auto max-w-3xl space-y-12">
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <UserPlus className="size-5" />
+              会員特典
+            </h2>
+            <Card>
+              <CardContent className="pt-6">
+                <ul className="space-y-3">
+                  {[
+                    "コンクール・イベントの会員価格でのご参加",
+                    "協会主催演奏会への優先案内",
+                    "会員向け情報・ニュースレターの配信",
+                    "会員同士の交流の場への参加",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="mt-0.5 size-5 shrink-0 text-gold" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Gift className="size-5" />
+              入会方法
+            </h2>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">お申し込み</CardTitle>
+                <CardDescription>
+                  入会をご希望の方は、事務局までお問い合わせください。
+                  申込用紙の送付、会費のご案内など、入会手続きの流れをご説明いたします。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/contact">
+                  <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                    お問い合わせ（入会について）
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

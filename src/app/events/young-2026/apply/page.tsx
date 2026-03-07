@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -71,6 +71,113 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+/** yyyy/mm/dd 形式の生年月日入力。年4桁で月へ、月2桁で日に自動フォーカス */
+function BirthDateInput({
+  value,
+  onChange,
+  onBlur,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  disabled?: boolean;
+}) {
+  const parse = (v: string) => {
+    if (!v) return { year: "", month: "", day: "" };
+    const parts = v.split("-");
+    return {
+      year: parts[0]?.replace(/\D/g, "").slice(0, 4) ?? "",
+      month: parts[1]?.replace(/\D/g, "").slice(0, 2) ?? "",
+      day: parts[2]?.replace(/\D/g, "").slice(0, 2) ?? "",
+    };
+  };
+
+  const [local, setLocal] = React.useState(parse(value || ""));
+  React.useEffect(() => {
+    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      setLocal(parse(value));
+    }
+    // value が "" のときは local を更新しない（部分入力の保持）
+  }, [value]);
+
+  const yearRef = React.useRef<HTMLInputElement>(null);
+  const monthRef = React.useRef<HTMLInputElement>(null);
+  const dayRef = React.useRef<HTMLInputElement>(null);
+
+  const commit = (y: string, m: string, d: string) => {
+    const yy = y.replace(/\D/g, "").slice(0, 4);
+    const mm = m.replace(/\D/g, "").slice(0, 2);
+    const dd = d.replace(/\D/g, "").slice(0, 2);
+    setLocal({ year: yy, month: mm, day: dd });
+    if (yy.length === 4 && mm.length === 2 && dd.length === 2) {
+      onChange(`${yy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+    commit(v, local.month, local.day);
+    if (v.length === 4) monthRef.current?.focus();
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+    commit(local.year, v, local.day);
+    if (v.length === 2) dayRef.current?.focus();
+  };
+
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+    commit(local.year, local.month, v);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        ref={yearRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="yyyy"
+        maxLength={4}
+        value={local.year}
+        onChange={handleYearChange}
+        onBlur={onBlur}
+        disabled={disabled}
+        className="w-20 text-center"
+      />
+      <span className="text-muted-foreground">/</span>
+      <Input
+        ref={monthRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="mm"
+        maxLength={2}
+        value={local.month}
+        onChange={handleMonthChange}
+        onBlur={onBlur}
+        disabled={disabled}
+        className="w-14 text-center"
+      />
+      <span className="text-muted-foreground">/</span>
+      <Input
+        ref={dayRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="dd"
+        maxLength={2}
+        value={local.day}
+        onChange={handleDayChange}
+        onBlur={onBlur}
+        disabled={disabled}
+        className="w-14 text-center"
+      />
+    </div>
+  );
+}
+
 export default function ApplyPage() {
   const router = useRouter();
   const [competitionId, setCompetitionId] = useState<string | null>(null);
@@ -81,8 +188,16 @@ export default function ApplyPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: "",
+      furigana: "",
+      email: "",
+      birth_date: "",
       member_type: "非会員",
+      member_number: "",
       category: "ジュニアA",
+      selected_piece_preliminary: "",
+      selected_piece_final: "",
+      video_url: "",
       accompanist_info: "",
     },
   });
@@ -239,7 +354,7 @@ export default function ApplyPage() {
                   <FormItem>
                     <FormLabel>お名前 *</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="山田 太郎" />
+                      <Input {...field} value={field.value ?? ""} placeholder="山田 太郎" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -252,7 +367,7 @@ export default function ApplyPage() {
                   <FormItem>
                     <FormLabel>ふりがな *</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="やまだ たろう" />
+                      <Input {...field} value={field.value ?? ""} placeholder="やまだ たろう" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -265,7 +380,11 @@ export default function ApplyPage() {
                   <FormItem>
                     <FormLabel>生年月日 *</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <BirthDateInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
                     </FormControl>
                     <FormDescription>
                       {YOUNG_2026.referenceDate.replace(/-/g, "/")}時点の年齢で部門の適合判定を行います
@@ -281,7 +400,7 @@ export default function ApplyPage() {
                   <FormItem>
                     <FormLabel>メールアドレス *</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} placeholder="example@email.com" />
+                      <Input type="email" {...field} value={field.value ?? ""} placeholder="example@email.com" />
                     </FormControl>
                     <FormDescription>
                       申込内容の確認メールをお送りします
@@ -303,6 +422,7 @@ export default function ApplyPage() {
                     <FormControl>
                       <select
                         {...field}
+                        value={field.value ?? ""}
                         className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
                       >
                         <option value="非会員">非会員</option>
@@ -322,7 +442,7 @@ export default function ApplyPage() {
                     <FormItem>
                       <FormLabel>会員番号 *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="例: 12345" />
+                        <Input {...field} value={field.value ?? ""} placeholder="例: 12345" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -342,6 +462,7 @@ export default function ApplyPage() {
                     <FormControl>
                       <select
                         {...field}
+                        value={field.value ?? ""}
                         onChange={(e) => {
                           field.onChange(e);
                           form.setValue("selected_piece_preliminary", "");
@@ -371,6 +492,7 @@ export default function ApplyPage() {
                       <FormControl>
                         <select
                           {...field}
+                          value={field.value ?? ""}
                           className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
                         >
                           <option value="">選択してください</option>
@@ -395,7 +517,7 @@ export default function ApplyPage() {
                       <FormItem>
                         <FormLabel>予選課題曲 *</FormLabel>
                         <FormControl>
-                          <Input {...field} readOnly className="bg-muted" />
+                          <Input {...field} value={field.value ?? ""} readOnly className="bg-muted" />
                         </FormControl>
                         <FormDescription>C.Rose / 32 Etudes より No.17 および No.26 の 2 曲（両方必須）※動画提出</FormDescription>
                         <FormMessage />
@@ -411,6 +533,7 @@ export default function ApplyPage() {
                         <FormControl>
                           <select
                             {...field}
+                            value={field.value ?? ""}
                             className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
                           >
                             <option value="">選択してください</option>
@@ -437,6 +560,7 @@ export default function ApplyPage() {
                         <FormControl>
                           <select
                             {...field}
+                            value={field.value ?? ""}
                             className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
                           >
                             <option value="">選択してください</option>
@@ -458,6 +582,7 @@ export default function ApplyPage() {
                         <FormControl>
                           <select
                             {...field}
+                            value={field.value ?? ""}
                             className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
                           >
                             <option value="">選択してください</option>
@@ -481,7 +606,7 @@ export default function ApplyPage() {
                     <FormItem>
                       <FormLabel>予選動画URL</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://..." />
+                        <Input {...field} value={field.value ?? ""} placeholder="https://..." />
                       </FormControl>
                       <FormDescription>
                         ジュニアA・B部門は予選動画の提出が必要です
@@ -502,6 +627,7 @@ export default function ApplyPage() {
                   <FormControl>
                     <Textarea
                       {...field}
+                      value={field.value ?? ""}
                       rows={3}
                       placeholder="伴奏者名、連絡先。ジュニア A 部門でピアニスト委嘱希望の場合は「ピアニスト希望」と記入"
                     />
