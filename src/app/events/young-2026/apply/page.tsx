@@ -210,7 +210,7 @@ export default function ApplyPage() {
             {YOUNG_2026.name} 参加申込
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {YOUNG_2026.date} / {YOUNG_2026.venue}
+            {YOUNG_2026.eventDateRange} / {YOUNG_2026.venue.name}（{YOUNG_2026.venue.address}）
           </p>
         </div>
       </div>
