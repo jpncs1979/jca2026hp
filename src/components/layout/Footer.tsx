@@ -4,6 +4,7 @@ import Link from "next/link";
 const footerNavItems = [
   { href: "/news", label: "ニュース" },
   { href: "/events", label: "イベント・コンクール" },
+  { href: "/archive", label: "過去の受賞者" },
   { href: "/learn", label: "学ぶ・相談する" },
   { href: "/about", label: "協会案内" },
   { href: "/membership", label: "入会案内" },

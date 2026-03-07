@@ -20,6 +20,8 @@ import {
   MessageCircle,
   UserPlus,
   Calendar,
+  Archive,
+  Info,
 } from "lucide-react";
 
 // スクロール表示用アニメーション
@@ -208,6 +210,38 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </div>
+      </AnimatedSection>
+
+      {/* 協会について・受賞者アーカイブ バナー */}
+      <AnimatedSection className="border-b border-border bg-white py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
+            <Link href="/about" className="group block">
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-muted/30 px-6 py-5 transition-all hover:border-gold/50 hover:bg-gold/5 hover:shadow-md">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-navy/10 text-navy">
+                  <Info className="size-6" />
+                </div>
+                <div>
+                  <p className="font-medium text-navy group-hover:text-gold">協会について</p>
+                  <p className="text-sm text-muted-foreground">会長挨拶・組織概要・事務局</p>
+                </div>
+                <ArrowRight className="ml-auto size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-gold" />
+              </div>
+            </Link>
+            <Link href="/archive" className="group block">
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-muted/30 px-6 py-5 transition-all hover:border-gold/50 hover:bg-gold/5 hover:shadow-md">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-gold/20 text-gold">
+                  <Trophy className="size-6" />
+                </div>
+                <div>
+                  <p className="font-medium text-navy group-hover:text-gold">過去の受賞者アーカイブ</p>
+                  <p className="text-sm text-muted-foreground">各コンクールの入賞者を年度別に閲覧</p>
+                </div>
+                <ArrowRight className="ml-auto size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-gold" />
+              </div>
+            </Link>
+          </div>
         </div>
       </AnimatedSection>
 

@@ -53,6 +53,12 @@ export default function Young2026DetailPage() {
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
+            <Link href="/archive?competition=young">
+              <Button size="lg" variant="outline">
+                過去の受賞者
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
