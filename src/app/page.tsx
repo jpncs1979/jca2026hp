@@ -275,7 +275,7 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/learn" className="group">
+          <Link href="/events#events" className="group">
             <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
               <CardHeader className="pb-2">
                 <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-navy/10 text-navy">
@@ -359,7 +359,7 @@ export default function Home() {
             {[
               { label: "コンクールに出たい", href: "/events", icon: Trophy },
               { label: "演奏会を探したい", href: "/events", icon: Calendar },
-              { label: "クラリネットを学びたい", href: "/learn", icon: Music },
+              { label: "クラリネットを学びたい", href: "/events#events", icon: Music },
               { label: "会員になりたい", href: "/membership", icon: UserPlus },
             ].map((item) => (
               <Link key={item.label} href={item.href}>

@@ -3,9 +3,8 @@ import Link from "next/link";
 
 const footerNavItems = [
   { href: "/news", label: "ニュース" },
-  { href: "/events", label: "イベント・コンクール" },
-  { href: "/archive", label: "過去の受賞者" },
-  { href: "/learn", label: "学ぶ・相談する" },
+  { href: "/events#concours", label: "コンクール" },
+  { href: "/events#events", label: "イベント" },
   { href: "/about", label: "協会案内" },
   { href: "/membership", label: "入会案内" },
 ] as const;
@@ -97,7 +96,7 @@ export function Footer() {
               </Link>
             ))}
           </nav>
-          <p className="text-xs text-white/60">
+          <p className="text-xs text-white/60" suppressHydrationWarning>
             © {currentYear} 一般社団法人 日本クラリネット協会
           </p>
         </div>

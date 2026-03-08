@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Check, UserPlus, ArrowRight, Gift } from "lucide-react";
+import { Check, UserPlus, ArrowRight, Gift, Users, Music2 } from "lucide-react";
 
 export const metadata = {
   title: "入会案内 | 日本クラリネット協会",
@@ -72,6 +72,35 @@ export default function MembershipPage() {
                 <Link href="/contact">
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
                     お問い合わせ（入会について）
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* 会員の皆様へ */}
+          <section id="members">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Users className="size-5 text-gold" />
+              会員の皆様へ
+            </h2>
+            <Card>
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <Music2 className="mt-0.5 size-6 shrink-0 text-gold" />
+                  <div>
+                    <CardTitle className="text-base">会員後援演奏会のお知らせ</CardTitle>
+                    <CardDescription>
+                      協会会員の皆様が主催する演奏会のうち、協会が後援する演奏会のお知らせです。
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Link href="/members/supported-concerts">
+                  <Button variant="outline">
+                    お知らせ一覧を見る
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
                 </Link>

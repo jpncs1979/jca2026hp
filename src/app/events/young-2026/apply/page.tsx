@@ -234,8 +234,10 @@ export default function ApplyPage() {
   }, []);
 
   const feeRaw =
-    category && memberType && memberType !== "同時入会"
-      ? YOUNG_2026.fees[category][memberType as "会員" | "非会員"]
+    category && memberType
+      ? memberType === "同時入会"
+        ? (YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.非会員 ?? 10000) + YOUNG_2026.firstYearMembershipFee
+        : YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.[memberType as "会員" | "非会員"]
       : undefined;
 
   const onSubmit = async (values: FormValues) => {
@@ -645,23 +647,65 @@ export default function ApplyPage() {
                 参加費：{feeRaw != null ? (
                   <span className="text-gold">{feeRaw.toLocaleString()}円</span>
                 ) : memberType === "同時入会" ? (
-                  <span className="text-amber-600">事務局へお問い合わせください</span>
+                  <span className="text-gold">
+                    {category && (YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.非会員 ?? 0) + YOUNG_2026.firstYearMembershipFee}円
+                  </span>
                 ) : (
                   <span className="text-muted-foreground">部門・会員種別を選択してください</span>
                 )}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                申込完了後、銀行振込にてお支払いください
+                支払方法：銀行振込またはクレジットカード（Stripe）をご選択ください
               </p>
             </section>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button
                 type="submit"
                 disabled={submitting}
                 className="bg-gold text-gold-foreground hover:bg-gold-muted"
               >
-                {submitting ? "送信中..." : "申し込む"}
+                {submitting ? "送信中..." : "申し込む（銀行振込）"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting || feeRaw == null}
+                className="border-gold text-gold hover:bg-gold/10"
+                onClick={async () => {
+                  const valid = await form.trigger();
+                  if (!valid || !competitionId) return;
+                  const values = form.getValues();
+                  setSubmitting(true);
+                  setError(null);
+                  const res = await fetch("/api/events/young-2026/checkout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      competition_id: competitionId,
+                      name: values.name,
+                      furigana: values.furigana,
+                      email: values.email,
+                      birth_date: values.birth_date,
+                      member_type: values.member_type,
+                      member_number: values.member_number,
+                      category: values.category,
+                      selected_piece_preliminary: values.selected_piece_preliminary,
+                      selected_piece_final: values.selected_piece_final,
+                      video_url: values.video_url,
+                      accompanist_info: values.accompanist_info,
+                    }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  setSubmitting(false);
+                  if (!res.ok) {
+                    setError(data.error ?? "決済の準備に失敗しました。");
+                    return;
+                  }
+                  if (data.url) window.location.href = data.url;
+                }}
+              >
+                {submitting ? "処理中..." : "申し込む（クレジットカード）"}
               </Button>
               <Link href="/events/young-2026">
                 <Button type="button" variant="outline">

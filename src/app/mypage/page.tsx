@@ -1,5 +1,12 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -7,53 +14,699 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LogIn, User } from "lucide-react";
+import {
+  LogIn,
+  User,
+  CreditCard,
+  FileText,
+  Video,
+  ArrowRight,
+  Edit,
+  LayoutDashboard,
+} from "lucide-react";
 
-export const metadata = {
-  title: "会員マイページ | 日本クラリネット協会",
-  description: "日本クラリネット協会会員向けマイページ。申込履歴の確認など。",
-};
+function MypageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/mypage";
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [profile, setProfile] = useState<{
+    id: string;
+    member_number?: number | null;
+    name?: string | null;
+    name_kana?: string | null;
+    email?: string | null;
+    status?: string | null;
+    affiliation?: string | null;
+    is_admin?: boolean | null;
+  } | null>(null);
+  const [membership, setMembership] = useState<{
+    expiry_date: string;
+  } | null>(null);
+  const [applications, setApplications] = useState<
+    Array<{
+      id: string;
+      category: string;
+      payment_status: string;
+      created_at: string;
+      competition?: { name: string };
+    }>
+  >([]);
+  const [contents, setContents] = useState<
+    Array<{ id: string; title: string; file_path: string }>
+  >([]);
+  const [showLogin, setShowLogin] = useState(true);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [signupNameKana, setSignupNameKana] = useState("");
+  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const adminDenied = searchParams.get("admin_denied") === "1";
+  const [showPasswordRecoveryForm, setShowPasswordRecoveryForm] = useState(false);
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
+  const [recoveryNewPasswordConfirm, setRecoveryNewPasswordConfirm] = useState("");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
 
-export default function MypagePage() {
+  // API 経由ログイン失敗時のエラー表示
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (err) setAuthError(decodeURIComponent(err));
+  }, [searchParams]);
+
+  // パスワード再設定メールのリンクでマイページに直で飛んだ場合 → パスワード再設定専用ページへ転送
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash && (hash.includes("type=recovery") || hash.includes("access_token"))) {
+      window.location.replace(`/auth/set-password${hash}`);
+    }
+  }, []);
+
+  // パスワード再設定リンクから戻ったときに新しいパスワードを設定するフォームを表示（set-password ページに転送するため、通常はここには来ない）
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setShowPasswordRecoveryForm(true);
+    });
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
+      setUser(u ?? null);
+      if (!u) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // API 経由で RLS を回避し、インポート会員（user_id 未設定）も取得
+        const res = await fetch("/api/mypage/data");
+        const data = await res.json();
+        if (!res.ok) {
+          setProfile(null);
+          setMembership(null);
+          setApplications([]);
+          setContents([]);
+        } else {
+          const prof = data.profile ?? null;
+          setProfile(prof);
+          setMembership(data.membership ?? null);
+          setApplications(data.applications ?? []);
+          setContents(data.contents ?? []);
+
+          // 管理者はマイページ不要 → 管理者画面へ直接リダイレクト
+          if (prof?.is_admin === true) {
+            router.replace("/admin");
+            return;
+          }
+        }
+      } catch {
+        setProfile(null);
+        setMembership(null);
+        setApplications([]);
+        setContents([]);
+      }
+
+      // 管理者チェック（API 経由で RLS を回避・事務局管理ボタン表示用）
+      try {
+        const res = await fetch("/api/mypage/admin-check");
+        const { isAdmin: admin } = await res.json();
+        setIsAdmin(admin === true);
+      } catch {
+        setIsAdmin(false);
+      }
+
+      setShowLogin(false);
+      setLoading(false);
+    });
+  }, [router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (!email.trim() || !password) {
+      setAuthError("メールアドレスとパスワードを入力してください。");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const supabase = createClient();
+      if (!supabase) {
+        setAuthError("認証の準備ができていません。.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_ANON_KEY が設定されているか確認し、開発サーバーを再起動してください。");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const msg =
+          error.message === "Invalid login credentials"
+            ? "メールアドレスまたはパスワードが正しくありません。Supabase の Authentication → Users にユーザーが存在するか確認し、「Add user」で作成する場合は「Auto Confirm User」にチェックしてください。"
+            : error.message === "Email not confirmed"
+              ? "メールアドレスがまだ確認されていません。確認メールのリンクをクリックするか、Supabase ダッシュボードで「Auto Confirm User」を有効にしてユーザーを作り直してください。"
+              : error.message;
+        setAuthError(msg);
+        return;
+      }
+      router.push(redirectTo);
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "ログイン処理中にエラーが発生しました。";
+      setAuthError(msg);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (password !== signupPasswordConfirm) {
+      setAuthError("パスワードが一致しません。");
+      return;
+    }
+    setAuthLoading(true);
+    const supabase = createClient();
+    if (!supabase) {
+      setAuthError("認証の準備ができていません。.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_ANON_KEY が設定されているか確認し、開発サーバーを再起動してください。");
+      setAuthLoading(false);
+      return;
+    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name: signupName || "（未入力）", name_kana: signupNameKana || "（未入力）" },
+      },
+    });
+    setAuthLoading(false);
+    if (error) {
+      setAuthError(error.message);
+      return;
+    }
+    setAuthError(null);
+    setAuthMode("login");
+    alert("登録が完了しました。メール確認が有効な場合は届いたリンクをクリックしてからログインしてください。");
+  };
+
+  const handleRecoveryPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError(null);
+    if (recoveryNewPassword.length < 6) {
+      setRecoveryError("パスワードは6文字以上で入力してください。");
+      return;
+    }
+    if (recoveryNewPassword !== recoveryNewPasswordConfirm) {
+      setRecoveryError("パスワードが一致しません。");
+      return;
+    }
+    setRecoveryLoading(true);
+    const supabase = createClient();
+    if (!supabase) {
+      setRecoveryError("エラーが発生しました。");
+      setRecoveryLoading(false);
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: recoveryNewPassword });
+    setRecoveryLoading(false);
+    if (error) {
+      setRecoveryError(error.message);
+      return;
+    }
+    setShowPasswordRecoveryForm(false);
+    setRecoveryNewPassword("");
+    setRecoveryNewPasswordConfirm("");
+    router.refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="font-soft">
+        <div className="border-b border-border bg-muted/30 py-12 md:py-16">
+          <div className="container mx-auto px-4">
+            <h1 className="text-3xl font-bold text-navy md:text-4xl">会員マイページ</h1>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-12">
+          <p className="text-center text-muted-foreground">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showLogin && !user) {
+    return (
+      <div className="font-soft">
+        <div className="border-b border-border bg-muted/30 py-12 md:py-16">
+          <div className="container mx-auto px-4">
+            <h1 className="text-3xl font-bold text-navy md:text-4xl">会員マイページ</h1>
+            <p className="mt-2 text-muted-foreground">会員専用の各種サービスをご利用いただけます</p>
+            {adminDenied && (
+              <div className="mt-4 rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-medium">事務局ダッシュボード（/admin）にアクセスできませんでした。</p>
+                <p className="mt-2">以下を確認してください：</p>
+                <ol className="mt-1 list-inside list-decimal space-y-1">
+                  <li><strong>SUPABASE_SERVICE_ROLE_KEY</strong> が .env.local に設定されているか（Supabase ダッシュボード → Project Settings → API の「service_role」）</li>
+                  <li>profiles テーブルで is_admin = true に更新したか（セットアップ手順の SQL を実行）</li>
+                  <li>開発サーバーを再起動したか（環境変数変更後）</li>
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-12 md:py-16">
+          <div className="mx-auto max-w-md">
+            <Card>
+              <CardHeader>
+                <LogIn className="size-10 text-gold" />
+                <CardTitle>{authMode === "login" ? "ログイン" : "新規登録"}</CardTitle>
+                <CardDescription>
+                  {authMode === "login"
+                    ? "会員マイページをご利用になるには、ログインが必要です。"
+                    : "初めての方は新規登録してください。登録後、事務局が承認するとマイページをご利用いただけます。"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {adminDenied && (
+                  <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p className="font-medium">事務局ダッシュボード（/admin）にアクセスできませんでした。</p>
+                    <p className="mt-2">以下を確認してください：</p>
+                    <ol className="mt-1 list-inside list-decimal space-y-1">
+                      <li><strong>SUPABASE_SERVICE_ROLE_KEY</strong> が .env.local に設定されているか（必須）</li>
+                      <li>Supabase で profiles テーブルの該当ユーザーに <code className="rounded bg-amber-100 px-1">is_admin = true</code> を設定したか</li>
+                    </ol>
+                    <p className="mt-2 text-xs">詳細は docs/会員システム・管理画面セットアップ.md を参照してください。</p>
+                  </div>
+                )}
+                <div className="mb-4 flex gap-2 border-b border-border pb-4">
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode("login"); setAuthError(null); }}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${authMode === "login" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    ログイン
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode("signup"); setAuthError(null); }}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${authMode === "signup" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    新規登録
+                  </button>
+                </div>
+                {authMode === "login" ? (
+                  <form
+                    action="/api/auth/login"
+                    method="POST"
+                    className="space-y-4"
+                  >
+                    <input type="hidden" name="redirect" value={redirectTo} />
+                    {authError && (
+                      <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{authError}</p>
+                    )}
+                    <div>
+                      <Label htmlFor="email">メールアドレス</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="example@email.com"
+                        autoComplete="email"
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="password">パスワード</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="パスワードを入力"
+                        autoComplete="current-password"
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-lg bg-gold px-4 text-sm font-medium text-gold-foreground transition-colors hover:bg-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {authLoading ? "ログイン中..." : "ログイン"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSignup} className="space-y-4">
+                    {authError && (
+                      <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{authError}</p>
+                    )}
+                    <div>
+                      <Label htmlFor="signup-name">お名前</Label>
+                      <Input
+                        id="signup-name"
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                        placeholder="山田 太郎"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signup-name-kana">ふりがな</Label>
+                      <Input
+                        id="signup-name-kana"
+                        value={signupNameKana}
+                        onChange={(e) => setSignupNameKana(e.target.value)}
+                        placeholder="やまだ たろう"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signup-email">メールアドレス</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="example@email.com"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signup-password">パスワード（6文字以上）</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signup-password-confirm">パスワード（確認）</Label>
+                      <Input
+                        id="signup-password-confirm"
+                        type="password"
+                        value={signupPasswordConfirm}
+                        onChange={(e) => setSignupPasswordConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                        placeholder="同じパスワードを再入力"
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={authLoading}
+                      className="w-full bg-gold text-gold-foreground hover:bg-gold-muted"
+                    >
+                      {authLoading ? "登録中..." : "登録する"}
+                    </Button>
+                  </form>
+                )}
+                {authMode === "login" && (
+                  <p className="mt-4 text-center text-sm text-muted-foreground">
+                    パスワードをお忘れの方は
+                    <Link href="/contact" className="text-gold hover:underline">お問い合わせ</Link>
+                    ください。
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="font-soft">
-      <div className="border-b border-border bg-muted/30 py-12 md:py-16">
+      <div className="border-b border-border bg-muted/30 py-8 md:py-12">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-navy md:text-4xl">
-            会員マイページ
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            会員専用の各種サービスをご利用いただけます
+          <h1 className="text-2xl font-bold text-navy md:text-3xl">会員マイページ</h1>
+          <p className="mt-1 text-muted-foreground">
+            {profile?.name || user?.email || "会員"} 様
           </p>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="mx-auto max-w-md">
-          <Card>
-            <CardHeader>
-              <LogIn className="size-10 text-gold" />
-              <CardTitle>ログイン</CardTitle>
-              <CardDescription>
-                会員マイページをご利用になるには、ログインが必要です。
-                会員番号とパスワードでログインしてください。
-              </CardDescription>
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="mx-auto max-w-2xl space-y-6">
+          {showPasswordRecoveryForm && (
+            <Card className="border-amber-200 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="text-lg">新しいパスワードを設定してください</CardTitle>
+                <CardDescription>
+                  パスワード再設定のリンクからお越しいただきました。本人確認のため、新しいパスワードを2回入力して設定してください。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleRecoveryPasswordSubmit} className="space-y-4">
+                  {recoveryError && (
+                    <p className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">{recoveryError}</p>
+                  )}
+                  <div>
+                    <Label htmlFor="recovery-password">新しいパスワード（6文字以上）</Label>
+                    <Input
+                      id="recovery-password"
+                      type="password"
+                      value={recoveryNewPassword}
+                      onChange={(e) => setRecoveryNewPassword(e.target.value)}
+                      minLength={6}
+                      className="mt-1"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="recovery-password-confirm">パスワード（確認）</Label>
+                    <Input
+                      id="recovery-password-confirm"
+                      type="password"
+                      value={recoveryNewPasswordConfirm}
+                      onChange={(e) => setRecoveryNewPasswordConfirm(e.target.value)}
+                      minLength={6}
+                      placeholder="同じパスワードを再入力"
+                      className="mt-1"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <Button type="submit" disabled={recoveryLoading} className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                    {recoveryLoading ? "設定中..." : "パスワードを設定する"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+          {adminDenied && (
+            <div className="rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-amber-900">
+              <p className="font-medium">事務局ダッシュボード（/admin）にアクセスできませんでした。</p>
+              <p className="mt-2 text-sm">以下を確認してください：</p>
+              <ul className="mt-1 list-inside list-disc text-sm">
+                <li><strong>SUPABASE_SERVICE_ROLE_KEY</strong> が .env.local に設定されているか</li>
+                <li>Supabase の profiles テーブルで、あなたのメールアドレスの <strong>is_admin</strong> が true か</li>
+              </ul>
+              <p className="mt-2 text-sm">詳しくはセットアップ手順書（docs/会員システム・管理画面セットアップ.md）を参照してください。</p>
+            </div>
+          )}
+          {/* デジタル会員証 */}
+          <Card className="overflow-hidden border-gold/30 bg-gradient-to-br from-navy to-navy/95 text-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg text-gold">
+                <CreditCard className="size-5" />
+                会員証
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                現在、会員認証機能は準備中です。ご利用開始までしばらくお待ちください。
+            <CardContent className="space-y-2">
+              <p className="text-2xl font-bold">{profile?.name || "—"}</p>
+              <p className="text-sm text-white/80">会員番号: {profile?.member_number ?? "—"}</p>
+              <p className="text-sm text-white/80">
+                有効期限: {membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString("ja-JP") : "—"}
               </p>
-              <p className="text-sm text-muted-foreground">
-                お問い合わせは
-                <Link href="/contact" className="text-gold hover:underline">
-                  お問い合わせページ
-                </Link>
-                よりご連絡ください。
-              </p>
+              <span
+                className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                  profile?.status === "active" ? "bg-gold/30 text-gold" : "bg-white/20"
+                }`}
+              >
+                {profile?.status === "active" ? "有効" : profile?.status === "pending" ? "承認待ち" : "期限切れ"}
+              </span>
+              {!profile && (
+                <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
+              )}
+              {profile && !profile?.member_number && (
+                <p className="text-xs text-white/60">会員番号は事務局承認後に付与されます。</p>
+              )}
             </CardContent>
           </Card>
+
+          {/* プロフィール編集 */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="size-5 text-gold" />
+                  プロフィール
+                </CardTitle>
+                <CardDescription>住所・連絡先・所属の変更申請</CardDescription>
+              </div>
+              <Link href="/mypage/profile">
+                <Button variant="outline" size="sm">
+                  <Edit className="mr-1 size-4" />
+                  編集
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="text-sm">
+              <dl className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">氏名</dt>
+                  <dd>{profile?.name}（{profile?.name_kana}）</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">メール</dt>
+                  <dd>{profile?.email}</dd>
+                </div>
+                {profile?.affiliation && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-muted-foreground">所属</dt>
+                    <dd>{profile.affiliation}</dd>
+                  </div>
+                )}
+              </dl>
+            </CardContent>
+          </Card>
+
+          {/* 申込履歴 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-5 text-gold" />
+                申込履歴
+              </CardTitle>
+              <CardDescription>イベント等の申し込み状況と決済状態</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {applications.length === 0 ? (
+                <p className="text-sm text-muted-foreground">申込履歴はありません。</p>
+              ) : (
+                <ul className="space-y-3">
+                  {applications.map((app) => (
+                    <li
+                      key={app.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {(app as { competition?: { name: string } }).competition?.name ?? "コンクール"} - {app.category}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(app.created_at).toLocaleDateString("ja-JP")}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                          app.payment_status === "paid"
+                            ? "bg-green-500/20 text-green-700"
+                            : "bg-amber-500/20 text-amber-700"
+                        }`}
+                      >
+                        {app.payment_status === "paid" ? "入金済" : "未入金"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link href="/events" className="mt-4 inline-block text-sm text-gold hover:underline">
+                イベント申し込みはこちら
+                <ArrowRight className="ml-1 inline size-4" />
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* 会員限定コンテンツ */}
+          {profile?.status === "active" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="size-5 text-gold" />
+                  会員限定コンテンツ
+                </CardTitle>
+                <CardDescription>会報PDF・限定動画など</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">現在、限定コンテンツはありません。</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {contents.map((c) => (
+                      <li key={c.id}>
+                        <a
+                          href={`/api/member-content/${c.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-gold hover:underline"
+                        >
+                          {c.title}
+                          <ArrowRight className="size-4" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {(isAdmin || profile?.is_admin) && (
+              <Link href="/admin">
+                <Button variant="outline" className="gap-2">
+                  <LayoutDashboard className="size-4" />
+                  事務局管理
+                </Button>
+              </Link>
+            )}
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                ログアウト
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MypagePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">読み込み中...</div>}>
+      <MypageContent />
+    </Suspense>
   );
 }
