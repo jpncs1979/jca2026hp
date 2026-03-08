@@ -430,7 +430,7 @@ export default function AdminMembersPage() {
             />
             <Label htmlFor="ica-only" className="text-sm cursor-pointer">ICA会員のみ</Label>
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="会員種別" />
             </SelectTrigger>
