@@ -585,7 +585,7 @@ export default function AdminMembersPage() {
                           <Checkbox checked={emailCriteria.unpaid} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, unpaid: e.target.checked }))} />
                           未納者のみ
                         </label>
-                        <Select value={emailCriteria.type} onValueChange={(t) => setEmailCriteria((prev) => ({ ...prev, type: t }))}>
+                        <Select value={emailCriteria.type} onValueChange={(t) => setEmailCriteria((prev) => ({ ...prev, type: t ?? "" }))}>
                           <SelectTrigger className="w-[140px]">
                             <SelectValue placeholder="会員種別" />
                           </SelectTrigger>
