@@ -2,6 +2,66 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 
+/** 事務局が会員を削除（プロフィール・会員契約・入金記録を削除し、紐づく認証ユーザーがいれば削除） */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: profileId } = await params;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "未認証" }, { status: 401 });
+    }
+
+    const admin = createAdminClient();
+    const { data: adminProfile } = await admin
+      .from("profiles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!adminProfile?.is_admin) {
+      return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+    }
+
+    const { data: profile, error: fetchError } = await admin
+      .from("profiles")
+      .select("id, user_id")
+      .eq("id", profileId)
+      .single();
+
+    if (fetchError || !profile) {
+      return NextResponse.json({ error: "会員が見つかりません" }, { status: 404 });
+    }
+
+    const userId = profile.user_id as string | null;
+
+    const { error: deleteError } = await admin.from("profiles").delete().eq("id", profileId);
+    if (deleteError) {
+      console.error("Admin member delete (profile):", deleteError);
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    if (userId) {
+      const { error: authError } = await admin.auth.admin.deleteUser(userId);
+      if (authError) {
+        console.warn("Admin member delete (auth user):", authError);
+        // プロフィールは削除済みのためここでは 200 を返す
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Admin member delete error:", err);
+    return NextResponse.json(
+      { error: "削除に失敗しました" },
+      { status: 500 }
+    );
+  }
+}
+
 /** 事務局が会員情報を更新 */
 export async function PATCH(
   request: Request,

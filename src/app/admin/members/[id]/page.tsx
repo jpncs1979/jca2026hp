@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowLeft, User, Mail, CreditCard } from "lucide-react";
 import { ResetPasswordButton } from "./reset-password-button";
+import { DeleteMemberButton } from "./delete-member-button";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   regular: "正会員",
@@ -245,6 +246,7 @@ export default async function AdminMemberDetailPage({
             一覧に戻る
           </button>
         </Link>
+        <DeleteMemberButton profileId={id} memberName={profile.name} />
       </div>
     </div>
   );

@@ -52,7 +52,7 @@ async function handleMembershipJoinCompleted(
       membership_type: meta.membership_type === "student" ? "student" : "regular",
       status: "active",
       ica_requested: meta.ica_requested === "1",
-      is_css_user: true,
+      is_css_user: false,
     })
     .select("id")
     .single();
