@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       zip_code: (data.zip_code ?? "").slice(0, 20),
       address: (data.address ?? "").slice(0, 500),
       phone: (data.phone ?? "").slice(0, 50),
-      affiliation: data.affiliation,
+      affiliation: data.affiliation ?? "general",
       ica_requested: data.ica_requested ? "1" : "0",
       membership_type: data.membership_type,
     },

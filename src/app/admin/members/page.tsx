@@ -537,12 +537,15 @@ export default function AdminMembersPage() {
             新規ICA希望者出力
           </Button>
           <Dialog open={icaReExportOpen} onOpenChange={setIcaReExportOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="size-4" />
-                ICA再出力（期間指定）
-              </Button>
-            </DialogTrigger>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => setIcaReExportOpen(true)}
+            >
+              <Download className="size-4" />
+              ICA再出力（期間指定）
+            </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>ICA再出力（期間指定）</DialogTitle>
