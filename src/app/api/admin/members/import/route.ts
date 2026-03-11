@@ -69,10 +69,17 @@ export async function POST(request: Request) {
     const buildingIdx = header.findIndex((h) => h === "住所_建物名");
     const phoneIdx = header.findIndex((h) => h === "電話番号");
     const notesIdx = header.findIndex((h) => h === "備考");
+    const officerTitleIdx = header.findIndex((h) => h === "役員");
+    const birthDateIdx = header.findIndex((h) => h === "生年月日");
 
     if (nameIdx < 0 || emailIdx < 0) {
       return NextResponse.json({
         error: "Excel に「名前」「システム用メールアドレス」列が必要です。",
+      }, { status: 400 });
+    }
+    if (birthDateIdx < 0) {
+      return NextResponse.json({
+        error: "Excel に「生年月日」列が必要です。会員の必須項目です。",
       }, { status: 400 });
     }
 
@@ -91,9 +98,17 @@ export async function POST(request: Request) {
         continue;
       }
 
+      const birthDateStr = parseDate(row[birthDateIdx]);
+      if (!birthDateStr) {
+        skipped.push(`行${i + 1}: 生年月日が空または不正`);
+        continue;
+      }
+
       const membershipType = mapMembershipType(row[memberTypeIdx] ?? "");
       const expiryStr = parseDate(row[expiryIdx]);
+      // ICA資格列が「会員」なら ICA会員
       const isIca = String(row[icaIdx] ?? "").trim() === "会員";
+      const officerTitle = officerTitleIdx >= 0 ? (String(row[officerTitleIdx] ?? "").trim() || null) : null;
       const paymentRaw = String(row[paymentIdx] ?? "").trim().toUpperCase();
       const paymentMethod =
         paymentRaw.includes("CSS") ? "css" : paymentRaw.includes("振") ? "transfer" : "transfer";
@@ -119,6 +134,7 @@ export async function POST(request: Request) {
         name,
         name_kana: nameKana,
         email,
+        birth_date: birthDateStr,
         zip_code: zipCode,
         address: address || null,
         phone,
@@ -130,14 +146,21 @@ export async function POST(request: Request) {
       let profileId: string;
 
       if (existing) {
-        const updateData: Record<string, unknown> = { ...profileBase };
+        const updateData: Record<string, unknown> = {
+          ...profileBase,
+          birth_date: birthDateStr,
+          is_ica_member: isIca,
+          officer_title: officerTitle,
+          notes,
+        };
         try {
           const { error: upErr } = await admin.from("profiles").update(updateData).eq("id", existing.id);
           if (upErr) throw upErr;
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          if (msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source")) {
-            const { error: upErr2 } = await admin.from("profiles").update(profileBase).eq("id", existing.id);
+          if (msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source") || msg.includes("officer_title") || msg.includes("birth_date") || msg.includes("column")) {
+            const fallbackUpdate = { name: profileBase.name, name_kana: profileBase.name_kana, email: profileBase.email, zip_code: profileBase.zip_code, address: profileBase.address, phone: profileBase.phone, membership_type: profileBase.membership_type, status: profileBase.status, updated_at: profileBase.updated_at };
+            const { error: upErr2 } = await admin.from("profiles").update(fallbackUpdate).eq("id", existing.id);
             if (upErr2) {
               skipped.push(`行${i + 1}: ${upErr2.message}`);
               continue;
@@ -155,6 +178,7 @@ export async function POST(request: Request) {
           name,
           name_kana: nameKana,
           email,
+          birth_date: birthDateStr,
           zip_code: zipCode,
           address: address || null,
           phone,
@@ -162,7 +186,7 @@ export async function POST(request: Request) {
           category: membershipType === "student" ? "student" : "general",
           status,
         };
-        const insertWithExtras = { ...insertBase, is_ica_member: isIca, notes, source: "import" as const };
+        const insertWithExtras = { ...insertBase, birth_date: birthDateStr, is_ica_member: isIca, officer_title: officerTitle, notes, source: "import" as const };
         const { data: inserted, error } = await admin
           .from("profiles")
           .insert(insertWithExtras)
@@ -171,7 +195,7 @@ export async function POST(request: Request) {
 
         if (error) {
           const msg = error.message ?? "";
-          const isColumnError = msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source") || msg.includes("column");
+          const isColumnError = msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source") || msg.includes("officer_title") || msg.includes("birth_date") || msg.includes("column");
           const isConstraintError = msg.includes("check") || msg.includes("membership_type") || msg.includes("friend");
           if (isColumnError || isConstraintError) {
             const fallbackInsert = membershipType === "friend"

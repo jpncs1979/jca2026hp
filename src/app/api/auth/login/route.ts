@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { normalizeBaseUrl } from "@/lib/utils";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -9,13 +10,14 @@ export async function POST(request: Request) {
   const redirectTo = String(formData.get("redirect") ?? "/mypage").trim() || "/mypage";
 
   if (!email || !password) {
+    const base = normalizeBaseUrl(new URL(request.url).origin);
     return NextResponse.redirect(
-      new URL(`/mypage?error=${encodeURIComponent("メールアドレスとパスワードを入力してください。")}`, request.url)
+      new URL(`/mypage?error=${encodeURIComponent("メールアドレスとパスワードを入力してください。")}`, base)
     );
   }
 
   const requestUrl = new URL(request.url);
-  const origin = requestUrl.origin;
+  const origin = normalizeBaseUrl(requestUrl.origin);
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -48,8 +50,9 @@ export async function POST(request: Request) {
         : error.message === "Email not confirmed"
           ? "メールアドレスがまだ確認されていません。"
           : error.message;
+    const base = normalizeBaseUrl(new URL(request.url).origin);
     return NextResponse.redirect(
-      new URL(`/mypage?error=${encodeURIComponent(msg)}`, request.url)
+      new URL(`/mypage?error=${encodeURIComponent(msg)}`, base)
     );
   }
 

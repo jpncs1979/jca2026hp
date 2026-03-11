@@ -45,10 +45,12 @@ interface InitialData {
   status: string;
   membership_type: string;
   is_ica_member: boolean;
+  ica_requested: boolean;
+  is_css_user: boolean;
+  officer_title: string;
   gender: string;
   birth_date: string;
   notes: string;
-  join_date: string;
   expiry_date: string;
   payment_method: string;
 }
@@ -67,6 +69,10 @@ export function AdminMemberEditForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.birth_date?.trim()) {
+      setError("生年月日は必須です。");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -85,10 +91,12 @@ export function AdminMemberEditForm({
           status: form.status,
           membership_type: form.membership_type,
           is_ica_member: form.is_ica_member,
+          ica_requested: form.ica_requested,
+          is_css_user: form.is_css_user,
+          officer_title: form.officer_title?.trim() || null,
           gender: form.gender || null,
-          birth_date: form.birth_date || null,
+          birth_date: form.birth_date?.trim() || null,
           notes: form.notes || null,
-          join_date: form.join_date || null,
           expiry_date: form.expiry_date || null,
           payment_method: form.payment_method || null,
         }),
@@ -169,15 +177,47 @@ export function AdminMemberEditForm({
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_ica_member"
-              checked={form.is_ica_member}
-              onChange={(e) => setForm((f) => ({ ...f, is_ica_member: e.target.checked }))}
-              className="h-4 w-4 rounded border-border"
-            />
-            <Label htmlFor="is_ica_member" className="cursor-pointer">ICA会員</Label>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_ica_member"
+                checked={form.is_ica_member}
+                onChange={(e) => setForm((f) => ({ ...f, is_ica_member: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Label htmlFor="is_ica_member" className="cursor-pointer">ICA会員</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="ica_requested"
+                checked={form.ica_requested}
+                onChange={(e) => setForm((f) => ({ ...f, ica_requested: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Label htmlFor="ica_requested" className="cursor-pointer">ICA希望</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_css_user"
+                checked={form.is_css_user}
+                onChange={(e) => setForm((f) => ({ ...f, is_css_user: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Label htmlFor="is_css_user" className="cursor-pointer">CSS（口座振替）対象</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="officer_title" className="cursor-pointer whitespace-nowrap">役員職名</Label>
+              <Input
+                id="officer_title"
+                value={form.officer_title}
+                onChange={(e) => setForm((f) => ({ ...f, officer_title: e.target.value }))}
+                placeholder="例: 理事、監事（空欄で非役員）"
+                className="max-w-[200px]"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -246,28 +286,17 @@ export function AdminMemberEditForm({
             <CreditCard className="size-5 text-gold" />
             会員資格・有効期限
           </CardTitle>
-          <CardDescription>入会日・有効期限・支払方法</CardDescription>
+          <CardDescription>有効期限・支払方法</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="join_date">入会日</Label>
-              <Input
-                id="join_date"
-                type="date"
-                value={form.join_date}
-                onChange={(e) => setForm((f) => ({ ...f, join_date: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="expiry_date">有効期限</Label>
-              <Input
-                id="expiry_date"
-                type="date"
-                value={form.expiry_date}
-                onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
-              />
-            </div>
+          <div>
+            <Label htmlFor="expiry_date">有効期限</Label>
+            <Input
+              id="expiry_date"
+              type="date"
+              value={form.expiry_date}
+              onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
+            />
           </div>
           <div>
             <Label htmlFor="payment_method">支払方法</Label>
@@ -288,9 +317,19 @@ export function AdminMemberEditForm({
       <Card>
         <CardHeader>
           <CardTitle>その他</CardTitle>
-          <CardDescription>性別・生年月日・備考（任意）</CardDescription>
+          <CardDescription>生年月日（必須）・性別・備考</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="birth_date">生年月日 *</Label>
+            <Input
+              id="birth_date"
+              type="date"
+              value={form.birth_date}
+              onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))}
+              required
+            />
+          </div>
           <div>
             <Label htmlFor="gender">性別</Label>
             <Input
@@ -298,15 +337,6 @@ export function AdminMemberEditForm({
               value={form.gender}
               onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}
               placeholder="男 / 女"
-            />
-          </div>
-          <div>
-            <Label htmlFor="birth_date">生年月日</Label>
-            <Input
-              id="birth_date"
-              type="date"
-              value={form.birth_date}
-              onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))}
             />
           </div>
           <div>

@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // 開発時の Webpack メモリ使用を抑え、コンパイルが止まりにくくする
+    webpackMemoryOptimizations: true,
+  },
 };
 
 export default nextConfig;

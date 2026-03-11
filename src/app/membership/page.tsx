@@ -64,14 +64,14 @@ export default function MembershipPage() {
               <CardHeader>
                 <CardTitle className="text-base">お申し込み</CardTitle>
                 <CardDescription>
-                  入会をご希望の方は、事務局までお問い合わせください。
-                  申込用紙の送付、会費のご案内など、入会手続きの流れをご説明いたします。
+                  ウェブから入会申し込みができます。クレジットカードでお支払いいただくと即時入会となります。
+                  口座振替をご希望の方は、事務局までお問い合わせください。
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href="/contact">
+                <Link href="/membership/join">
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                    お問い合わせ（入会について）
+                    ウェブで入会申し込み
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
                 </Link>

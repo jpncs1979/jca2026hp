@@ -2,9 +2,15 @@
   "name": "japan-clarinet-association",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
-    "dev": "next dev",
+    "setup": "node scripts/setup.js",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev -H 0.0.0.0 --webpack",
     "build": "next build",
+    "build:fresh": "npm run clean && next build",
+    "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('.next')){ try { fs.rmSync('.next', { recursive: true }); console.log('.next を削除しました'); } catch(e) { console.error('EPERM: .next がロックされています。npm run dev を止めてから再度お試しください。'); process.exit(1); } }\"",
     "start": "next start",
     "lint": "eslint"
   },
@@ -30,6 +36,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.11",

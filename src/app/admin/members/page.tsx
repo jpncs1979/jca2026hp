@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -52,20 +52,41 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
   friend: "会友",
 };
 
+const FILTER_LABELS: Record<string, string> = {
+  all: "全会員",
+  pending: "承認待ち",
+  student: "学生会員",
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  transfer: "振込",
+  css: "CSS",
+  stripe: "クレジットカード",
+};
+
 const SIGNATURE_STORAGE_KEY = "admin_email_signatures";
 type StoredSignature = { id: string; name: string; content: string };
 
+type MembershipRow = { join_date?: string; expiry_date?: string; payment_method?: string };
 type ProfileWithMembership = {
   id: string;
   member_number: number | null;
   name: string;
   name_kana: string;
   email: string;
+  zip_code?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  affiliation?: string | null;
   status: string;
   category: string;
   membership_type: string;
   is_ica_member?: boolean;
-  memberships: { expiry_date: string }[] | null;
+  officer_title?: string | null;
+  gender?: string | null;
+  birth_date?: string | null;
+  notes?: string | null;
+  memberships: MembershipRow[] | null;
 };
 
 function buildFetchUrl(filter: string, ica: boolean, type: string, unpaid: boolean): string {
@@ -78,11 +99,17 @@ function buildFetchUrl(filter: string, ica: boolean, type: string, unpaid: boole
   return `/api/admin/members?${params.toString()}`;
 }
 
+function getLatestMembership(p: ProfileWithMembership): MembershipRow | undefined {
+  const arr = p.memberships ?? [];
+  return [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
+}
+
 type SortKey = "member_number" | "status" | "expiry" | "";
 type SortOrder = "asc" | "desc";
 
 export default function AdminMembersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profiles, setProfiles] = useState<ProfileWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -91,10 +118,19 @@ export default function AdminMembersPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [icaOnly, setIcaOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
+  const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [extending, setExtending] = useState(false);
+  const [extendDialogOpen, setExtendDialogOpen] = useState(false);
+  const [extendDate, setExtendDate] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [extendConfirmOpen, setExtendConfirmOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; skippedList?: string[] } | null>(null);
@@ -110,6 +146,15 @@ export default function AdminMembersPage() {
   const [newSignatureName, setNewSignatureName] = useState("");
   const [newSignatureContent, setNewSignatureContent] = useState("");
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
+  const [icaReExportOpen, setIcaReExportOpen] = useState(false);
+  const [icaReFrom, setIcaReFrom] = useState("");
+  const [icaReTo, setIcaReTo] = useState("");
+  const [icaExporting, setIcaExporting] = useState(false);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status === "pending") setFilter("pending");
+  }, [searchParams]);
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -145,14 +190,21 @@ export default function AdminMembersPage() {
 
   const filteredProfiles = useMemo(() => {
     let list = filterBased;
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
+    if (q && q.toLowerCase() !== "all") {
+      const qLower = q.toLowerCase();
       list = list.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.name_kana ?? "").toLowerCase().includes(q) ||
-          (p.email ?? "").toLowerCase().includes(q)
+          p.name.toLowerCase().includes(qLower) ||
+          (p.name_kana ?? "").toLowerCase().includes(qLower) ||
+          (p.email ?? "").toLowerCase().includes(qLower)
       );
+    }
+    if (paymentFilter) {
+      list = list.filter((p) => getLatestMembership(p)?.payment_method === paymentFilter);
+    }
+    if (officerOnly) {
+      list = list.filter((p) => (p.officer_title ?? "").trim() !== "");
     }
     if (sortKey) {
       list = [...list].sort((a, b) => {
@@ -165,15 +217,15 @@ export default function AdminMembersPage() {
           const order = { pending: 0, active: 1, expired: 2 };
           cmp = (order[a.status as keyof typeof order] ?? 0) - (order[b.status as keyof typeof order] ?? 0);
         } else if (sortKey === "expiry") {
-          const ea = a.memberships?.[0]?.expiry_date ?? "";
-          const eb = b.memberships?.[0]?.expiry_date ?? "";
+          const ea = getLatestMembership(a)?.expiry_date ?? "";
+          const eb = getLatestMembership(b)?.expiry_date ?? "";
           cmp = ea.localeCompare(eb);
         }
         return sortOrder === "asc" ? cmp : -cmp;
       });
     }
     return list;
-  }, [filterBased, searchQuery, sortKey, sortOrder]);
+  }, [filterBased, searchQuery, paymentFilter, officerOnly, sortKey, sortOrder]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -193,7 +245,7 @@ export default function AdminMembersPage() {
   const canSelectForExtend = (p: ProfileWithMembership) =>
     p.status !== "pending"; // 承認待ち以外は一括延長・会員資格付与の対象
   const unpaidProfiles = profiles.filter((p) => {
-    const exp = p.memberships?.[0]?.expiry_date;
+    const exp = getLatestMembership(p)?.expiry_date;
     return !exp || exp < today;
   });
 
@@ -226,23 +278,28 @@ export default function AdminMembersPage() {
     if (res.ok) fetchProfiles();
   };
 
-  const handleBulkExtend = async () => {
+  const handleBulkExtend = async (expiryDate: string) => {
     const eligibleIds = Array.from(selectedIds).filter((id) => {
       const p = profiles.find((x) => x.id === id);
       return p && canSelectForExtend(p);
     });
     if (eligibleIds.length === 0) return;
     setExtending(true);
+    setExtendConfirmOpen(false);
     const res = await fetch("/api/admin/members/extend", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_ids: eligibleIds }),
+      body: JSON.stringify({ profile_ids: eligibleIds, expiry_date: expiryDate }),
     });
     setExtending(false);
     if (res.ok) {
       setSelectedIds(new Set());
+      setExtendDialogOpen(false);
       fetchProfiles();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "有効期限の更新に失敗しました");
     }
   };
 
@@ -348,16 +405,29 @@ export default function AdminMembersPage() {
   };
 
   const handleExportCsv = () => {
-    const rows = filteredProfiles.map((p) => ({
-      会員番号: p.member_number ?? "",
-      氏名: p.name,
-      ふりがな: p.name_kana,
-      メール: p.email,
-      ステータス: p.status,
-      種別: MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type,
-      ICA会員: p.is_ica_member ? "○" : "",
-      有効期限: p.memberships?.[0]?.expiry_date ?? "",
-    }));
+    const PAYMENT_LABELS: Record<string, string> = { transfer: "振込", css: "CSS", stripe: "クレジットカード" };
+    const rows = filteredProfiles.map((p) => {
+      const latest = getLatestMembership(p);
+      return {
+        会員番号: p.member_number ?? "",
+        氏名: p.name,
+        ふりがな: p.name_kana ?? "",
+        メール: p.email ?? "",
+        郵便番号: p.zip_code ?? "",
+        住所: p.address ?? "",
+        電話番号: p.phone ?? "",
+        所属: p.affiliation ?? "",
+        種別: MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type,
+        ステータス: p.status,
+        ICA会員: p.is_ica_member ? "○" : "－",
+        役員: p.officer_title?.trim() ?? "",
+        有効期限: latest?.expiry_date ?? "",
+        支払方法: latest?.payment_method ? (PAYMENT_LABELS[latest.payment_method] ?? latest.payment_method) : "",
+        性別: p.gender ?? "",
+        生年月日: p.birth_date ?? "",
+        備考: p.notes ?? "",
+      };
+    });
     const headers = Object.keys(rows[0] ?? {});
     const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => `"${String(r[h as keyof typeof r] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -398,66 +468,119 @@ export default function AdminMembersPage() {
     localStorage.setItem(SIGNATURE_STORAGE_KEY, JSON.stringify(next));
   };
 
+  const handleIcaExportNew = async () => {
+    setIcaExporting(true);
+    try {
+      const res = await fetch("/api/admin/members/ica-export?mode=new", { credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "ICA出力に失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ICA希望者_新規_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIcaExporting(false);
+    }
+  };
+
+  const handleIcaExportRe = async () => {
+    if (!icaReFrom || !icaReTo) {
+      alert("開始日・終了日を指定してください");
+      return;
+    }
+    setIcaExporting(true);
+    try {
+      const params = new URLSearchParams({ mode: "re", from: icaReFrom.slice(0, 10), to: icaReTo.slice(0, 10) });
+      const res = await fetch(`/api/admin/members/ica-export?${params}`, { credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "ICA再出力に失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ICA再出力_${icaReFrom}_${icaReTo}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setIcaReExportOpen(false);
+      setIcaReFrom("");
+      setIcaReTo("");
+    } finally {
+      setIcaExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-navy">会員管理</h1>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="氏名・メールで検索"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={filter} onValueChange={(v) => setFilter(v ?? "all")}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全会員</SelectItem>
-              <SelectItem value="pending">承認待ち</SelectItem>
-              <SelectItem value="student">学生会員</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="ica-only"
-              checked={icaOnly}
-              onChange={(e) => setIcaOnly(e.target.checked)}
-            />
-            <Label htmlFor="ica-only" className="text-sm cursor-pointer">ICA会員のみ</Label>
-          </div>
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="会員種別" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">全会員種別</SelectItem>
-              <SelectItem value="regular">正会員</SelectItem>
-              <SelectItem value="student">学生会員</SelectItem>
-              <SelectItem value="supporting">賛助会員</SelectItem>
-              <SelectItem value="friend">会友</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="unpaid-only"
-              checked={unpaidOnly}
-              onChange={(e) => setUnpaidOnly(e.target.checked)}
-            />
-            <Label htmlFor="unpaid-only" className="text-sm cursor-pointer whitespace-nowrap">未納者のみ</Label>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchProfiles} {...(loading && { disabled: true })}>
-            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCsv}>
             <Download className="size-4" />
             CSV出力
           </Button>
-
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleIcaExportNew}
+            disabled={icaExporting}
+          >
+            {icaExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            新規ICA希望者出力
+          </Button>
+          <Dialog open={icaReExportOpen} onOpenChange={setIcaReExportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="size-4" />
+                ICA再出力（期間指定）
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>ICA再出力（期間指定）</DialogTitle>
+                <DialogDescription>
+                  出力済み日（ica_exported_at）または入会日の範囲で、ICA希望者を再出力します。フラグは変更しません。
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div>
+                  <Label htmlFor="ica-re-from">開始日</Label>
+                  <Input
+                    id="ica-re-from"
+                    type="date"
+                    value={icaReFrom}
+                    onChange={(e) => setIcaReFrom(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ica-re-to">終了日</Label>
+                  <Input
+                    id="ica-re-to"
+                    type="date"
+                    value={icaReTo}
+                    onChange={(e) => setIcaReTo(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIcaReExportOpen(false)}>キャンセル</Button>
+                <Button onClick={handleIcaExportRe} disabled={icaExporting || !icaReFrom || !icaReTo}>
+                  {icaExporting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  出力
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog>
             <DialogTrigger
               render={
@@ -467,13 +590,32 @@ export default function AdminMembersPage() {
                 </Button>
               }
             />
-            <DialogContent>
+            <DialogContent aria-describedby="excel-import-desc">
               <DialogHeader>
                 <DialogTitle>会員データ Excel 取り込み</DialogTitle>
-                <DialogDescription>
-                  「名前」「名前(カナ)」「システム用メールアドレス」「会員種別」「会員有効終了日」「ICA資格」「会費支払い方法」列を含む Excel をアップロードしてください。
-                </DialogDescription>
               </DialogHeader>
+              <div id="excel-import-desc" className="space-y-3 text-sm text-muted-foreground" role="region" aria-label="取り込み対象列の説明">
+                <p className="font-medium text-foreground">Excel の列名は以下と一致させてください。</p>
+                <div>
+                  <p className="font-medium text-foreground">必須列</p>
+                  <ul className="mt-1 list-inside list-disc space-y-0.5">
+                    <li>「名前」</li>
+                    <li>「システム用メールアドレス」</li>
+                    <li>「生年月日」</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">あると取り込む列</p>
+                  <ul className="mt-1 list-inside list-disc space-y-0.5">
+                    <li>「名前(カナ)」「会員種別」「会員有効終了日」「ICA資格」「会費支払い方法」「役員」</li>
+                    <li>住所：「住所_郵便番号」「住所_都道府県」「住所_市区町村」「住所_番地」「住所_建物名」</li>
+                    <li>その他：「電話番号」「備考」</li>
+                  </ul>
+                </div>
+                <p>
+                  ICA資格が「会員」の行はICA会員として登録されます。役員列の値（理事・監事など）はそのまま役員職名として保存されます。
+                </p>
+              </div>
               <div className="space-y-4 py-4">
                 <Input
                   type="file"
@@ -579,15 +721,15 @@ export default function AdminMembersPage() {
                       <div className="flex flex-wrap gap-4">
                         <label className="flex items-center gap-2">
                           <Checkbox checked={emailCriteria.ica} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, ica: e.target.checked }))} />
-                          ICA会員のみ
+                          ICA会員
                         </label>
                         <label className="flex items-center gap-2">
                           <Checkbox checked={emailCriteria.unpaid} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, unpaid: e.target.checked }))} />
-                          未納者のみ
+                          未納者
                         </label>
                         <Select value={emailCriteria.type} onValueChange={(t) => setEmailCriteria((prev) => ({ ...prev, type: t ?? "" }))}>
                           <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="会員種別" />
+                            <SelectValue>{emailCriteria.type ? (MEMBERSHIP_LABELS[emailCriteria.type] ?? emailCriteria.type) : "会員種別"}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="">指定なし</SelectItem>
@@ -668,6 +810,86 @@ export default function AdminMembersPage() {
         </div>
       </div>
 
+      <p className="text-lg font-semibold text-navy">
+        該当 <span className="tabular-nums">{filteredProfiles.length}</span> 人
+      </p>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">検索・絞り込み</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full min-w-[200px] sm:w-64">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="氏名・メールで検索"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filter} onValueChange={(v) => setFilter(v ?? "all")}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue>{FILTER_LABELS[filter] ?? "全会員"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全会員</SelectItem>
+              <SelectItem value="pending">承認待ち</SelectItem>
+              <SelectItem value="student">学生会員</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue>{typeFilter ? (MEMBERSHIP_LABELS[typeFilter] ?? typeFilter) : "会員種別"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全会員種別</SelectItem>
+              <SelectItem value="regular">正会員</SelectItem>
+              <SelectItem value="student">学生会員</SelectItem>
+              <SelectItem value="supporting">賛助会員</SelectItem>
+              <SelectItem value="friend">会友</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v ?? "")}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue>{paymentFilter ? (PAYMENT_LABELS[paymentFilter] ?? paymentFilter) : "支払方法"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">指定なし</SelectItem>
+              <SelectItem value="transfer">振込</SelectItem>
+              <SelectItem value="css">CSS</SelectItem>
+              <SelectItem value="stripe">クレジットカード</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2" title="ICA会員で絞り込み">
+            <Checkbox
+              id="ica-only"
+              checked={icaOnly}
+              onChange={(e) => setIcaOnly(e.target.checked)}
+            />
+            <Label htmlFor="ica-only" className="text-sm cursor-pointer whitespace-nowrap">ICA会員</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="officer-only"
+              checked={officerOnly}
+              onChange={(e) => setOfficerOnly(e.target.checked)}
+            />
+            <Label htmlFor="officer-only" className="text-sm cursor-pointer whitespace-nowrap">役員</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="unpaid-only"
+              checked={unpaidOnly}
+              onChange={(e) => setUnpaidOnly(e.target.checked)}
+            />
+            <Label htmlFor="unpaid-only" className="text-sm cursor-pointer whitespace-nowrap">未納者</Label>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchProfiles} {...(loading && { disabled: true })}>
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+            更新
+          </Button>
+        </div>
+      </div>
+
       {filter === "pending" && pendingProfiles.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-800">
@@ -697,15 +919,78 @@ export default function AdminMembersPage() {
           </Button>
           <Button
             size="sm"
-            onClick={handleBulkExtend}
+            onClick={() => setExtendDialogOpen(true)}
             {...(extending && { disabled: true })}
             className="bg-gold text-gold-foreground hover:bg-gold-muted"
           >
             {extending ? <Loader2 className="size-4 animate-spin" /> : null}
-            有効期限を1年延長（CSS連携・一括会員資格付与）
+            有効期限を指定して一括更新
           </Button>
         </div>
       )}
+
+      <Dialog open={extendDialogOpen} onOpenChange={setExtendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>有効期限を一括設定</DialogTitle>
+            <DialogDescription>
+              選択した会員の有効期限を、指定した日付に更新します。日付を設定して「確認へ」を押してください。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="extend-expiry-date">有効期限（いつまで有効にするか）</Label>
+              <Input
+                id="extend-expiry-date"
+                type="date"
+                value={extendDate}
+                onChange={(e) => setExtendDate(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendDialogOpen(false)}>キャンセル</Button>
+            <Button
+              className="bg-gold text-gold-foreground hover:bg-gold-muted"
+              onClick={() => {
+                if (!extendDate) {
+                  alert("有効期限の日付を選択してください");
+                  return;
+                }
+                setExtendDialogOpen(false);
+                setExtendConfirmOpen(true);
+              }}
+            >
+              確認へ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={extendConfirmOpen} onOpenChange={setExtendConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>有効期限の変更確認</DialogTitle>
+            <DialogDescription>
+              選択した{Array.from(selectedIds).filter((id) => profiles.find((x) => x.id === id) && canSelectForExtend(profiles.find((x) => x.id === id)!)).length}件の会員の有効期限を
+              <strong className="mx-1">{extendDate ? new Date(extendDate + "T12:00:00").toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" }) : ""}</strong>
+              に変更します。よろしいですか？
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendConfirmOpen(false)}>キャンセル</Button>
+            <Button
+              className="bg-gold text-gold-foreground hover:bg-gold-muted"
+              onClick={() => handleBulkExtend(extendDate)}
+              disabled={extending}
+            >
+              {extending ? <Loader2 className="size-4 animate-spin" /> : null}
+              変更する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="overflow-x-auto rounded-lg border border-border bg-white">
         {loading ? (
@@ -736,6 +1021,8 @@ export default function AdminMembersPage() {
                 </TableHead>
                 <TableHead>氏名</TableHead>
                 <TableHead>種別</TableHead>
+                <TableHead className="w-12 text-center">ICA</TableHead>
+                <TableHead className="w-12 text-center">役員</TableHead>
                 <TableHead>メール</TableHead>
                 <TableHead>
                   <button
@@ -774,15 +1061,10 @@ export default function AdminMembersPage() {
                     />
                   </TableCell>
                   <TableCell>{p.member_number ?? "-"}</TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1">
-                      {p.name}
-                      {p.is_ica_member && (
-                        <span className="rounded bg-navy/10 px-1.5 py-0.5 text-xs text-navy">ICA</span>
-                      )}
-                    </span>
-                  </TableCell>
+                  <TableCell>{p.name}</TableCell>
                   <TableCell className="text-sm">{MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type}</TableCell>
+                  <TableCell className="text-center">{p.is_ica_member ? "○" : "－"}</TableCell>
+                  <TableCell className="text-sm">{p.officer_title?.trim() ?? "－"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.email}</TableCell>
                   <TableCell>
                     <span
@@ -797,7 +1079,7 @@ export default function AdminMembersPage() {
                       {p.status === "pending" ? "承認待ち" : p.status === "active" ? "有効" : "期限切れ"}
                     </span>
                   </TableCell>
-                  <TableCell>{p.memberships?.[0]?.expiry_date ?? "-"}</TableCell>
+                  <TableCell>{getLatestMembership(p)?.expiry_date ?? "-"}</TableCell>
                   {filter === "pending" && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button

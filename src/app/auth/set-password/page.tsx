@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -123,9 +123,12 @@ export default function SetPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild className="bg-gold text-gold-foreground hover:bg-gold-muted">
-              <Link href="/mypage">会員マイページでログイン</Link>
-            </Button>
+            <Link
+              href="/mypage"
+              className={buttonVariants({ className: "bg-gold text-gold-foreground hover:bg-gold-muted" })}
+            >
+              会員マイページでログイン
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -180,9 +183,9 @@ export default function SetPasswordPage() {
               >
                 {loading ? "設定中..." : "パスワードを設定する"}
               </Button>
-              <Button type="button" variant="ghost" asChild>
-                <Link href="/mypage">マイページへ戻る</Link>
-              </Button>
+              <Link href="/mypage" className={buttonVariants({ variant: "ghost" })}>
+                マイページへ戻る
+              </Link>
             </div>
           </form>
         </CardContent>

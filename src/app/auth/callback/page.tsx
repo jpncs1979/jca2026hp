@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
  * Supabase のメールリンク（パスワード再設定・マジックリンク等）からのリダイレクト先。
  * ハッシュで渡されたトークンを処理したあと、next パラメータまたは /mypage へ転送する。
  */
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "redirecting" | "error">("loading");
@@ -71,5 +71,13 @@ export default function AuthCallbackPage() {
         {status === "error" && "エラーが発生しました。マイページへ移動します。"}
       </p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center p-6"><p className="text-muted-foreground">読み込み中...</p></div>}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

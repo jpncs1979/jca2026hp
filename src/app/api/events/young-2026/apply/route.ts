@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { OFFICE_FROM_HEADER } from "@/lib/email";
+import { getFromHeader } from "@/lib/email";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 const OFFICE_EMAIL = "jca@jp-clarinet.org";
@@ -176,13 +176,13 @@ export async function POST(request: Request) {
       try {
         await Promise.all([
           transporter.sendMail({
-            from: OFFICE_FROM_HEADER,
+            from: getFromHeader(),
             to: email,
             subject: participantSubject,
             html: participantHtml,
           }),
           transporter.sendMail({
-            from: OFFICE_FROM_HEADER,
+            from: getFromHeader(),
             to: OFFICE_EMAIL,
             subject: officeSubject,
             html: officeHtml,

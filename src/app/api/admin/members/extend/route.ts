@@ -21,10 +21,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "権限がありません" }, { status: 403 });
     }
 
-    const { profile_ids } = await request.json();
+    const body = await request.json();
+    const { profile_ids, expiry_date: requestedExpiry } = body;
     if (!Array.isArray(profile_ids) || profile_ids.length === 0) {
       return NextResponse.json(
         { error: "profile_ids を指定してください。" },
+        { status: 400 }
+      );
+    }
+
+    const expiryStr = requestedExpiry ? String(requestedExpiry).trim().slice(0, 10) : null;
+    const expiryDate = expiryStr && /^\d{4}-\d{2}-\d{2}$/.test(expiryStr) ? expiryStr : null;
+    if (!expiryDate) {
+      return NextResponse.json(
+        { error: "有効期限の日付（YYYY-MM-DD）を指定してください。" },
         { status: 400 }
       );
     }
@@ -39,21 +49,17 @@ export async function POST(request: Request) {
         .single();
 
       if (latest?.id) {
-        const current = new Date(latest.expiry_date);
-        const nextYear = new Date(current);
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
         await admin
           .from("memberships")
-          .update({ expiry_date: nextYear.toISOString().slice(0, 10), updated_at: new Date().toISOString() })
+          .update({ expiry_date: expiryDate, updated_at: new Date().toISOString() })
           .eq("id", latest.id);
       } else {
         const joinDate = new Date();
-        const expiryDate = new Date();
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        joinDate.setFullYear(joinDate.getFullYear() - 1);
         await admin.from("memberships").insert({
           profile_id: profileId,
           join_date: joinDate.toISOString().slice(0, 10),
-          expiry_date: expiryDate.toISOString().slice(0, 10),
+          expiry_date: expiryDate,
           payment_method: "css",
         });
       }

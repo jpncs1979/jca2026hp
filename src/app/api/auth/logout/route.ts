@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { normalizeBaseUrl } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
   );
 
   await supabase.auth.signOut();
-  const origin = request.headers.get("origin") ?? request.nextUrl.origin ?? "http://localhost:3000";
+  const raw =
+    request.headers.get("origin") ?? request.nextUrl.origin ?? "http://localhost:3000";
+  const origin = normalizeBaseUrl(raw);
   return NextResponse.redirect(new URL("/mypage", origin));
 }

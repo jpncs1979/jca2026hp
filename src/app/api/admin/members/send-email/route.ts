@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { OFFICE_FROM_HEADER } from "@/lib/email";
+import { getFromHeader } from "@/lib/email";
 import nodemailer from "nodemailer";
 
 /** 1回のリクエストで送信できる最大件数（Gmail: 個人500通/日、連続送信のレート制限対策） */
@@ -126,9 +126,8 @@ export async function POST(request: Request) {
     let list = profiles ?? [];
     if (unpaid_only) {
       const today = new Date().toISOString().slice(0, 10);
-      list = list.filter((p) => {
-        const memberships = p.memberships as { expiry_date?: string }[] | null;
-        const exp = memberships?.[0]?.expiry_date;
+      list = list.filter((p: { memberships?: { expiry_date?: string }[] | null }) => {
+        const exp = p.memberships?.[0]?.expiry_date;
         return !exp || exp < today;
       });
     }
@@ -208,7 +207,7 @@ export async function POST(request: Request) {
       const htmlContent = wrapHtml(toHtml(personalBody));
       try {
         await transporter.sendMail({
-          from: OFFICE_FROM_HEADER,
+          from: getFromHeader(),
           to: email,
           subject: subject.trim(),
           html: htmlContent,

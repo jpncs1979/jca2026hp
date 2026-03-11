@@ -40,6 +40,7 @@ function MypageContent() {
     status?: string | null;
     affiliation?: string | null;
     is_admin?: boolean | null;
+    is_css_user?: boolean | null;
   } | null>(null);
   const [membership, setMembership] = useState<{
     expiry_date: string;
@@ -67,11 +68,13 @@ function MypageContent() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const adminDenied = searchParams.get("admin_denied") === "1";
+  const redirectToAdmin = searchParams.get("redirect") === "/admin";
   const [showPasswordRecoveryForm, setShowPasswordRecoveryForm] = useState(false);
   const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
   const [recoveryNewPasswordConfirm, setRecoveryNewPasswordConfirm] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [switchToCardLoading, setSwitchToCardLoading] = useState(false);
 
   // API 経由ログイン失敗時のエラー表示
   useEffect(() => {
@@ -273,6 +276,12 @@ function MypageContent() {
           <div className="container mx-auto px-4">
             <h1 className="text-3xl font-bold text-navy md:text-4xl">会員マイページ</h1>
             <p className="mt-2 text-muted-foreground">会員専用の各種サービスをご利用いただけます</p>
+            {redirectToAdmin && !adminDenied && (
+              <div className="mt-4 rounded-lg border border-navy/20 bg-navy/5 p-4 text-sm text-navy">
+                <p className="font-medium">事務局ダッシュボード（/admin）にアクセスするには、ログインが必要です。</p>
+                <p className="mt-1 text-muted-foreground">下のフォームでログインすると、事務局権限があればダッシュボードへ進めます。</p>
+              </div>
+            )}
             {adminDenied && (
               <div className="mt-4 rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-sm text-amber-900">
                 <p className="font-medium">事務局ダッシュボード（/admin）にアクセスできませんでした。</p>
@@ -293,9 +302,11 @@ function MypageContent() {
                 <LogIn className="size-10 text-gold" />
                 <CardTitle>{authMode === "login" ? "ログイン" : "新規登録"}</CardTitle>
                 <CardDescription>
-                  {authMode === "login"
-                    ? "会員マイページをご利用になるには、ログインが必要です。"
-                    : "初めての方は新規登録してください。登録後、事務局が承認するとマイページをご利用いただけます。"}
+                  {redirectToAdmin
+                    ? "事務局ダッシュボード（/admin）に進むには、ログインしてください。"
+                    : authMode === "login"
+                      ? "会員マイページをご利用になるには、ログインが必要です。"
+                      : "初めての方は新規登録してください。登録後、事務局が承認するとマイページをご利用いただけます。"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -560,6 +571,42 @@ function MypageContent() {
               )}
             </CardContent>
           </Card>
+
+          {profile?.is_css_user === true && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CreditCard className="size-5 text-gold" />
+                  支払方法
+                </CardTitle>
+                <CardDescription>
+                  現在、会費は口座振替（CSS）でお支払いいただいています。クレジットカードに切り替えると、次回以降の口座振替対象から外れます。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                  disabled={switchToCardLoading}
+                  onClick={async () => {
+                    setSwitchToCardLoading(true);
+                    try {
+                      const res = await fetch("/api/mypage/switch-to-card", { method: "POST", credentials: "include" });
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        setProfile((prev) => (prev ? { ...prev, is_css_user: false } : null));
+                      } else {
+                        alert(data.error ?? "切り替えに失敗しました");
+                      }
+                    } finally {
+                      setSwitchToCardLoading(false);
+                    }
+                  }}
+                >
+                  {switchToCardLoading ? "処理中..." : "クレジットカード支払いに切り替える"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* プロフィール編集 */}
           <Card>

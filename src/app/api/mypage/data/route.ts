@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     const admin = createAdminClient();
-    const selectCols = "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, phone";
+    const selectCols = "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, phone, is_css_user";
 
     // 1. user_id で検索
     let { data: profile } = await admin
@@ -67,14 +67,15 @@ export async function GET() {
       .from("applications")
       .select("id, category, payment_status, created_at, competitions(name)")
       .or(`profile_id.eq.${profile.id},user_id.eq.${u.id}`);
-    const applications = (apps ?? []).map((a) => {
-      const row = a as {
-        id: string;
-        category: string;
-        payment_status: string;
-        created_at: string;
-        competitions?: { name: string } | { name: string }[];
-      };
+    type AppRow = {
+      id: string;
+      category: string;
+      payment_status: string;
+      created_at: string;
+      competitions?: { name: string } | { name: string }[];
+    };
+    const applications = (apps ?? []).map((a: AppRow) => {
+      const row = a;
       const comp = row.competitions;
       const competition = comp
         ? Array.isArray(comp)

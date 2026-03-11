@@ -38,6 +38,9 @@ export async function PATCH(
       status,
       membership_type,
       is_ica_member,
+      ica_requested,
+      is_css_user,
+      officer_title,
       gender,
       birth_date,
       notes,
@@ -80,6 +83,9 @@ export async function PATCH(
     // 基本カラム（マイグレーション003）とオプションカラム（マイグレーション004）を分離
     const optionalUpdate: Record<string, unknown> = {};
     if (is_ica_member !== undefined) optionalUpdate.is_ica_member = Boolean(is_ica_member);
+    if (ica_requested !== undefined) optionalUpdate.ica_requested = Boolean(ica_requested);
+    if (is_css_user !== undefined) optionalUpdate.is_css_user = Boolean(is_css_user);
+    if (officer_title !== undefined) optionalUpdate.officer_title = officer_title === "" || officer_title == null ? null : String(officer_title).trim();
     if (gender !== undefined) optionalUpdate.gender = gender ? String(gender).trim() : null;
     if (birth_date !== undefined) optionalUpdate.birth_date = birth_date ? String(birth_date).trim() : null;
     if (notes !== undefined) optionalUpdate.notes = notes ? String(notes).trim() : null;

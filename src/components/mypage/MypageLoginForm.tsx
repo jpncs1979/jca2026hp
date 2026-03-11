@@ -30,6 +30,10 @@ export function MypageLoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError("設定エラー");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -46,6 +50,10 @@ export function MypageLoginForm() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError("設定エラー");
+      return;
+    }
     setLoading(true);
     setError(null);
     setMessage(null);

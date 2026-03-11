@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { OFFICE_FROM_HEADER } from "@/lib/email";
+import { getFromHeader } from "@/lib/email";
 import nodemailer from "nodemailer";
 
 export async function POST(request: Request) {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       });
       try {
         await transporter.sendMail({
-          from: OFFICE_FROM_HEADER,
+          from: getFromHeader(),
           to: target.email,
           subject: "【日本クラリネット協会】入会のご承認について",
           html: `
@@ -78,7 +78,8 @@ export async function POST(request: Request) {
           `,
         });
       } catch (emailErr) {
-        console.error("入会承認メール送信エラー:", emailErr);
+        const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        console.error("入会承認メール送信エラー:", msg, emailErr);
       }
     }
 

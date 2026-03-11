@@ -26,12 +26,12 @@ export default async function AdminMemberDetailPage({
   }
 
   const admin = createAdminClient();
-  const selectWithIca = `
+  const selectFull = `
       id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
-      affiliation, status, membership_type, is_ica_member, created_at,
+      affiliation, status, membership_type, is_ica_member, officer_title, birth_date, created_at,
       memberships(join_date, expiry_date, payment_method)
     `;
-  const selectWithoutIca = `
+  const selectBase = `
       id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
       affiliation, status, membership_type, created_at,
       memberships(join_date, expiry_date, payment_method)
@@ -39,12 +39,12 @@ export default async function AdminMemberDetailPage({
 
   let { data: profile, error } = await admin
     .from("profiles")
-    .select(selectWithIca)
+    .select(selectFull)
     .eq("id", id)
     .single();
 
-  if (error?.message?.includes("is_ica_member") || error?.message?.includes("column")) {
-    const retry = await admin.from("profiles").select(selectWithoutIca).eq("id", id).single();
+  if (error?.message?.includes("is_ica_member") || error?.message?.includes("officer_title") || error?.message?.includes("birth_date") || error?.message?.includes("column")) {
+    const retry = await admin.from("profiles").select(selectBase).eq("id", id).single();
     profile = retry.data;
     error = retry.error;
   }
@@ -67,6 +67,7 @@ export default async function AdminMemberDetailPage({
   const latestMembership = [...memberships].sort(
     (a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? "")
   )[0];
+  const profileExt = profile as { is_ica_member?: boolean; officer_title?: string | null; birth_date?: string | null };
 
   return (
     <div className="space-y-6">
@@ -105,6 +106,30 @@ export default async function AdminMemberDetailPage({
               <dd>{MEMBERSHIP_LABELS[profile.membership_type] ?? profile.membership_type}</dd>
             </div>
             <div>
+              <dt className="text-muted-foreground">ICA会員</dt>
+              <dd>
+                {profileExt.is_ica_member ? (
+                  <span className="rounded bg-navy/10 px-2 py-0.5 text-sm font-medium text-navy">ICA会員</span>
+                ) : (
+                  <span className="text-muted-foreground">－</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">役員</dt>
+              <dd>
+                {profileExt.officer_title?.trim() ? (
+                  <span className="rounded bg-gold/20 px-2 py-0.5 text-sm font-medium text-navy">{profileExt.officer_title.trim()}</span>
+                ) : (
+                  <span className="text-muted-foreground">－</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">生年月日</dt>
+              <dd>{profileExt.birth_date ?? "－"}</dd>
+            </div>
+            <div>
               <dt className="text-muted-foreground">ステータス</dt>
               <dd>
                 <span
@@ -118,9 +143,6 @@ export default async function AdminMemberDetailPage({
                 >
                   {profile.status === "pending" ? "承認待ち" : profile.status === "active" ? "有効" : "期限切れ"}
                 </span>
-                {profile.is_ica_member && (
-                  <span className="ml-2 rounded bg-navy/10 px-1.5 py-0.5 text-xs text-navy">ICA会員</span>
-                )}
               </dd>
             </div>
           </dl>
@@ -181,10 +203,6 @@ export default async function AdminMemberDetailPage({
         {latestMembership ? (
           <dl className="space-y-3 text-sm">
             <div>
-              <dt className="text-muted-foreground">入会日</dt>
-              <dd>{latestMembership.join_date ?? "-"}</dd>
-            </div>
-            <div>
               <dt className="text-muted-foreground">有効期限</dt>
               <dd className="font-medium">{latestMembership.expiry_date ?? "-"}</dd>
             </div>
@@ -207,8 +225,8 @@ export default async function AdminMemberDetailPage({
       </div>
 
       <div className="rounded-lg border border-border bg-white p-6">
-        <h2 className="mb-2 text-lg font-semibold">ログインアカウント</h2>
-        <p className="mb-3 text-sm text-muted-foreground">パスワードを忘れた会員には、再設定用メールを送信できます。会員本人がメールのリンクから新しいパスワードを設定します。</p>
+        <h2 className="mb-2 text-lg font-semibold">パスワード再設定メール</h2>
+        <p className="mb-3 text-sm text-muted-foreground">パスワードを忘れた会員には、ここから再設定用メールを送信できます。会員本人がメールのリンクを開き、新しいパスワードを設定します。</p>
         <ResetPasswordButton
           profileId={profile.id}
           userId={(profile as { user_id?: string | null }).user_id ?? null}

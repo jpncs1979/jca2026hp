@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { OFFICE_FROM_HEADER } from "@/lib/email";
+import { getFromHeader } from "@/lib/email";
 import nodemailer from "nodemailer";
 
 /** 事務局が会員に「パスワード再設定メール」を送信。本人がメールのリンクから新しいパスワードを設定する */
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     `;
 
     await transporter.sendMail({
-      from: OFFICE_FROM_HEADER,
+      from: getFromHeader(),
       to: email,
       subject: "【日本クラリネット協会】パスワードの再設定",
       html,
