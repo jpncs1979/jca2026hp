@@ -19,8 +19,15 @@ async function handleMembershipJoinCompleted(
 ): Promise<{ ok: boolean }> {
   const meta = session.metadata;
   if (!meta || meta.type !== "membership_join" || !meta.email || !meta.name) {
+    console.warn("[入会Webhook] スキップ: metadata不足", {
+      hasMeta: !!meta,
+      type: meta?.type,
+      hasEmail: !!meta?.email,
+      hasName: !!meta?.name,
+    });
     return { ok: false };
   }
+  console.log("[入会Webhook] 処理開始", { email: meta.email, name: meta.name });
 
   if (!supabaseUrl || !serviceRoleKey) return { ok: false };
   const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -51,9 +58,10 @@ async function handleMembershipJoinCompleted(
     .single();
 
   if (profileError || !newProfile) {
-    console.error("Membership join: profile insert failed", profileError);
+    console.error("[入会Webhook] プロフィール作成失敗", profileError);
     return { ok: false };
   }
+  console.log("[入会Webhook] プロフィール・会員契約・入金記録作成済み、メール送信へ");
 
   await supabase.from("memberships").insert({
     profile_id: newProfile.id,
@@ -105,6 +113,7 @@ async function handleMembershipJoinCompleted(
           <p>一般社団法人 日本クラリネット協会事務局</p>
         `,
         });
+        console.log("[入会Webhook] 本人宛メール送信完了", meta.email);
       } catch (emailErr) {
         const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
         const code = emailErr && typeof (emailErr as { code?: string }).code === "string" ? (emailErr as { code: string }).code : "";
@@ -133,6 +142,7 @@ async function handleMembershipJoinCompleted(
           <p>一般社団法人 日本クラリネット協会</p>
         `,
         });
+        console.log("[入会Webhook] 事務局宛メール送信完了", officeNotifyEmail);
       } catch (emailErr) {
         const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
         console.error("[事務局通知メール送信エラー]", msg, emailErr);
@@ -168,9 +178,15 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    console.log("[Stripe Webhook] checkout.session.completed", {
+      id: event.id,
+      metadataType: session.metadata?.type,
+      email: session.metadata?.email ? "(あり)" : "(なし)",
+    });
 
     if (session.metadata?.type === "membership_join") {
-      await handleMembershipJoinCompleted(session);
+      const result = await handleMembershipJoinCompleted(session);
+      console.log("[Stripe Webhook] membership_join 処理結果", result);
       return NextResponse.json({ received: true });
     }
 
