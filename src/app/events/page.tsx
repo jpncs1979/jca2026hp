@@ -152,12 +152,20 @@ export default function EventsPage() {
                       </p>
                     </div>
                   </div>
-                  <Link href="/contact" className="inline-block">
-                    <span className="inline-flex items-center gap-1 text-sm text-gold hover:underline">
-                      お問い合わせはこちら
-                      <ArrowRight className="size-4" />
-                    </span>
-                  </Link>
+                  <div className="flex flex-wrap gap-4">
+                    <Link href="/consultation" className="inline-block">
+                      <span className="inline-flex items-center gap-1 text-sm text-gold hover:underline">
+                        クラリネット相談室（フォームで質問）
+                        <ArrowRight className="size-4" />
+                      </span>
+                    </Link>
+                    <Link href="/contact" className="inline-block">
+                      <span className="inline-flex items-center gap-1 text-sm text-gold hover:underline">
+                        お問い合わせはこちら
+                        <ArrowRight className="size-4" />
+                      </span>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             </div>

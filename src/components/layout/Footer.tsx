@@ -5,6 +5,7 @@ const footerNavItems = [
   { href: "/news", label: "ニュース" },
   { href: "/events#concours", label: "コンクール" },
   { href: "/events#events", label: "イベント" },
+  { href: "/consultation", label: "相談室" },
   { href: "/about", label: "協会案内" },
   { href: "/membership", label: "入会案内" },
 ] as const;
