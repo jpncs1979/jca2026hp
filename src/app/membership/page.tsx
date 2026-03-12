@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Check, UserPlus, ArrowRight, Gift, Users, Music2 } from "lucide-react";
+import { Check, UserPlus, ArrowRight, Gift, Users, Music2, Globe } from "lucide-react";
 
 export const metadata = {
   title: "入会案内 | 日本クラリネット協会",
@@ -51,6 +51,33 @@ export default function MembershipPage() {
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+
+            {/* ICA 国際クラリネット協会 — 目立つ特典 */}
+            <Card className="overflow-hidden border-2 border-gold/40 bg-gradient-to-br from-gold/5 to-transparent">
+              <CardContent className="pt-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gold/20">
+                      <Globe className="size-6 text-gold" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-navy">
+                        JCA会員なら、<span className="text-gold">国際クラリネット協会（ICA）</span>にも会員になれます
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        追加費用なし。世界最大のクラリネット組織の会員特典を、そのままお届けします。
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/membership/ica" className="shrink-0">
+                    <Button className="w-full bg-gold text-gold-foreground hover:bg-gold-muted sm:w-auto">
+                      詳細はこちら
+                      <ArrowRight className="ml-2 size-4" />
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </section>

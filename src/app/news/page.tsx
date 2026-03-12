@@ -1,12 +1,17 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { Newspaper, Music2, ArrowRight } from "lucide-react";
+import { Newspaper, Music2, ArrowRight, Globe } from "lucide-react";
+import { supportedConcerts } from "@/data/supported-concerts";
+import { SupportedConcertsCalendar } from "@/components/supported-concerts/SupportedConcertsCalendar";
+import { SupportedConcertsMarquee } from "@/components/supported-concerts/SupportedConcertsMarquee";
 
 export const metadata = {
   title: "ニュース | 日本クラリネット協会",
@@ -45,6 +50,41 @@ export default async function NewsPage() {
           {/* 上：お知らせ */}
           <section>
             <h2 className="mb-6 text-xl font-semibold text-navy">お知らせ</h2>
+
+            {/* 今ならICA会員になれるお知らせ（常時表示） */}
+            <Card className="mb-6 overflow-hidden border-2 border-gold/40 bg-gradient-to-br from-gold/10 to-transparent">
+              <CardContent className="pt-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gold/20">
+                      <Globe className="size-6 text-gold" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-navy">
+                        今なら入会すると、<span className="text-gold">ICA（国際クラリネット協会）の会員にもなれます</span>
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        追加費用なし。世界最大のクラリネット組織の会員特典を、JCA会員の皆さまにお届けしています。
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Link href="/membership/ica">
+                      <Button variant="outline" size="sm" className="border-gold/50 text-gold hover:bg-gold/10">
+                        詳細を見る
+                      </Button>
+                    </Link>
+                    <Link href="/membership/join">
+                      <Button size="sm" className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                        入会する
+                        <ArrowRight className="ml-1 size-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {newsItems.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
@@ -77,27 +117,34 @@ export default async function NewsPage() {
             )}
           </section>
 
-          {/* 下：会員後援演奏会（リンク） */}
+          {/* 下：会員後援演奏会（チラシ流し＋カレンダー＋一覧リンク） */}
           <section>
             <h2 className="mb-6 text-xl font-semibold text-navy">会員後援演奏会</h2>
             <Card className="overflow-hidden transition-shadow hover:shadow-md">
-              <Link href="/members/supported-concerts" className="block">
-                <CardContent className="flex flex-wrap items-center gap-4 py-6 md:flex-nowrap">
-                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-gold/20">
-                    <Music2 className="size-7 text-gold" />
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Music2 className="size-5 text-gold" />
+                    <CardTitle className="text-xl">会員後援演奏会</CardTitle>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-navy">協会が後援する会員主催の演奏会</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      会員の皆様が主催する演奏会のうち、協会が後援する演奏会のお知らせ一覧です。
-                    </p>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground">
-                    一覧を見る
-                    <ArrowRight className="ml-2 size-4" />
-                  </span>
-                </CardContent>
-              </Link>
+                  <Link href="/members/supported-concerts">
+                    <Button variant="outline" size="sm" className="bg-gold/10 text-gold hover:bg-gold/20">
+                      一覧・チラシを見る
+                      <ArrowRight className="ml-1 size-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <CardDescription>
+                  協会が後援する会員主催の演奏会。カレンダーの日付または流れているチラシをクリックすると、詳細一覧の該当公演へ移動します。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <SupportedConcertsMarquee concerts={supportedConcerts} />
+                <div>
+                  <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
+                  <SupportedConcertsCalendar concerts={supportedConcerts} />
+                </div>
+              </CardContent>
             </Card>
           </section>
         </div>

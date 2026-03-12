@@ -159,3 +159,16 @@
 .font-soft {
   font-family: var(--font-rounded), "Hiragino Sans", "Yu Gothic", sans-serif;
 }
+
+/* 後援演奏会チラシの自動横スクロール */
+@keyframes flyer-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-flyer-marquee {
+  animation: flyer-marquee 50s linear infinite;
+}

@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/card";
 import { officers } from "@/data/officers";
 import { Target, Users, MapPin, Phone, Mail, ExternalLink } from "lucide-react";
+import Image from "next/image";
 
 export const metadata = {
   title: "協会案内 | 日本クラリネット協会",
@@ -49,7 +50,18 @@ export default function AboutPage() {
                   <Target className="size-5 text-gold" />
                   会長挨拶
                 </h2>
-                <div className="space-y-4 leading-relaxed text-muted-foreground">
+                <div className="flex flex-col gap-8 sm:flex-row sm:items-start">
+                  <div className="shrink-0 sm:w-56">
+                    <Image
+                      src="/images/chairman.png"
+                      alt="会長 四戸世紀"
+                      width={224}
+                      height={336}
+                      className="rounded-lg object-cover shadow-md"
+                      priority
+                    />
+                  </div>
+                  <div className="space-y-4 leading-relaxed text-muted-foreground min-w-0">
                   <p>
                     一般社団法人日本クラリネット協会のウェブサイトへお越しいただき、ありがとうございます。
                   </p>
@@ -66,6 +78,7 @@ export default function AboutPage() {
                     どうぞ今後とも、日本クラリネット協会へのご理解とご支援を賜りますよう、
                     心よりお願い申し上げます。
                   </p>
+                  </div>
                 </div>
 
                 <h2 className="mb-6 mt-12 flex items-center gap-2 text-xl font-medium text-navy">
