@@ -32,12 +32,14 @@ const schema = z.object({
   name: z.string().min(1, "氏名を入力してください"),
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   nickname: z.string().optional(),
-  age: z.union([z.enum(["小学生", "中学生", "高校生"]), z.literal("")]).refine((v) => v !== "", "年齢を選択してください"),
+  age: z
+    .union([z.enum(["小学生", "中学生", "高校生"]), z.literal("")])
+    .refine((v) => v !== "", "年齢を選択してください"),
   category: z.string().min(1, "質問の内容を選択してください"),
   body: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.input<typeof schema>;
 
 export function ConsultationForm() {
   const [submitting, setSubmitting] = useState(false);
