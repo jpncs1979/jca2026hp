@@ -25,7 +25,15 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 
-function MypageContent() {
+export default function MypagePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">読み込み中...</div>}>
+      <MypageContent />
+    </Suspense>
+  );
+}
+
+function MypageContent(): any {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/mypage";
@@ -58,12 +66,8 @@ function MypageContent() {
     Array<{ id: string; title: string; file_path: string }>
   >([]);
   const [showLogin, setShowLogin] = useState(true);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
-  const [signupNameKana, setSignupNameKana] = useState("");
-  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -193,37 +197,6 @@ function MypageContent() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    if (password !== signupPasswordConfirm) {
-      setAuthError("パスワードが一致しません。");
-      return;
-    }
-    setAuthLoading(true);
-    const supabase = createClient();
-    if (!supabase) {
-      setAuthError("認証の準備ができていません。.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_ANON_KEY が設定されているか確認し、開発サーバーを再起動してください。");
-      setAuthLoading(false);
-      return;
-    }
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name: signupName || "（未入力）", name_kana: signupNameKana || "（未入力）" },
-      },
-    });
-    setAuthLoading(false);
-    if (error) {
-      setAuthError(error.message);
-      return;
-    }
-    setAuthError(null);
-    setAuthMode("login");
-    alert("登録が完了しました。メール確認が有効な場合は届いたリンクをクリックしてからログインしてください。");
-  };
-
   const handleRecoveryPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryError(null);
@@ -300,13 +273,11 @@ function MypageContent() {
             <Card>
               <CardHeader>
                 <LogIn className="size-10 text-gold" />
-                <CardTitle>{authMode === "login" ? "ログイン" : "新規登録"}</CardTitle>
+                <CardTitle>ログイン</CardTitle>
                 <CardDescription>
                   {redirectToAdmin
                     ? "事務局ダッシュボード（/admin）に進むには、ログインしてください。"
-                    : authMode === "login"
-                      ? "会員マイページをご利用になるには、ログインが必要です。"
-                      : "初めての方は新規登録してください。登録後、事務局が承認するとマイページをご利用いただけます。"}
+                    : "会員マイページをご利用になるには、ログインが必要です。入会手続き完了後はパスワード設定のご案内が表示されます。既に入会済みでパスワード未設定の方はお問い合わせください。"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -321,23 +292,7 @@ function MypageContent() {
                     <p className="mt-2 text-xs">詳細は docs/会員システム・管理画面セットアップ.md を参照してください。</p>
                   </div>
                 )}
-                <div className="mb-4 flex gap-2 border-b border-border pb-4">
-                  <button
-                    type="button"
-                    onClick={() => { setAuthMode("login"); setAuthError(null); }}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${authMode === "login" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    ログイン
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAuthMode("signup"); setAuthError(null); }}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${authMode === "signup" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    新規登録
-                  </button>
-                </div>
-                {authMode === "login" ? (
+                <>
                   <form
                     action="/api/auth/login"
                     method="POST"
@@ -385,86 +340,12 @@ function MypageContent() {
                       </button>
                     </div>
                   </form>
-                ) : (
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    {authError && (
-                      <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{authError}</p>
-                    )}
-                    <div>
-                      <Label htmlFor="signup-name">お名前</Label>
-                      <Input
-                        id="signup-name"
-                        value={signupName}
-                        onChange={(e) => setSignupName(e.target.value)}
-                        placeholder="山田 太郎"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="signup-name-kana">ふりがな</Label>
-                      <Input
-                        id="signup-name-kana"
-                        value={signupNameKana}
-                        onChange={(e) => setSignupNameKana(e.target.value)}
-                        placeholder="やまだ たろう"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="signup-email">メールアドレス</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="example@email.com"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="signup-password">パスワード（6文字以上）</Label>
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="signup-password-confirm">パスワード（確認）</Label>
-                      <Input
-                        id="signup-password-confirm"
-                        type="password"
-                        value={signupPasswordConfirm}
-                        onChange={(e) => setSignupPasswordConfirm(e.target.value)}
-                        required
-                        minLength={6}
-                        placeholder="同じパスワードを再入力"
-                        className="mt-1"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={authLoading}
-                      className="w-full bg-gold text-gold-foreground hover:bg-gold-muted"
-                    >
-                      {authLoading ? "登録中..." : "登録する"}
-                    </Button>
-                  </form>
-                )}
-                {authMode === "login" && (
                   <p className="mt-4 text-center text-sm text-muted-foreground">
                     パスワードをお忘れの方は
                     <Link href="/contact" className="text-gold hover:underline">お問い合わせ</Link>
                     ください。
                   </p>
-                )}
+                </>
               </CardContent>
             </Card>
           </div>
@@ -747,13 +628,5 @@ function MypageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function MypagePage() {
-  return (
-    <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">読み込み中...</div>}>
-      <MypageContent />
-    </Suspense>
   );
 }

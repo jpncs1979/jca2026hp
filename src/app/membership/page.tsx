@@ -90,17 +90,17 @@ export default function MembershipPage() {
                 <div className="flex items-start gap-3">
                   <Music2 className="mt-0.5 size-6 shrink-0 text-gold" />
                   <div>
-                    <CardTitle className="text-base">会員後援演奏会のお知らせ</CardTitle>
+                    <CardTitle className="text-base">会員後援演奏会の後援依頼</CardTitle>
                     <CardDescription>
-                      協会会員の皆様が主催する演奏会のうち、協会が後援する演奏会のお知らせです。
+                      協会会員の皆様が主催する演奏会について、協会の後援をご希望の場合は申し込みフォームからお申し込みください。
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <Link href="/members/supported-concerts">
+                <Link href="/membership/patronage-request">
                   <Button variant="outline">
-                    お知らせ一覧を見る
+                    後援を申し込む
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
                 </Link>

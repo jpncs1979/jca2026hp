@@ -99,16 +99,19 @@ export default function AboutPage() {
                         <CardTitle className="text-base text-gold">{group.role}</CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <ul className="space-y-2">
+                        <p className="flex flex-wrap items-baseline gap-x-1 gap-y-1">
                           {group.members.map((m, i) => (
-                            <li key={i} className="flex flex-wrap items-baseline gap-2">
+                            <span key={i} className="inline-flex flex-wrap items-baseline gap-x-1">
                               <span className="font-medium">{m.name}</span>
                               {m.affiliation && (
                                 <span className="text-sm text-muted-foreground">（{m.affiliation}）</span>
                               )}
-                            </li>
+                              {i < group.members.length - 1 && (
+                                <span className="text-muted-foreground" aria-hidden="true">、</span>
+                              )}
+                            </span>
                           ))}
-                        </ul>
+                        </p>
                       </CardContent>
                     </Card>
                   ))}

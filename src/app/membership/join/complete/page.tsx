@@ -2,13 +2,25 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
+import { SetPasswordForm } from "./SetPasswordForm";
 
 export const metadata = {
   title: "入会申し込み完了 | 日本クラリネット協会",
   description: "入会手続きが完了しました。",
 };
 
-export default function MembershipJoinCompletePage() {
+type Props = {
+  searchParams: Promise<{ session_id?: string }>;
+};
+
+export default async function MembershipJoinCompletePage({ searchParams }: Props) {
+  const params = await searchParams;
+  const sessionId = params.session_id;
+
+  if (sessionId) {
+    return <SetPasswordForm sessionId={sessionId} />;
+  }
+
   return (
     <div className="font-soft">
       <div className="border-b border-border bg-muted/30 py-12 md:py-16">
@@ -40,7 +52,7 @@ export default function MembershipJoinCompletePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                会員マイページをご利用になるには、このサイトでアカウント登録（同じメールアドレス）が必要です。ログイン後、会員証の確認や各種サービスをご利用いただけます。
+                決済完了後、このページに再度アクセスいただくか、メールの案内に従ってマイページ用のパスワードを設定してください。パスワード設定後、ログインして会員証の確認や各種サービスをご利用いただけます。
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/membership">
@@ -48,7 +60,7 @@ export default function MembershipJoinCompletePage() {
                 </Link>
                 <Link href="/mypage">
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                    マイページ（ログイン・新規登録）
+                    マイページ（ログイン）
                   </Button>
                 </Link>
               </div>

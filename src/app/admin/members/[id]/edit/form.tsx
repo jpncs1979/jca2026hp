@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { User, Mail, CreditCard } from "lucide-react";
+import { DeleteMemberButton } from "../delete-member-button";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "承認待ち" },
@@ -352,13 +353,14 @@ export function AdminMemberEditForm({
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={saving} className="bg-gold text-gold-foreground hover:bg-gold-muted">
           {saving ? "保存中..." : "保存する"}
         </Button>
         <Link href={`/admin/members/${profileId}`}>
           <Button type="button" variant="outline">キャンセル</Button>
         </Link>
+        <DeleteMemberButton profileId={profileId} memberName={form.name || "会員"} />
       </div>
     </form>
   );
