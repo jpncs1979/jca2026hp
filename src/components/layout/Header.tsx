@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import {
   Sheet,
@@ -14,22 +13,15 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-const navItems = [
-  { href: "/news", label: "ニュース" },
-  { href: "/events#concours", label: "コンクール" },
-  { href: "/events#events", label: "イベント" },
-  { href: "/consultation", label: "相談室" },
-  { href: "/about", label: "協会案内" },
-  { href: "/membership", label: "入会案内" },
-] as const;
-
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    // Sheet (Base UI) の動的 ID による hydration エラー回避のため、クライアントマウント後のみ描画する
+    const t = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -51,7 +43,18 @@ export function Header() {
   }, []);
 
   const mypageHref = isAdmin === true ? "/admin" : "/mypage";
-  const mypageLabel = isAdmin === true ? "事務局管理" : "会員マイページ";
+  const mypageLabel = "会員マイページ";
+
+  const navItems = [
+    { href: "/news", label: "ニュース" },
+    { href: "/events#concours", label: "コンクール" },
+    { href: "/events#events", label: "イベント" },
+    { href: "/consultation", label: "相談室" },
+    { href: "/contact", label: "問い合わせ" },
+    { href: mypageHref, label: mypageLabel },
+    { href: "/about", label: "協会案内" },
+    { href: "/membership", label: "入会案内" },
+  ] as const;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -85,15 +88,6 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Right side buttons - Desktop */}
-        <div className="hidden md:flex md:items-center md:gap-2">
-          <Link href={mypageHref}>
-            <Button variant="outline" size="sm">
-              {mypageLabel}
-            </Button>
-          </Link>
-        </div>
-
         {/* Mobile menu trigger - Sheet はクライアントマウント後のみ描画（Base UI の動的 ID による hydration エラー回避） */}
         {mounted ? (
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -118,13 +112,6 @@ export function Header() {
                     {item.label}
                   </Link>
                 ))}
-                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-                  <Link href={mypageHref} onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" className="w-full">
-                      {mypageLabel}
-                    </Button>
-                  </Link>
-                </div>
               </nav>
             </SheetContent>
           </Sheet>

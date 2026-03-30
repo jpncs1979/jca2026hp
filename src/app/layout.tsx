@@ -23,7 +23,7 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 export const metadata: Metadata = {
   title: "一般社団法人 日本クラリネット協会 公式サイト",
   description:
-    "日本クラリネット協会の公式サイト。クラリネットの普及・発展を目的に、中高生からプロ奏者、愛好家まで幅広い層の皆様にクラリネットの魅力をお届けしています。",
+    "日本クラリネット協会の公式サイト。クラリネットの普及・発展を目的に、中高生から大人まで、愛好家からプロ奏者まで幅広い層の皆様にクラリネットの魅力をお届けしています。",
 };
 
 export default function RootLayout({

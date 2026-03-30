@@ -15,11 +15,9 @@ import {
 } from "@/components/ui/card";
 import {
   ArrowRight,
-  Music,
   Trophy,
   MessageCircle,
   UserPlus,
-  Calendar,
   BookOpen,
 } from "lucide-react";
 
@@ -159,9 +157,12 @@ function HeroSlider() {
 
 // ニュース（モックデータ - Supabase接続時に差し替え）
 const MOCK_NEWS = [
-  { id: "1", title: "第15回ヤングコンクール エントリー受付開始", date: "2026-02-01", isImportant: true },
-  { id: "2", title: "2029年国際フェスティバル 企画概要を公開", date: "2026-01-15", isImportant: false },
-  { id: "3", title: "クラリネット相談室 2月の開催日程", date: "2026-01-10", isImportant: false },
+  {
+    id: "1",
+    title: "第15回ヤング・クラリネッティストコンクール要項公開",
+    date: "2026-02-01",
+    isImportant: true,
+  },
 ];
 
 export default function Home() {
@@ -173,21 +174,13 @@ export default function Home() {
       {/* ニュース */}
       <AnimatedSection className="border-b border-border bg-muted/30 py-16 md:py-20">
         <div className="container mx-auto px-4">
-          <div className="mb-8 flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-medium text-navy font-soft md:text-3xl">
-                ニュース
-              </h2>
-              <p className="mt-1 text-muted-foreground font-soft">
-                協会からの最新のお知らせ
-              </p>
-            </div>
-            <Link href="/news">
-              <Button variant="ghost" size="sm" className="font-soft">
-                一覧を見る
-                <ArrowRight className="ml-1 size-4" />
-              </Button>
-            </Link>
+          <div className="mb-8">
+            <h2 className="text-2xl font-medium text-navy font-soft md:text-3xl">
+              ニュース
+            </h2>
+            <p className="mt-1 text-muted-foreground font-soft">
+              協会からの最新のお知らせ
+            </p>
           </div>
           <ul className="space-y-4 font-soft">
             {MOCK_NEWS.map((item) => (
@@ -244,15 +237,12 @@ export default function Home() {
         </div>
       </AnimatedSection>
 
-      {/* 注目プロジェクト */}
+      {/* 協会の取り組み */}
       <AnimatedSection className="container mx-auto px-4 py-16 font-soft md:py-24">
         <div className="mb-12 text-center">
           <h2 className="text-2xl font-medium text-navy md:text-3xl">
-            注目プロジェクト
+            協会の取り組み
           </h2>
-          <p className="mt-2 text-muted-foreground">
-            協会の主要な取り組み
-          </p>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           <Link href="/events/young-2026" className="group">
@@ -344,36 +334,6 @@ export default function Home() {
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
-          </div>
-        </div>
-      </AnimatedSection>
-
-      {/* クイックメニュー */}
-      <AnimatedSection className="border-t border-border bg-muted/30 py-16 md:py-20">
-        <div className="container mx-auto px-4">
-          <h2 className="mb-8 text-center text-2xl font-medium text-navy font-soft md:text-3xl">
-            クイックメニュー
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "コンクールに出たい", href: "/events", icon: Trophy },
-              { label: "演奏会を探したい", href: "/events", icon: Calendar },
-              { label: "クラリネットを学びたい", href: "/events#events", icon: Music },
-              { label: "会員になりたい", href: "/membership", icon: UserPlus },
-            ].map((item) => (
-              <Link key={item.label} href={item.href}>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  className="flex items-center gap-4 rounded-xl border border-border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-navy/10 text-navy">
-                    <item.icon className="size-6" />
-                  </div>
-                  <span className="font-medium text-foreground">{item.label}</span>
-                  <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
-                </motion.div>
-              </Link>
-            ))}
           </div>
         </div>
       </AnimatedSection>
