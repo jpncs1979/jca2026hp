@@ -43,7 +43,6 @@ export function Header() {
   }, []);
 
   const mypageHref = isAdmin === true ? "/admin" : "/mypage";
-  const mypageLabel = "会員マイページ";
 
   const navItems = [
     { href: "/news", label: "ニュース" },
@@ -51,9 +50,9 @@ export function Header() {
     { href: "/events#events", label: "イベント" },
     { href: "/consultation", label: "相談室" },
     { href: "/contact", label: "問い合わせ" },
-    { href: mypageHref, label: mypageLabel },
     { href: "/about", label: "協会案内" },
     { href: "/membership", label: "入会案内" },
+    { href: mypageHref, label: "会員マイページ" },
   ] as const;
 
   return (
