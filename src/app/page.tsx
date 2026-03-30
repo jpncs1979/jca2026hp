@@ -20,8 +20,7 @@ import {
   MessageCircle,
   UserPlus,
   Calendar,
-  Archive,
-  Info,
+  BookOpen,
 } from "lucide-react";
 
 // スクロール表示用アニメーション
@@ -171,13 +170,13 @@ export default function Home() {
       {/* メインビジュアル：スライド */}
       <HeroSlider />
 
-      {/* トピックス：ニュース */}
+      {/* ニュース */}
       <AnimatedSection className="border-b border-border bg-muted/30 py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="mb-8 flex items-end justify-between">
             <div>
               <h2 className="text-2xl font-medium text-navy font-soft md:text-3xl">
-                トピックス
+                ニュース
               </h2>
               <p className="mt-1 text-muted-foreground font-soft">
                 協会からの最新のお知らせ
@@ -220,7 +219,7 @@ export default function Home() {
             <Link href="/about" className="group block">
               <div className="flex items-center gap-4 rounded-xl border border-border bg-muted/30 px-6 py-5 transition-all hover:border-gold/50 hover:bg-gold/5 hover:shadow-md">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-navy/10 text-navy">
-                  <Info className="size-6" />
+                  <BookOpen className="size-6" />
                 </div>
                 <div>
                   <p className="font-medium text-navy group-hover:text-gold">協会について</p>

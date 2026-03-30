@@ -92,11 +92,6 @@ export function Header() {
               {mypageLabel}
             </Button>
           </Link>
-          <Link href="/contact">
-            <Button size="sm" className="bg-gold text-gold-foreground hover:bg-gold-muted">
-              お問い合わせ
-            </Button>
-          </Link>
         </div>
 
         {/* Mobile menu trigger - Sheet はクライアントマウント後のみ描画（Base UI の動的 ID による hydration エラー回避） */}
@@ -127,11 +122,6 @@ export function Header() {
                   <Link href={mypageHref} onClick={() => setMobileOpen(false)}>
                     <Button variant="outline" className="w-full">
                       {mypageLabel}
-                    </Button>
-                  </Link>
-                  <Link href="/contact" onClick={() => setMobileOpen(false)}>
-                    <Button className="w-full bg-gold text-gold-foreground hover:bg-gold-muted">
-                      お問い合わせ
                     </Button>
                   </Link>
                 </div>

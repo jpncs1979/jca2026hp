@@ -1,29 +1,14 @@
 import Link from "next/link";
 import { MessageCircle, ArrowLeft } from "lucide-react";
 import { ConsultationForm } from "./ConsultationForm";
-import { PublishedQAList } from "./PublishedQAList";
-import { supabase } from "@/lib/supabase";
 
 export const metadata = {
   title: "クラリネット相談室 | 日本クラリネット協会",
   description:
-    "クラリネットお助け110番！奏法・リード・楽器など、フォームから質問できます。質問と回答の一部をHPで公開しています。",
+    "クラリネットお助け110番！奏法・リード・楽器など、フォームから質問できます。相談内容は後日まとめて公開いたします。",
 };
 
-export default async function ConsultationPage() {
-  let published: { id: string; category: string; body: string | null; answer: string | null; published_at: string; nickname: string | null; age: string | null }[] = [];
-
-  if (supabase) {
-    const { data } = await supabase
-      .from("consultation_questions")
-      .select("id, category, body, answer, published_at, nickname, age")
-      .eq("status", "published")
-      .not("published_at", "is", null)
-      .order("published_at", { ascending: false })
-      .limit(50);
-    published = data ?? [];
-  }
-
+export default function ConsultationPage() {
   return (
     <div className="font-soft">
       <div className="border-b border-border bg-muted/30 py-12 md:py-16">
@@ -33,7 +18,7 @@ export default async function ConsultationPage() {
             クラリネット相談室（クラリネットお助け110番！）
           </h1>
           <p className="mt-2 text-muted-foreground">
-            フォームから質問できます。質問と回答は選択してHPに公開しています。
+            フォームから質問できます。相談内容は、準備が整い次第後日まとめて公開いたします。
           </p>
         </div>
       </div>
@@ -46,8 +31,12 @@ export default async function ConsultationPage() {
           </section>
 
           <section>
-            <h2 className="mb-6 text-xl font-semibold text-navy">公開されているQ&A</h2>
-            <PublishedQAList items={published} />
+            <h2 className="mb-6 text-xl font-semibold text-navy">公開について</h2>
+            <div className="rounded-lg border border-border bg-muted/20 p-4 text-muted-foreground">
+              相談内容の公開は、個別のタイミングではなく後日まとめて実施いたします。
+              <br />
+              公開開始まで、しばらくお待ちください。
+            </div>
           </section>
         </div>
 

@@ -83,7 +83,16 @@ function MypageContent(): any {
   // API 経由ログイン失敗時のエラー表示
   useEffect(() => {
     const err = searchParams.get("error");
-    if (err) setAuthError(decodeURIComponent(err));
+    if (err) {
+      const decoded = decodeURIComponent(err);
+      if (decoded.toLowerCase().includes("fetch failed")) {
+        setAuthError(
+          "本番環境で Supabase への接続に失敗しました（fetch failed）。Vercel の環境変数（NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY）が正しく設定されているか、Supabase のプロジェクトが停止していないかご確認ください。問題が続く場合はシークレットウィンドウでお試しください。"
+        );
+      } else {
+        setAuthError(decoded);
+      }
+    }
   }, [searchParams]);
 
   // パスワード再設定メールのリンクでマイページに直で飛んだ場合 → パスワード再設定専用ページへ転送
@@ -300,7 +309,21 @@ function MypageContent(): any {
                   >
                     <input type="hidden" name="redirect" value={redirectTo} />
                     {authError && (
-                      <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{authError}</p>
+                      <div className="space-y-2">
+                        <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{authError}</p>
+                        <p className="text-sm text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthError(null);
+                              router.replace("/mypage");
+                            }}
+                            className="text-gold hover:underline"
+                          >
+                            エラーを消してもう一度試す
+                          </button>
+                        </p>
+                      </div>
                     )}
                     <div>
                       <Label htmlFor="email">メールアドレス</Label>

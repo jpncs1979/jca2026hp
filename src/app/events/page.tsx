@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, ArrowRight, Trophy, Music, MessageCircle, BookOpen } from "lucide-react";
+import { Calendar, ArrowRight, Trophy, Music } from "lucide-react";
 import { competitions } from "@/data/competitions";
 
 export const metadata = {
@@ -97,13 +97,31 @@ export default function EventsPage() {
             </div>
           </section>
 
-          {/* イベント（フェス・学ぶ・相談） */}
+          {/* イベント（フェス） */}
           <section id="events" className="scroll-mt-24">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
               <Music className="size-5 text-gold" />
               イベント
             </h2>
             <div className="space-y-6">
+              {/* 第39回日本クラリネットフェスティバル（広島） */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">第３９回日本クラリネットフェスティバル in 広島</CardTitle>
+                  <CardDescription>
+                    2027年2月26日・27日（予定）。詳細は後日公開いたします。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/events/festival-2027">
+                    <Button variant="outline">
+                      最新情報を見る
+                      <ArrowRight className="ml-2 size-4" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
               {/* 国際フェスティバル2029 */}
               <Card>
                 <CardHeader>
@@ -119,53 +137,6 @@ export default function EventsPage() {
                       <ArrowRight className="ml-2 size-4" />
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-
-              {/* 学ぶ・相談する（イベント内に組み込み） */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-start gap-3">
-                    <MessageCircle className="mt-0.5 size-6 shrink-0 text-gold" />
-                    <div>
-                      <CardTitle className="text-lg">学ぶ・相談する</CardTitle>
-                      <CardDescription>
-                        クラリネットの学習支援、ワークショップ、演奏・指導に関するご相談窓口です。
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-lg border border-border bg-muted/30 p-4">
-                      <BookOpen className="mb-2 size-5 text-gold" />
-                      <p className="text-sm font-medium">教材・楽譜のご案内</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        初心者から上級者まで、クラリネット学習に役立つ教材や楽譜の情報をご紹介します。
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-4">
-                      <MessageCircle className="mb-2 size-5 text-gold" />
-                      <p className="text-sm font-medium">演奏・指導に関するご相談</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        演奏技術、指導方法、楽器の選び方など、お気軽にご相談ください。
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    <Link href="/consultation" className="inline-block">
-                      <span className="inline-flex items-center gap-1 text-sm text-gold hover:underline">
-                        クラリネット相談室（フォームで質問）
-                        <ArrowRight className="size-4" />
-                      </span>
-                    </Link>
-                    <Link href="/contact" className="inline-block">
-                      <span className="inline-flex items-center gap-1 text-sm text-gold hover:underline">
-                        お問い合わせはこちら
-                        <ArrowRight className="size-4" />
-                      </span>
-                    </Link>
-                  </div>
                 </CardContent>
               </Card>
             </div>
