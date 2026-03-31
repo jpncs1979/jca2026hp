@@ -12,7 +12,8 @@ export async function POST(request: Request) {
   if (!email || !password) {
     const base = normalizeBaseUrl(new URL(request.url).origin);
     return NextResponse.redirect(
-      new URL(`/mypage?error=${encodeURIComponent("メールアドレスとパスワードを入力してください。")}`, base)
+      new URL(`/mypage?error=${encodeURIComponent("メールアドレスとパスワードを入力してください。")}`, base),
+      303
     );
   }
 
@@ -52,7 +53,8 @@ export async function POST(request: Request) {
           : error.message;
     const base = normalizeBaseUrl(new URL(request.url).origin);
     return NextResponse.redirect(
-      new URL(`/mypage?error=${encodeURIComponent(msg)}`, base)
+      new URL(`/mypage?error=${encodeURIComponent(msg)}`, base),
+      303
     );
   }
 
@@ -75,5 +77,6 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(dest, origin));
+  // POST→GET に切り替える（307 だと POST が /mypage に再送され 405 になる）
+  return NextResponse.redirect(new URL(dest, origin), 303);
 }
