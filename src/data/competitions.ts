@@ -40,11 +40,11 @@ export const competitions: CompetitionSummary[] = [
     slug: "ensemble",
     title: "クラリネット・アンサンブルコンクール",
     description:
-      "重奏の祭典。デュオから大編成まで、クラリネットアンサンブルの魅力を競い合うコンクールです。",
-    period: "詳細は開催時に発表",
-    venue: "詳細は開催時に発表",
+      "第19回は2027年2月開催。予選は動画審査、本選は東広島芸術文化ホール くららホールにて実施します。",
+    period: "予選：2027年2月上旬／本選：2027年2月27日（土）",
+    venue: "東広島芸術文化ホール くららホール（本選）",
     href: "/events/ensemble",
-    status: "準備中",
+    status: "申込受付中",
     archiveHref: "/archive?competition=ensemble",
   },
 ];

@@ -85,6 +85,45 @@ export default function MembershipPage() {
           <section>
             <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
               <Gift className="size-5" />
+              入会金・年会費
+            </h2>
+            <Card>
+              <CardContent className="space-y-3 pt-6 text-sm leading-relaxed">
+                <p>正会員：入会金2,000円 / 会費（年額）8,000円</p>
+                <p>学生会員：入会金2,000円 / 会費（年額）6,000円</p>
+                <p>賛助会員：入会金5,000円 / 会費（年額）1口15,000円（1口以上）</p>
+                <p>※現在入会いただきますと、国際クラリネット協会（ICA）への費用負担なしで同時入会が可能です。</p>
+                <p>※ICA会員への入会は選択いただけます。</p>
+                <p>※学生会員は卒業して社会人になった時点で正会員に移行していただきます。</p>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Users className="size-5 text-gold" />
+              学生会員について
+            </h2>
+            <Card>
+              <CardContent className="space-y-3 pt-6 text-sm leading-relaxed">
+                <p>
+                  未成年者のお申し込みにあたっては保護者様のご同意が必要です。必ず保護者様のご同意を得てからお申し込みください。
+                  またご入金は保護者名でのお振込をお願いいたします。
+                </p>
+                <p>クラリネット協会は電話等にて保護者様にご同意の確認をすることがあります。</p>
+                <p>
+                  学生会員は小学生、中学生、高校生、専門学校生、大学生、大学院生を対象とします。
+                </p>
+                <p>
+                  学生会員の年齢上限は25歳です。26歳になりましたら学生の場合でも正会員に移行します。
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Gift className="size-5" />
               入会方法
             </h2>
             <Card>

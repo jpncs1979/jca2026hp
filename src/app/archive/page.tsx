@@ -21,10 +21,12 @@ import {
 
 const JAPAN_CLARINET: CompetitionType = "japan-clarinet";
 const ENSEMBLE: CompetitionType = "ensemble";
+const YOUNG: CompetitionType = "young";
+const YOUNG_CATEGORY_DISPLAY_ORDER = ["ヤング・アーティスト部門", "ジュニアB部門", "ジュニアA部門"];
 
-/** 部門選択が必要なのはヤングのみ（日本クラリネット・アンコンは年度のみ） */
+/** 部門選択が必要なのはなし（すべて年度のみ） */
 function needsCategory(competition: CompetitionType): boolean {
-  return competition !== JAPAN_CLARINET && competition !== ENSEMBLE;
+  return false;
 }
 
 /** リスト表に部門列を出すか（ヤングはタイトルに部門、アンコンは部門ごとブロックで出すので表の列には出さない） */
@@ -54,11 +56,7 @@ export default function ArchivePage() {
     setCategory(c.length > 0 ? c[0] : "");
   }, [competition, year]);
 
-  const entries = getArchiveEntries(
-    competition,
-    year || undefined,
-    needsCategory(competition) ? category || undefined : undefined
-  );
+  const entries = getArchiveEntries(competition, year || undefined, undefined);
 
   /** アンコン用: 部門ごとにグループ化（部門名でソート） */
   const entriesByCategory =
@@ -75,10 +73,24 @@ export default function ArchivePage() {
         })()
       : null;
 
-  /** リスト表示条件: 日本クラリネット・アンコンは コンクール+年度、ヤングは コンクール+年度+部門 が揃ったとき */
-  const canShowList =
-    year !== "" &&
-    (competition === JAPAN_CLARINET || competition === ENSEMBLE || category !== "");
+  /** ヤング用: 部門ごとに指定順でグループ化 */
+  const youngEntriesByCategory =
+    competition === YOUNG && year !== ""
+      ? (() => {
+          const map = new Map<string, typeof entries>();
+          for (const e of entries) {
+            const list = map.get(e.category) ?? [];
+            list.push(e);
+            map.set(e.category, list);
+          }
+          return YOUNG_CATEGORY_DISPLAY_ORDER
+            .map((cat) => [cat, map.get(cat) ?? []] as const)
+            .filter(([, list]) => list.length > 0);
+        })()
+      : null;
+
+  /** リスト表示条件: すべてコンクール+年度が揃ったとき */
+  const canShowList = year !== "";
 
   /** 見出し用: 回数と年度を併記（例: 第11回 2025年） */
   const edition = year !== "" && typeof year === "number" ? getEdition(competition, year) : undefined;
@@ -111,7 +123,6 @@ export default function ArchivePage() {
               <CardTitle className="text-lg">検索条件</CardTitle>
               <CardDescription>
                 コンクールと年度
-                {needsCategory(competition) ? "・部門" : ""}
                 を選ぶと入賞者一覧が表示されます
               </CardDescription>
             </CardHeader>
@@ -169,7 +180,6 @@ export default function ArchivePage() {
               <CardContent className="py-12">
                 <p className="text-center text-muted-foreground">
                   コンクールと年度
-                  {needsCategory(competition) ? "と部門" : ""}
                   を選ぶと入賞者一覧が表示されます。
                 </p>
               </CardContent>
@@ -180,7 +190,6 @@ export default function ArchivePage() {
                 <CardTitle className="text-lg">
                   {competitionLabels[competition]}
                   {editionLabel && ` ${editionLabel}`}
-                  {needsCategory(competition) && category && ` ${category}`}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -192,6 +201,43 @@ export default function ArchivePage() {
                   /* アンコン: 部門ごとにブロックで表示（順位・氏名） */
                   <div className="space-y-8">
                     {entriesByCategory.map(([cat, list]) => (
+                      <section key={cat}>
+                        <h3 className="mb-3 border-b border-border pb-2 text-base font-medium">
+                          {cat}
+                        </h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full table-fixed border-collapse text-sm">
+                            <thead>
+                              <tr className="border-b border-border">
+                                <th className="w-24 py-2 text-left font-medium">順位</th>
+                                <th className="min-w-0 py-2 text-left font-medium">氏名</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {list.map((e, i) => (
+                                <tr
+                                  key={i}
+                                  className="border-b border-border last:border-0"
+                                >
+                                  <td className="w-24 py-2">{e.rank}</td>
+                                  <td className="min-w-0 py-2">
+                                    <span className="font-medium">{e.name}</span>
+                                    {e.award != null && e.award !== "" && (
+                                      <span className="ml-2 text-muted-foreground">{e.award}</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : youngEntriesByCategory != null ? (
+                  /* ヤング: 指定順（ヤング・アーティスト→ジュニアB→ジュニアA）で部門表示 */
+                  <div className="space-y-8">
+                    {youngEntriesByCategory.map(([cat, list]) => (
                       <section key={cat}>
                         <h3 className="mb-3 border-b border-border pb-2 text-base font-medium">
                           {cat}

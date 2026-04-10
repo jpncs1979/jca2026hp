@@ -151,6 +151,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const MEMBERSHIP_TYPE_LABEL: Record<"regular" | "student", string> = {
+  regular: "正会員",
+  student: "学生会員",
+};
+
 export default function MembershipJoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -201,7 +206,8 @@ export default function MembershipJoinPage() {
           zip_code: values.zip_code || undefined,
           address: values.address || undefined,
           phone: values.phone || undefined,
-          ica_requested: values.ica_requested,
+          // UIは「ICA入会を希望しない」チェックのため、送信時に反転する
+          ica_requested: !values.ica_requested,
           membership_type: values.membership_type,
         }),
       });
@@ -272,7 +278,9 @@ export default function MembershipJoinPage() {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="会員種別を選択" />
+                              <SelectValue placeholder="会員種別を選択">
+                                {field.value ? MEMBERSHIP_TYPE_LABEL[field.value] : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -297,7 +305,7 @@ export default function MembershipJoinPage() {
                         </FormControl>
                         <div className="space-y-0.5 leading-none">
                           <FormLabel className="font-normal">
-                            ICA会員入会（無料）
+                            ICA会員入会を希望しない
                           </FormLabel>
                         </div>
                       </FormItem>

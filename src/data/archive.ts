@@ -45,6 +45,28 @@ export function getAvailableCategories(competition: CompetitionType, year?: numb
 /** 同一順位内で氏名をあいうえお順に並べるための比較器 */
 const nameCollator = new Intl.Collator("ja");
 
+/** 順位ソート用: 数値順位を優先し、入選は最後 */
+function getRankOrder(rank: string): number {
+  const normalized = rank
+    .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
+    .replace(/１/g, "1")
+    .replace(/２/g, "2")
+    .replace(/３/g, "3")
+    .replace(/４/g, "4")
+    .replace(/５/g, "5")
+    .replace(/６/g, "6")
+    .replace(/７/g, "7")
+    .replace(/８/g, "8")
+    .replace(/９/g, "9")
+    .replace(/０/g, "0");
+
+  const m = normalized.match(/第\s*(\d+)\s*位/);
+  if (m) return Number(m[1]);
+  if (normalized.includes("入選")) return 999;
+  if (normalized.includes("グランプリ")) return 0;
+  return 998;
+}
+
 /** フィルタ済みアーカイブ取得（同一順位は氏名のあいうえお順） */
 export function getArchiveEntries(
   competition: CompetitionType,
@@ -55,7 +77,10 @@ export function getArchiveEntries(
   if (year) data = data.filter((e) => e.year === year);
   if (category) data = data.filter((e) => e.category === category);
   return data.sort((a, b) => {
-    if (a.rank !== b.rank) return a.rank.localeCompare(b.rank);
+    const aRank = getRankOrder(a.rank);
+    const bRank = getRankOrder(b.rank);
+    if (aRank !== bRank) return aRank - bRank;
+    if (a.rank !== b.rank) return a.rank.localeCompare(b.rank, "ja");
     const aOrder = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
     const bOrder = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
     if (aOrder !== bOrder) return aOrder - bOrder;
