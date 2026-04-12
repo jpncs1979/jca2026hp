@@ -18,7 +18,7 @@ import {
   Users,
   Megaphone,
   Info,
-  Phone,
+  MessageCircle,
   FileText,
 } from "lucide-react";
 import { YOUNG_2026 } from "@/lib/young-2026";
@@ -408,20 +408,21 @@ export default function Young2026DetailPage() {
           {/* お問い合わせ先 */}
           <section>
             <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
-              <Phone className="size-5" />
+              <MessageCircle className="size-5" />
               お問い合わせ先
             </h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="space-y-3 pt-6">
                 <p className="font-medium">{YOUNG_2026.contact.organisation}</p>
-                <p className="mt-2">{YOUNG_2026.contact.address}</p>
-                <p className="mt-2">TEL：{YOUNG_2026.contact.tel} FAX：{YOUNG_2026.contact.fax}</p>
-                <p className="mt-2">
-                  <a href={`https://${YOUNG_2026.contact.url}`} className="text-gold hover:underline">
-                    {YOUNG_2026.contact.url}
-                  </a>
-                  {" "}メール {YOUNG_2026.contact.email}
+                <p className="text-sm text-muted-foreground">
+                  ご質問・お問い合わせは、協会のお問い合わせフォームよりお願いいたします。
                 </p>
+                <Link
+                  href="/contact"
+                  className="inline-flex text-sm font-medium text-gold hover:underline"
+                >
+                  お問い合わせフォームへ
+                </Link>
               </CardContent>
             </Card>
           </section>

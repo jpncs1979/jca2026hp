@@ -149,9 +149,13 @@ export default function EnsemblePage() {
                 各部門最高位入賞団体に、本選翌日2月27日（日）開催「第39回日本クラリネットフェスティバル in 広島」での受賞者演奏会出演をお願いする場合があります（出演任意）。
               </p>
               <p>※受賞者演奏会出演に係る費用（宿泊費等）は自己負担です。</p>
-              <p>〒164-0013 東京都中野区弥生町4-6-13 ヤックビル3F 一般社団法人日本クラリネット協会 事務局</p>
-              <p>Tel：03-6382-7871／Fax：03-6382-7872／メール：jca@jp-clarinet.org</p>
-              <p>公式サイト：http://www.jp-clarinet.org/</p>
+              <p>
+                その他のお問い合わせは
+                <Link href="/contact" className="text-gold hover:underline">
+                  お問い合わせフォーム
+                </Link>
+                をご利用ください。
+              </p>
             </div>
           </section>
 

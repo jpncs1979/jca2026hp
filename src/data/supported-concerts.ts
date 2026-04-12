@@ -3,6 +3,11 @@
  * チラシ画像は public/images/supported-concerts/{slug}.jpg または .png に配置
  */
 
+/** 会員後援演奏会の詳細ページ URL */
+export function supportedConcertDetailHref(slug: string): string {
+  return `/members/supported-concerts/${slug}`;
+}
+
 export interface SupportedConcert {
   /** 表示順・チラシファイル名に使用（日付ベース） */
   slug: string;

@@ -4,9 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { FileImage } from "lucide-react";
-import type { SupportedConcert } from "@/data/supported-concerts";
-
-const LIST_URL = "/members/supported-concerts";
+import {
+  type SupportedConcert,
+  supportedConcertDetailHref,
+} from "@/data/supported-concerts";
 
 const NORMAL_SPEED = 0.6;
 
@@ -20,7 +21,7 @@ function FlyerThumb({ concert }: { concert: SupportedConcert }) {
 
   return (
     <Link
-      href={`${LIST_URL}#${concert.slug}`}
+      href={supportedConcertDetailHref(concert.slug)}
       className="group flex shrink-0 flex-col items-center gap-1 transition-transform hover:scale-[1.02]"
       title={`${concert.dateLabel} ${concert.venue}`}
     >

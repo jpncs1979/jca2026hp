@@ -135,7 +135,7 @@ export default async function NewsPage() {
                   </Link>
                 </div>
                 <CardDescription>
-                  協会が後援する会員主催の演奏会。カレンダーの日付または流れているチラシをクリックすると、詳細一覧の該当公演へ移動します。
+                  協会が後援する会員主催の演奏会。カレンダーの日付または流れているチラシをクリックすると、各公演の詳細ページへ移動します。
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">

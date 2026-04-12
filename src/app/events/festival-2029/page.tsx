@@ -41,9 +41,9 @@ export default function Festival2029Page() {
             <Link href="/events">
               <Button variant="outline">イベント一覧に戻る</Button>
             </Link>
-            <Link href="/news">
+            <Link href="/#news">
               <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                最新ニュースを見る
+                トップのお知らせを見る
               </Button>
             </Link>
           </div>

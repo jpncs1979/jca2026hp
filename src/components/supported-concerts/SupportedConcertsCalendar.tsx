@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { SupportedConcert } from "@/data/supported-concerts";
-
-const LIST_URL = "/members/supported-concerts";
+import {
+  type SupportedConcert,
+  supportedConcertDetailHref,
+} from "@/data/supported-concerts";
 
 /** 公演がある月の範囲を取得 */
 function getConcertMonthRange(concerts: SupportedConcert[]) {
@@ -106,7 +107,7 @@ export function SupportedConcertsCalendar({
             <span key={day} className="min-h-[1.75rem]">
               {isConcert ? (
                 <Link
-                  href={`${LIST_URL}#${concert!.slug}`}
+                  href={supportedConcertDetailHref(concert!.slug)}
                   className="flex size-7 items-center justify-center rounded-full bg-gold/20 font-medium text-gold transition-colors hover:bg-gold/30 hover:text-gold"
                   title={`${concert!.dateLabel} ${concert!.venue}`}
                 >

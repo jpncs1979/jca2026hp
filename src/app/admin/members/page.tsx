@@ -1059,14 +1059,6 @@ export default function AdminMembersPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="mb-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
-        <h2 className="font-semibold text-navy">会費支払い方法</h2>
-        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Excel の「会費支払い方法」列に基づき、CSS・シクミネット・振込・ー（空欄）を表示します。クレジットカードは Stripe
-          の登録状況で「登録済み／未登録」を分けます。会費区分が未設定の場合は会員資格の支払区分から推定します。
-        </p>
-      </div>
-
       <div className="overflow-x-auto rounded-lg border border-border bg-white">
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center">

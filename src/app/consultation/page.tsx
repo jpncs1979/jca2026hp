@@ -18,7 +18,7 @@ export default function ConsultationPage() {
             クラリネット相談室（クラリネットお助け110番！）
           </h1>
           <p className="mt-2 text-muted-foreground">
-            フォームから質問できます。相談内容は、準備が整い次第後日まとめて公開いたします。
+            クラリネットに関するお悩みを受け付けています。フォームから質問できます。
           </p>
         </div>
       </div>
@@ -33,9 +33,7 @@ export default function ConsultationPage() {
           <section>
             <h2 className="mb-6 text-xl font-semibold text-navy">公開について</h2>
             <div className="rounded-lg border border-border bg-muted/20 p-4 text-muted-foreground">
-              相談内容の公開は、個別のタイミングではなく後日まとめて実施いたします。
-              <br />
-              公開開始まで、しばらくお待ちください。
+               公開開始まで、しばらくお待ちください。
             </div>
           </section>
         </div>

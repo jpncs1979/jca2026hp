@@ -2,12 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 const footerNavItems = [
-  { href: "/news", label: "ニュース" },
-  { href: "/events#concours", label: "コンクール" },
-  { href: "/events#events", label: "イベント" },
-  { href: "/consultation", label: "相談室" },
-  { href: "/about", label: "協会案内" },
+  { href: "/#news", label: "お知らせ（トップ）" },
   { href: "/membership", label: "入会案内" },
+  { href: "/about", label: "協会案内" },
+  { href: "/events#concours", label: "コンクール" },
+  { href: "/events#events", label: "フェスティバル" },
+  { href: "/members/supported-concerts", label: "会員後援演奏会" },
+  { href: "/contact", label: "問い合わせ" },
+  { href: "/consultation", label: "相談室" },
 ] as const;
 
 const footerLegalItems = [
@@ -77,6 +79,14 @@ export function Footer() {
                     className="text-sm text-white/90 transition-colors hover:text-white"
                   >
                     会員マイページ
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/news"
+                    className="text-sm text-white/90 transition-colors hover:text-white"
+                  >
+                    ニュース一覧（演奏会カレンダー）
                   </Link>
                 </li>
               </ul>

@@ -5,13 +5,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { officers } from "@/data/officers";
-import { Target, Users, MapPin, Phone, Mail, ExternalLink } from "lucide-react";
+import { Target, Users } from "lucide-react";
 import Image from "next/image";
 
 export const metadata = {
   title: "協会案内 | 日本クラリネット協会",
   description:
-    "一般社団法人日本クラリネット協会の会長挨拶、設立理念、組織概要、事務局所在地をご案内します。",
+    "一般社団法人日本クラリネット協会の会長挨拶、設立理念、組織概要をご案内します。",
 };
 
 export default function AboutPage() {
@@ -37,9 +37,6 @@ export default function AboutPage() {
             </a>
             <a href="#organization" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
               組織概要
-            </a>
-            <a href="#office" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
-              事務局所在地
             </a>
           </nav>
 
@@ -129,53 +126,6 @@ export default function AboutPage() {
                     </Card>
                   ))}
                 </div>
-            </section>
-
-            <section id="office" className="scroll-mt-24">
-                <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
-                  <MapPin className="size-5 text-gold" />
-                  事務局所在地
-                </h2>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">一般社団法人 日本クラリネット協会事務局</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-0">
-                    <p className="flex items-start gap-2">
-                      <MapPin className="mt-0.5 size-4 shrink-0 text-gold" />
-                      〒164-0013 東京都中野区弥生町4-6-13 ヤックビル3階
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Phone className="size-4 shrink-0 text-gold" />
-                      TEL：03-6382-7871　FAX：03-6382-7872
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Mail className="size-4 shrink-0 text-gold" />
-                      <a href="mailto:jca@jp-clarinet.org" className="text-gold hover:underline">
-                        jca@jp-clarinet.org
-                      </a>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <ExternalLink className="size-4 shrink-0 text-gold" />
-                      <a
-                        href="http://www.jp-clarinet.org"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gold hover:underline"
-                      >
-                        http://www.jp-clarinet.org
-                      </a>
-                    </p>
-                    <div className="mt-6 rounded-lg border border-border bg-muted/30 p-8 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Google Maps 埋め込み用プレースホルダー
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        地図は後日、事務局所在地の座標で埋め込み予定です。
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
             </section>
           </div>
         </div>

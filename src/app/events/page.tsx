@@ -38,7 +38,7 @@ export default function EventsPage() {
               コンクール
             </a>
             <a href="#events" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
-              イベント
+              フェスティバル
             </a>
           </nav>
 
@@ -97,11 +97,11 @@ export default function EventsPage() {
             </div>
           </section>
 
-          {/* イベント（フェス） */}
+          {/* フェスティバル */}
           <section id="events" className="scroll-mt-24">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
               <Music className="size-5 text-gold" />
-              イベント
+              フェスティバル
             </h2>
             <div className="space-y-6">
               {/* 第39回日本クラリネットフェスティバル（広島） */}
