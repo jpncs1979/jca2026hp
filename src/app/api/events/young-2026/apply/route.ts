@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { normalizeMemberNumberInput } from "@/lib/member-number";
 
 const OFFICE_EMAIL = "jca@jp-clarinet.org";
 
@@ -62,6 +63,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const memberNumberNorm =
+      member_type === "会員" ? normalizeMemberNumberInput(member_number) : null;
+    if (member_type === "会員" && !memberNumberNorm) {
+      return NextResponse.json(
+        { error: "会員の場合は有効な会員番号を入力してください（例: 0001）。" },
+        { status: 400 }
+      );
+    }
+
     const birth = new Date(birth_date);
     if (isNaN(birth.getTime())) {
       return NextResponse.json(
@@ -107,7 +117,7 @@ export async function POST(request: Request) {
       birth_date,
       age_at_reference: age,
       member_type,
-      member_number: member_type === "会員" ? member_number || null : null,
+      member_number: memberNumberNorm,
       category,
       selected_piece_preliminary: selected_piece_preliminary || null,
       selected_piece_final:
@@ -135,7 +145,7 @@ export async function POST(request: Request) {
       email,
       birth_date,
       member_type,
-      member_number,
+      member_number: memberNumberNorm ?? undefined,
       category,
       selected_piece_preliminary,
       selected_piece_final,

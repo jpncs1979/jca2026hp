@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { normalizeMemberNumberInput } from "@/lib/member-number";
 
 const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
 
@@ -93,8 +94,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const memberNumberNorm =
+      member_type === "会員" ? normalizeMemberNumberInput(member_number) : null;
+    if (member_type === "会員" && !memberNumberNorm) {
+      return NextResponse.json(
+        { error: "会員の場合は有効な会員番号を入力してください（例: 0001）。" },
+        { status: 400 }
+      );
+    }
+
     // ログイン中の会員かどうか（将来: auth から profile を取得して status を確認）
-    const isActiveMember = member_type === "会員" && !!member_number;
+    const isActiveMember = member_type === "会員" && !!memberNumberNorm;
     const amount = getAmount(category, member_type, isActiveMember);
 
     const { data: app, error: insertError } = await supabase
@@ -107,7 +117,7 @@ export async function POST(request: Request) {
         birth_date,
         age_at_reference: age,
         member_type,
-        member_number: member_type === "会員" ? member_number || null : null,
+        member_number: memberNumberNorm,
         category,
         selected_piece_preliminary: selected_piece_preliminary || null,
         selected_piece_final:

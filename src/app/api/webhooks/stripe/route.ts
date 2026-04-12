@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
+import { joinMembershipFeeFiscalYears } from "@/lib/membership-fees";
+import { membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear } from "@/lib/membership-fiscal-year";
+import {
+  syncStripeCustomerDefaultPaymentMethod,
+  syncStripeCustomerFromSetupCheckoutSession,
+} from "@/lib/stripe-customer-sync";
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -33,8 +40,10 @@ async function handleMembershipJoinCompleted(
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   const joinDate = new Date();
-  const expiryDate = new Date(joinDate);
-  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+  const feeFiscalYears = joinMembershipFeeFiscalYears(joinDate);
+  const maxPaidFy = Math.max(...feeFiscalYears);
+  const expiryStr = membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear(maxPaidFy);
+  const fiscalYearsStr = feeFiscalYears.join(",");
 
   const { data: newProfile, error: profileError } = await supabase
     .from("profiles")
@@ -51,7 +60,9 @@ async function handleMembershipJoinCompleted(
       category: meta.affiliation === "student" ? "student" : meta.affiliation === "professional" ? "professional" : "general",
       membership_type: meta.membership_type === "student" ? "student" : "regular",
       status: "active",
+      /** 入会フォームで ICA 希望の場合は ICA 会員として登録（ica_requested と同値） */
       ica_requested: meta.ica_requested === "1",
+      is_ica_member: meta.ica_requested === "1",
       is_css_user: false,
     })
     .select("id")
@@ -66,19 +77,58 @@ async function handleMembershipJoinCompleted(
   await supabase.from("memberships").insert({
     profile_id: newProfile.id,
     join_date: joinDate.toISOString().slice(0, 10),
-    expiry_date: expiryDate.toISOString().slice(0, 10),
+    expiry_date: expiryStr,
     payment_method: "stripe",
   });
 
   const amount = session.amount_total ?? 0;
-  await supabase.from("payments").insert({
+  const paymentBase = {
     profile_id: newProfile.id,
     amount,
-    purpose: "membership_fee",
-    method: "stripe",
+    purpose: "membership_fee" as const,
+    method: "stripe" as const,
     transaction_id: session.payment_intent as string,
-    metadata: { checkout_session_id: session.id },
-  });
+    metadata: {
+      checkout_session_id: session.id,
+      fiscal_years: fiscalYearsStr,
+    },
+  };
+  let payErr = (
+    await supabase.from("payments").insert({ ...paymentBase, membership_fiscal_year: maxPaidFy })
+  ).error;
+  if (
+    payErr &&
+    (payErr.message?.includes("membership_fiscal_year") || payErr.message?.includes("column"))
+  ) {
+    payErr = (await supabase.from("payments").insert(paymentBase)).error;
+  }
+  if (payErr) {
+    console.error("[入会Webhook] payments 挿入失敗", payErr);
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer &&
+          typeof session.customer === "object" &&
+          "id" in session.customer &&
+          typeof (session.customer as { id?: string }).id === "string"
+        ? (session.customer as { id: string }).id
+        : null;
+  if (customerId) {
+    await supabase
+      .from("profiles")
+      .update({ stripe_customer_id: customerId, updated_at: new Date().toISOString() })
+      .eq("id", newProfile.id);
+    const stripe = getStripe();
+    if (stripe) {
+      try {
+        await syncStripeCustomerDefaultPaymentMethod(stripe, session);
+      } catch (syncErr) {
+        console.error("[入会Webhook] Stripe デフォルト支払方法の設定に失敗", syncErr);
+      }
+    }
+  }
 
   const emailUser = process.env.EMAIL_USER;
   const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
@@ -135,7 +185,7 @@ async function handleMembershipJoinCompleted(
             <li>メール：${meta.email}</li>
             <li>会員種別：${memberTypeLabel}</li>
             <li>入会日：${joinDate.toLocaleDateString("ja-JP")}</li>
-            <li>ICA会員入会希望：${meta.ica_requested === "1" ? "はい" : "いいえ"}</li>
+            <li>ICA会員として登録：${meta.ica_requested === "1" ? "はい" : "いいえ"}</li>
           </ul>
           <p>管理画面の会員一覧でご確認ください。</p>
           <hr />
@@ -150,6 +200,177 @@ async function handleMembershipJoinCompleted(
     }
   }
 
+  return { ok: true };
+}
+
+/** マイページからの年会費決済完了 */
+async function handleMembershipRenewalCompleted(
+  session: Stripe.Checkout.Session,
+  supabase: SupabaseClient
+): Promise<{ ok: boolean }> {
+  const meta = session.metadata;
+  if (!meta || meta.type !== "membership_renewal" || !meta.profile_id || !meta.fiscal_year) {
+    return { ok: false };
+  }
+  const fiscalYear = parseInt(String(meta.fiscal_year), 10);
+  if (!Number.isFinite(fiscalYear)) return { ok: false };
+  const profileId = String(meta.profile_id).trim();
+  if (!profileId) return { ok: false };
+
+  const sessionId = session.id;
+  const { data: dup } = await supabase
+    .from("payments")
+    .select("id")
+    .contains("metadata", { checkout_session_id: sessionId })
+    .maybeSingle();
+  if (dup) {
+    return { ok: true };
+  }
+
+  const amount = session.amount_total ?? 0;
+  const paymentRenewBase = {
+    profile_id: profileId,
+    amount,
+    purpose: "membership_fee" as const,
+    method: "stripe" as const,
+    transaction_id: (session.payment_intent as string) ?? null,
+    metadata: {
+      checkout_session_id: sessionId,
+      fiscal_year: String(fiscalYear),
+    },
+  };
+  let payErr = (
+    await supabase
+      .from("payments")
+      .insert({ ...paymentRenewBase, membership_fiscal_year: fiscalYear })
+  ).error;
+  if (
+    payErr &&
+    (payErr.message?.includes("membership_fiscal_year") || payErr.message?.includes("column"))
+  ) {
+    payErr = (await supabase.from("payments").insert(paymentRenewBase)).error;
+  }
+  if (payErr) {
+    console.error("[年会費更新Webhook] payments 挿入失敗", payErr);
+    return { ok: false };
+  }
+
+  const { data: latest } = await supabase
+    .from("memberships")
+    .select("id, expiry_date")
+    .eq("profile_id", profileId)
+    .order("expiry_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const paidMembershipEnd =
+    membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear(fiscalYear);
+  const newExp =
+    latest?.expiry_date && latest.expiry_date > paidMembershipEnd
+      ? latest.expiry_date
+      : paidMembershipEnd;
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer &&
+          typeof session.customer === "object" &&
+          "id" in session.customer &&
+          typeof (session.customer as { id?: string }).id === "string"
+        ? (session.customer as { id: string }).id
+        : null;
+  if (customerId) {
+    await supabase
+      .from("profiles")
+      .update({ stripe_customer_id: customerId, updated_at: new Date().toISOString() })
+      .eq("id", profileId);
+    const stripeRenew = getStripe();
+    if (stripeRenew) {
+      try {
+        await syncStripeCustomerDefaultPaymentMethod(stripeRenew, session);
+      } catch (syncErr) {
+        console.error("[年会費Webhook] Stripe デフォルト支払方法の設定に失敗", syncErr);
+      }
+    }
+  }
+
+  if (latest?.id) {
+    const { error: upErr } = await supabase
+      .from("memberships")
+      .update({
+        expiry_date: newExp,
+        payment_method: "stripe",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", latest.id);
+    if (upErr) {
+      console.error("[年会費更新Webhook] memberships 更新失敗", upErr);
+    }
+  } else {
+    const jd = new Date();
+    jd.setFullYear(jd.getFullYear() - 1);
+    await supabase.from("memberships").insert({
+      profile_id: profileId,
+      join_date: jd.toISOString().slice(0, 10),
+      expiry_date: newExp,
+      payment_method: "stripe",
+    });
+  }
+
+  await supabase
+    .from("profiles")
+    .update({ status: "active", updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+
+  return { ok: true };
+}
+
+/** マイページ「カードのみ登録」（決済なし・Setup モード）完了 */
+async function handleMypageCardSetupCompleted(
+  session: Stripe.Checkout.Session,
+  supabase: SupabaseClient
+): Promise<{ ok: boolean }> {
+  const meta = session.metadata;
+  if (!meta || meta.type !== "mypage_card_setup" || !meta.profile_id) {
+    return { ok: false };
+  }
+  const profileId = String(meta.profile_id).trim();
+  if (!profileId) return { ok: false };
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer &&
+          typeof session.customer === "object" &&
+          "id" in session.customer &&
+          typeof (session.customer as { id?: string }).id === "string"
+        ? (session.customer as { id: string }).id
+        : null;
+  if (!customerId) {
+    console.warn("[カード登録Webhook] Customer ID なし", session.id);
+    return { ok: false };
+  }
+
+  const stripe = getStripe();
+  if (stripe) {
+    try {
+      await syncStripeCustomerFromSetupCheckoutSession(stripe, session);
+    } catch (syncErr) {
+      console.error("[カード登録Webhook] デフォルト支払方法の設定に失敗", syncErr);
+    }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      stripe_customer_id: customerId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profileId);
+  if (error) {
+    console.error("[カード登録Webhook] profiles 更新失敗", error);
+    return { ok: false };
+  }
   return { ok: true };
 }
 
@@ -187,6 +408,26 @@ export async function POST(request: Request) {
     if (session.metadata?.type === "membership_join") {
       const result = await handleMembershipJoinCompleted(session);
       console.log("[Stripe Webhook] membership_join 処理結果", result);
+      return NextResponse.json({ received: true });
+    }
+
+    if (session.metadata?.type === "membership_renewal") {
+      if (!supabaseUrl || !serviceRoleKey) {
+        return NextResponse.json({ error: "Server config error" }, { status: 500 });
+      }
+      const supabaseRenew = createClient(supabaseUrl, serviceRoleKey);
+      const result = await handleMembershipRenewalCompleted(session, supabaseRenew);
+      console.log("[Stripe Webhook] membership_renewal 処理結果", result);
+      return NextResponse.json({ received: true });
+    }
+
+    if (session.metadata?.type === "mypage_card_setup") {
+      if (!supabaseUrl || !serviceRoleKey) {
+        return NextResponse.json({ error: "Server config error" }, { status: 500 });
+      }
+      const supabaseCard = createClient(supabaseUrl, serviceRoleKey);
+      const result = await handleMypageCardSetupCompleted(session, supabaseCard);
+      console.log("[Stripe Webhook] mypage_card_setup 処理結果", result);
       return NextResponse.json({ received: true });
     }
 

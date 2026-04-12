@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { read, utils } from "xlsx";
+import { parseFeePaymentLabel } from "@/lib/excel-fee-payment";
 
 /**
  * Excel 会員データの列マッピング
@@ -22,6 +23,14 @@ function parseDate(val: unknown): string | null {
   const d = new Date(s.replace(/\//g, "-"));
   if (isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
+}
+
+/** 1行目ヘッダから「会費支払い方法」列（会費＋支払を含む別名も可）。誤って別の「支払い方法」だけの列は使わない */
+function findFeePaymentColumnIndex(header: string[]): number {
+  const cells = header.map((h) => String(h ?? "").trim());
+  const exact = cells.findIndex((h) => h === "会費支払い方法");
+  if (exact >= 0) return exact;
+  return cells.findIndex((h) => /会費/.test(h) && /支払/.test(h));
 }
 
 export async function POST(request: Request) {
@@ -61,7 +70,7 @@ export async function POST(request: Request) {
     const memberTypeIdx = header.findIndex((h) => h === "会員種別");
     const expiryIdx = header.findIndex((h) => h === "会員有効終了日");
     const icaIdx = header.findIndex((h) => h === "ICA資格");
-    const paymentIdx = header.findIndex((h) => h === "会費支払い方法");
+    const paymentIdx = findFeePaymentColumnIndex(header);
     const zipIdx = header.findIndex((h) => h === "住所_郵便番号");
     const prefIdx = header.findIndex((h) => h === "住所_都道府県");
     const cityIdx = header.findIndex((h) => h === "住所_市区町村");
@@ -109,9 +118,8 @@ export async function POST(request: Request) {
       // ICA資格列が「会員」なら ICA会員
       const isIca = String(row[icaIdx] ?? "").trim() === "会員";
       const officerTitle = officerTitleIdx >= 0 ? (String(row[officerTitleIdx] ?? "").trim() || null) : null;
-      const paymentRaw = String(row[paymentIdx] ?? "").trim().toUpperCase();
-      const paymentMethod =
-        paymentRaw.includes("CSS") ? "css" : paymentRaw.includes("振") ? "transfer" : "transfer";
+      const feePayment =
+        paymentIdx >= 0 ? parseFeePaymentLabel(row[paymentIdx]) : null;
 
       const zipRaw = String(row[zipIdx] ?? "").replace(/[〒\s]/g, "").trim();
       const pref = String(row[prefIdx] ?? "").trim();
@@ -150,15 +158,30 @@ export async function POST(request: Request) {
           ...profileBase,
           birth_date: birthDateStr,
           is_ica_member: isIca,
+          ica_requested: isIca,
           officer_title: officerTitle,
           notes,
+          ...(feePayment != null
+            ? {
+                is_css_user: feePayment.is_css_user,
+                import_payment_kind: feePayment.import_payment_kind,
+              }
+            : {}),
         };
         try {
           const { error: upErr } = await admin.from("profiles").update(updateData).eq("id", existing.id);
           if (upErr) throw upErr;
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          if (msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source") || msg.includes("officer_title") || msg.includes("birth_date") || msg.includes("column")) {
+          if (
+            msg.includes("is_ica_member") ||
+            msg.includes("notes") ||
+            msg.includes("source") ||
+            msg.includes("officer_title") ||
+            msg.includes("birth_date") ||
+            msg.includes("import_payment_kind") ||
+            msg.includes("column")
+          ) {
             const fallbackUpdate = { name: profileBase.name, name_kana: profileBase.name_kana, email: profileBase.email, zip_code: profileBase.zip_code, address: profileBase.address, phone: profileBase.phone, membership_type: profileBase.membership_type, status: profileBase.status, updated_at: profileBase.updated_at };
             const { error: upErr2 } = await admin.from("profiles").update(fallbackUpdate).eq("id", existing.id);
             if (upErr2) {
@@ -186,7 +209,21 @@ export async function POST(request: Request) {
           category: membershipType === "student" ? "student" : "general",
           status,
         };
-        const insertWithExtras = { ...insertBase, birth_date: birthDateStr, is_ica_member: isIca, officer_title: officerTitle, notes, source: "import" as const };
+        const insertWithExtras = {
+          ...insertBase,
+          birth_date: birthDateStr,
+          is_ica_member: isIca,
+          ica_requested: isIca,
+          officer_title: officerTitle,
+          notes,
+          source: "import" as const,
+          ...(feePayment != null
+            ? {
+                is_css_user: feePayment.is_css_user,
+                import_payment_kind: feePayment.import_payment_kind,
+              }
+            : {}),
+        };
         const { data: inserted, error } = await admin
           .from("profiles")
           .insert(insertWithExtras)
@@ -195,7 +232,14 @@ export async function POST(request: Request) {
 
         if (error) {
           const msg = error.message ?? "";
-          const isColumnError = msg.includes("is_ica_member") || msg.includes("notes") || msg.includes("source") || msg.includes("officer_title") || msg.includes("birth_date") || msg.includes("column");
+          const isColumnError =
+            msg.includes("is_ica_member") ||
+            msg.includes("notes") ||
+            msg.includes("source") ||
+            msg.includes("officer_title") ||
+            msg.includes("birth_date") ||
+            msg.includes("import_payment_kind") ||
+            msg.includes("column");
           const isConstraintError = msg.includes("check") || msg.includes("membership_type") || msg.includes("friend");
           if (isColumnError || isConstraintError) {
             const fallbackInsert = membershipType === "friend"
@@ -231,20 +275,20 @@ export async function POST(request: Request) {
         joinDate.setFullYear(joinDate.getFullYear() - 1);
 
         if (mem?.id) {
-          await admin
-            .from("memberships")
-            .update({
-              expiry_date: expiryStr,
-              payment_method: paymentMethod,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", mem.id);
+          const memPatch: Record<string, unknown> = {
+            expiry_date: expiryStr,
+            updated_at: new Date().toISOString(),
+          };
+          if (feePayment != null) {
+            memPatch.payment_method = feePayment.payment_method;
+          }
+          await admin.from("memberships").update(memPatch).eq("id", mem.id);
         } else {
           await admin.from("memberships").insert({
             profile_id: profileId,
             join_date: joinDate.toISOString().slice(0, 10),
             expiry_date: expiryStr,
-            payment_method: paymentMethod,
+            payment_method: feePayment?.payment_method ?? "transfer",
           });
         }
       }

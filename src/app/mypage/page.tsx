@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatMemberNumber } from "@/lib/member-number";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,10 +50,17 @@ function MypageContent(): any {
     affiliation?: string | null;
     is_admin?: boolean | null;
     is_css_user?: boolean | null;
+    membership_type?: string | null;
+    stripe_customer_id?: string | null;
+    source?: string | null;
   } | null>(null);
   const [membership, setMembership] = useState<{
     expiry_date: string;
+    payment_method?: string | null;
   } | null>(null);
+  const [membershipFeeYears, setMembershipFeeYears] = useState<
+    Array<{ fiscal_year: number; label: string; status: string }>
+  >([]);
   const [applications, setApplications] = useState<
     Array<{
       id: string;
@@ -79,6 +87,8 @@ function MypageContent(): any {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [switchToCardLoading, setSwitchToCardLoading] = useState(false);
+  const [renewCheckoutLoading, setRenewCheckoutLoading] = useState(false);
+  const [registerCardLoading, setRegisterCardLoading] = useState(false);
 
   // API 経由ログイン失敗時のエラー表示
   useEffect(() => {
@@ -135,12 +145,14 @@ function MypageContent(): any {
         if (!res.ok) {
           setProfile(null);
           setMembership(null);
+          setMembershipFeeYears([]);
           setApplications([]);
           setContents([]);
         } else {
           const prof = data.profile ?? null;
           setProfile(prof);
           setMembership(data.membership ?? null);
+          setMembershipFeeYears(data.membership_fee_years ?? []);
           setApplications(data.applications ?? []);
           setContents(data.contents ?? []);
 
@@ -153,6 +165,7 @@ function MypageContent(): any {
       } catch {
         setProfile(null);
         setMembership(null);
+        setMembershipFeeYears([]);
         setApplications([]);
         setContents([]);
       }
@@ -170,6 +183,56 @@ function MypageContent(): any {
       setLoading(false);
     });
   }, [router]);
+
+  useEffect(() => {
+    if (searchParams.get("fee_paid") !== "1" || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/mypage/data");
+        const data = await res.json();
+        if (!cancelled && res.ok) {
+          setProfile(data.profile ?? null);
+          setMembership(data.membership ?? null);
+          setMembershipFeeYears(data.membership_fee_years ?? []);
+          setApplications(data.applications ?? []);
+          setContents(data.contents ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          router.replace("/mypage", { scroll: false });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router, user]);
+
+  useEffect(() => {
+    if (searchParams.get("card_registered") !== "1" || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/mypage/data");
+        const data = await res.json();
+        if (!cancelled && res.ok) {
+          setProfile(data.profile ?? null);
+          setMembership(data.membership ?? null);
+          setMembershipFeeYears(data.membership_fee_years ?? []);
+          setApplications(data.applications ?? []);
+          setContents(data.contents ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          router.replace("/mypage", { scroll: false });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,9 +519,15 @@ function MypageContent(): any {
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-2xl font-bold">{profile?.name || "—"}</p>
-              <p className="text-sm text-white/80">会員番号: {profile?.member_number ?? "—"}</p>
               <p className="text-sm text-white/80">
-                有効期限: {membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString("ja-JP") : "—"}
+                会員番号: {formatMemberNumber(profile?.member_number, "—")}
+              </p>
+              <p className="text-sm text-white/80">
+                会員資格の末日:{" "}
+                {membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString("ja-JP") : "—"}
+              </p>
+              <p className="text-xs text-white/60">
+                会員資格は各年4月1日から翌年3月31日まで（表示はその期間の末日）
               </p>
               <span
                 className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
@@ -470,11 +539,131 @@ function MypageContent(): any {
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
               )}
-              {profile && !profile?.member_number && (
+              {profile && profile.member_number == null && (
                 <p className="text-xs text-white/60">会員番号は事務局承認後に付与されます。</p>
+              )}
+              {profile && profile.is_css_user !== true && (
+                <div className="mt-3 border-t border-white/15 pt-3">
+                  <p className="text-xs text-white/70">年会費の自動決済（Stripe）</p>
+                  {typeof profile.stripe_customer_id === "string" &&
+                  profile.stripe_customer_id.trim() !== "" ? (
+                    <p className="mt-1 text-sm text-emerald-200">
+                      クレジットカードは登録済みです（毎年1月頃の年会費の自動引き落としに利用します）。
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-sm text-amber-100">
+                        {membership?.payment_method === "stripe"
+                          ? "サイト移行のため、新しいカードの登録が必要です（旧システムのカード情報は引き継がれません）。"
+                          : "年会費をクレジットでお支払いする場合や、自動引き落とし用にカードを登録できます。"}
+                      </p>
+                      <p className="mt-1 text-xs text-white/60">
+                        登録は決済を伴いません。Stripe の安全な画面でカード番号を入力してください。
+                      </p>
+                      <Button
+                        type="button"
+                        className="mt-2 bg-white text-navy hover:bg-white/90"
+                        disabled={registerCardLoading}
+                        onClick={async () => {
+                          setRegisterCardLoading(true);
+                          try {
+                            const res = await fetch("/api/mypage/register-card/checkout", {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data.url) {
+                              window.location.href = data.url as string;
+                            } else {
+                              alert((data as { error?: string }).error ?? "登録画面の開始に失敗しました");
+                            }
+                          } finally {
+                            setRegisterCardLoading(false);
+                          }
+                        }}
+                      >
+                        {registerCardLoading ? "処理中..." : "クレジットカードを登録する"}
+                      </Button>
+                    </>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
+
+          {profile && profile.status !== "pending" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CreditCard className="size-5 text-gold" />
+                  会費支払い状況（直近3年度）
+                </CardTitle>
+                <CardDescription>
+                  会費の「事業年度」は2月1日〜翌年1月31日です（表示の〇〇年度はこれに基づきます）。一方、会員資格は4月1日から翌年3月31日までです。1月までに翌事業年度分の会費が入金されると、会員資格はその次の4月1日から始まる年度に更新されます。
+                  マイページからのクレジット決済が完了すると「決済済み」に更新されます（反映まで数秒かかる場合があります）。
+                  クレジット会員は、毎年1月22日（日本時間）頃に翌事業年度会費の自動引き落としが行われます（Stripe の入金タイミングに合わせた設定です）。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                  {membershipFeeYears.map((row) => (
+                    <li
+                      key={row.fiscal_year}
+                      className="flex items-center justify-between gap-2 px-3 py-2.5"
+                    >
+                      <span className="font-medium">{row.label}</span>
+                      <span
+                        className={
+                          row.status === "未払い"
+                            ? "rounded bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900"
+                            : row.status === "決済済み"
+                              ? "rounded bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-800"
+                              : "rounded bg-navy/10 px-2 py-0.5 text-xs font-medium text-navy"
+                        }
+                      >
+                        {row.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {profile.is_css_user !== true &&
+                  membershipFeeYears.some((r) => r.status === "未払い") && (
+                    <Button
+                      className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                      disabled={renewCheckoutLoading}
+                      onClick={async () => {
+                        setRenewCheckoutLoading(true);
+                        try {
+                          const res = await fetch("/api/mypage/membership-renew/checkout", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({}),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data.url) {
+                            window.location.href = data.url as string;
+                          } else {
+                            alert((data as { error?: string }).error ?? "決済の開始に失敗しました");
+                          }
+                        } finally {
+                          setRenewCheckoutLoading(false);
+                        }
+                      }}
+                    >
+                      {renewCheckoutLoading
+                        ? "処理中..."
+                        : "年会費をクレジットカードで支払う（未納が複数ある場合は古い年度から）"}
+                    </Button>
+                  )}
+                {profile.is_css_user === true && (
+                  <p className="text-xs text-muted-foreground">
+                    口座振替（CSS）でお支払いの場合は、下の「クレジットカード支払いに切り替える」から切り替え後にカード決済できます。
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {profile?.is_css_user === true && (
             <Card>
@@ -484,7 +673,7 @@ function MypageContent(): any {
                   支払方法
                 </CardTitle>
                 <CardDescription>
-                  現在、会費は口座振替（CSS）でお支払いいただいています。クレジットカードに切り替えると、次回以降の口座振替対象から外れます。
+                  現在、会費は銀行振込（CSS）でお支払いいただいています。事務局が入金を確認したうえでシステム上「振込済み」として更新します。クレジットに切り替えたあと、マイページから年会費をカード決済すると Stripe に支払方法が保存され、以降は毎年1月頃に自動引き落としの対象になります。
                 </CardDescription>
               </CardHeader>
               <CardContent>

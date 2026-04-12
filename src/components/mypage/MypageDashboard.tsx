@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { formatMemberNumber } from "@/lib/member-number";
 
 interface MypageDashboardProps {
   userId: string;
@@ -54,6 +55,8 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
     : { data: [] };
 
   const latestMembership = memberships?.[0];
+  const stripeId =
+    typeof profile?.stripe_customer_id === "string" ? profile.stripe_customer_id.trim() : "";
   const expiryDate = latestMembership?.expiry_date
     ? new Date(latestMembership.expiry_date).toLocaleDateString("ja-JP")
     : "—";
@@ -72,7 +75,7 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
           <div>
             <p className="text-xs text-white/70">会員番号</p>
             <p className="text-2xl font-bold tracking-wider">
-              {profile?.member_number ?? "—"}
+              {formatMemberNumber(profile?.member_number, "—")}
             </p>
           </div>
           <div>
@@ -80,9 +83,21 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
             <p className="text-xl font-medium">{profile?.name ?? "—"}</p>
           </div>
           <div>
-            <p className="text-xs text-white/70">有効期限</p>
+            <p className="text-xs text-white/70">会員資格の末日</p>
             <p className="text-lg font-medium">{expiryDate}</p>
           </div>
+          {profile?.is_css_user !== true && (
+            <div>
+              <p className="text-xs text-white/70">年会費（Stripe）カード</p>
+              <p className={`text-sm ${stripeId ? "text-emerald-200" : "text-amber-100"}`}>
+                {stripeId
+                  ? "登録済み"
+                  : latestMembership?.payment_method === "stripe"
+                    ? "未登録（サイト移行後の再登録が必要です）"
+                    : "未登録（マイページの会員証から登録できます）"}
+              </p>
+            </div>
+          )}
           {profile?.status === "pending" && (
             <p className="rounded bg-amber-500/20 px-3 py-1 text-sm text-amber-200">
               承認待ちです。事務局の承認後にご利用いただけます。

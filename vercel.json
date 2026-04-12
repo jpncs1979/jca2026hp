@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/student-upgrade-preview-email",
       "schedule": "0 0 1 12 *"
+    },
+    {
+      "path": "/api/cron/membership-january-charge",
+      "schedule": "0 15 21 1 *"
     }
   ]
 }

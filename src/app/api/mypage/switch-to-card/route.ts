@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 /**
  * クレジットカード支払いに切り替えた際に呼ぶ。
- * 自分のプロフィールの is_css_user を false にし、次回以降のCSS（口座振替）対象から外す。
+ * 自分のプロフィールの is_css_user を false にし、銀行振込（CSS）経路から外す（1月のカード自動請求の対象になり得る）。
  */
 export async function POST() {
   try {

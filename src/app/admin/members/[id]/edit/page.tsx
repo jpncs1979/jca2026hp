@@ -7,7 +7,7 @@ import { AdminMemberEditForm } from "./form";
 
 const SELECT_COLS = `
   id, member_number, name, name_kana, email, zip_code, address, phone,
-  affiliation, status, membership_type, is_ica_member, ica_requested, is_css_user, officer_title,
+  affiliation, status, membership_type, is_ica_member, is_css_user, officer_title,
   gender, birth_date, notes, created_at,
   memberships(join_date, expiry_date, payment_method)
 `;
@@ -33,7 +33,7 @@ export default async function AdminMemberEditPage({
     .eq("id", id)
     .single();
 
-  if (error?.message?.includes("is_ica_member") || error?.message?.includes("ica_requested") || error?.message?.includes("is_css_user") || error?.message?.includes("column")) {
+  if (error?.message?.includes("is_ica_member") || error?.message?.includes("is_css_user") || error?.message?.includes("column")) {
     const retry = await admin.from("profiles").select(SELECT_COLS).eq("id", id).single();
     profile = retry.data;
     error = retry.error;
@@ -58,7 +58,7 @@ export default async function AdminMemberEditPage({
     (a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? "")
   )[0];
 
-  const profileAny = profile as { is_ica_member?: boolean; ica_requested?: boolean; is_css_user?: boolean; officer_title?: string | null; gender?: string; birth_date?: string; notes?: string };
+  const profileAny = profile as { is_ica_member?: boolean; is_css_user?: boolean; officer_title?: string | null; gender?: string; birth_date?: string; notes?: string };
   return (
     <div className="space-y-6">
       <Link
@@ -82,7 +82,6 @@ export default async function AdminMemberEditPage({
           status: profile.status ?? "pending",
           membership_type: profile.membership_type ?? "regular",
           is_ica_member: profileAny.is_ica_member ?? false,
-          ica_requested: profileAny.ica_requested ?? false,
           is_css_user: profileAny.is_css_user ?? true,
           officer_title: profileAny.officer_title ?? "",
           gender: profileAny.gender ?? "",

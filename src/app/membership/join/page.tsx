@@ -24,12 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  ENTRANCE_FEE,
-  REGULAR_ANNUAL,
-  STUDENT_ANNUAL,
-  getMembershipJoinAmount,
-} from "@/lib/membership-fees";
+import { ENTRANCE_FEE, getMembershipJoinAmount } from "@/lib/membership-fees";
 
 /** yyyy/mm/dd / yyyy-mm-dd / 8桁数字 を Date にパース。無効なら null */
 function parseBirthDate(s: string): Date | null {
@@ -179,10 +174,9 @@ export default function MembershipJoinPage() {
   const membershipType = form.watch("membership_type");
   const birthDateStr = form.watch("birth_date");
   const joinDate = new Date();
-  const amount =
-    birthDateStr && parseBirthDate(birthDateStr)
-      ? getMembershipJoinAmount(membershipType, joinDate)
-      : null;
+  const amount = getMembershipJoinAmount(membershipType, joinDate);
+  const joinMonth = joinDate.getMonth() + 1;
+  const isNovDecJanJoin = joinMonth === 11 || joinMonth === 12 || joinMonth === 1;
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -449,22 +443,24 @@ export default function MembershipJoinPage() {
                 </CardContent>
               </Card>
 
-              {amount !== null && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-muted-foreground">
-                      入会金 {ENTRANCE_FEE.toLocaleString()}円
-                      ＋ 会費（1年分）
-                      ＝ <strong className="text-foreground">{amount.toLocaleString()}円</strong>
-                      {joinDate.getMonth() >= 9 && (
-                        <span className="ml-1 text-sm">
-                          （10〜12月入会のため、翌年度分を含みます）
-                        </span>
-                      )}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground">
+                    入会金 {ENTRANCE_FEE.toLocaleString()}円
+                    ＋ 会費（事業年度1年分）
+                    ＝ <strong className="text-foreground">{amount.toLocaleString()}円</strong>
+                    {isNovDecJanJoin ? (
+                      <span className="ml-1 text-sm">
+                        （11〜1月入会のため、翌事業年度分の会費を含みます）
+                      </span>
+                    ) : (
+                      <span className="ml-1 text-sm">
+                        （事業年度は2月1日〜翌年1月31日）
+                      </span>
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Button

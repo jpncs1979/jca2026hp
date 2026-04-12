@@ -44,6 +44,17 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+import { formatFiscalYearLabel, recentFiscalYears } from "@/lib/membership-fiscal-year";
+import {
+  unifiedPaymentMethodLabel,
+  feePaymentCategoryKey,
+} from "@/lib/admin-members-csv";
+import {
+  FEE_PAYMENT_FILTER_KEYS,
+  FEE_PAYMENT_FILTER_LABELS,
+  type FeePaymentFilterKey,
+} from "@/lib/excel-fee-payment";
+import { formatMemberNumber } from "@/lib/member-number";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   regular: "正会員",
@@ -56,12 +67,6 @@ const FILTER_LABELS: Record<string, string> = {
   all: "全会員",
   pending: "承認待ち",
   student: "学生会員",
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  transfer: "振込",
-  css: "CSS",
-  stripe: "クレジットカード",
 };
 
 const SIGNATURE_STORAGE_KEY = "admin_email_signatures";
@@ -86,16 +91,35 @@ type ProfileWithMembership = {
   gender?: string | null;
   birth_date?: string | null;
   notes?: string | null;
+  is_css_user?: boolean | null;
+  stripe_customer_id?: string | null;
+  source?: string | null;
+  import_payment_kind?: string | null;
   memberships: MembershipRow[] | null;
 };
 
-function buildFetchUrl(filter: string, ica: boolean, type: string, unpaid: boolean): string {
+function buildFetchUrl(
+  filter: string,
+  ica: boolean,
+  type: string,
+  unpaid: boolean,
+  unpaidFeeMode: string,
+  payKind: string
+): string {
   const params = new URLSearchParams();
   if (ica) params.set("ica", "1");
   if (type) params.set("type", type);
-  if (unpaid) params.set("unpaid", "1");
+  if (unpaid) {
+    params.set("unpaid", "1");
+    if (unpaidFeeMode && unpaidFeeMode !== "expiry") {
+      params.set("fee_fy", unpaidFeeMode);
+    }
+  }
   if (filter === "pending") params.set("status", "pending");
   if (filter === "student" && !type) params.set("type", "student");
+  if (payKind && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKind)) {
+    params.set("pay_kind", payKind);
+  }
   return `/api/admin/members?${params.toString()}`;
 }
 
@@ -120,6 +144,8 @@ export default function AdminMembersPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
+  /** 未納者: expiry=有効期限ベース、それ以外は会費の年度（2/1始まりの事業年度） */
+  const [unpaidFeeMode, setUnpaidFeeMode] = useState<string>("expiry");
   const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -134,6 +160,14 @@ export default function AdminMembersPage() {
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; skippedList?: string[] } | null>(null);
+  const [csvPartialOpen, setCsvPartialOpen] = useState(false);
+  const [csvPartialFile, setCsvPartialFile] = useState<File | null>(null);
+  const [csvPartialLoading, setCsvPartialLoading] = useState(false);
+  const [csvPartialResult, setCsvPartialResult] = useState<{
+    updated: number;
+    skipped: number;
+    messages: string[];
+  } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
@@ -146,10 +180,7 @@ export default function AdminMembersPage() {
   const [newSignatureName, setNewSignatureName] = useState("");
   const [newSignatureContent, setNewSignatureContent] = useState("");
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
-  const [icaReExportOpen, setIcaReExportOpen] = useState(false);
-  const [icaReFrom, setIcaReFrom] = useState("");
-  const [icaReTo, setIcaReTo] = useState("");
-  const [icaExporting, setIcaExporting] = useState(false);
+  const [csvExporting, setCsvExporting] = useState(false);
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -158,7 +189,7 @@ export default function AdminMembersPage() {
 
   const fetchProfiles = async () => {
     setLoading(true);
-    const url = buildFetchUrl(filter, icaOnly, typeFilter, unpaidOnly);
+    const url = buildFetchUrl(filter, icaOnly, typeFilter, unpaidOnly, unpaidFeeMode, paymentFilter);
     const res = await fetch(url);
     const data = await res.json();
     if (res.ok) setProfiles(data.profiles ?? []);
@@ -167,7 +198,13 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     fetchProfiles();
-  }, [filter, icaOnly, typeFilter, unpaidOnly]);
+  }, [filter, icaOnly, typeFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
+
+  useEffect(() => {
+    if (!unpaidOnly && unpaidFeeMode !== "expiry") {
+      setUnpaidFeeMode("expiry");
+    }
+  }, [unpaidOnly, unpaidFeeMode]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -193,15 +230,28 @@ export default function AdminMembersPage() {
     const q = searchQuery.trim();
     if (q && q.toLowerCase() !== "all") {
       const qLower = q.toLowerCase();
-      list = list.filter(
-        (p) =>
+      const qDigits = q.trim();
+      list = list.filter((p) => {
+        const numRaw = p.member_number != null ? String(p.member_number) : "";
+        const numPadded =
+          p.member_number != null ? formatMemberNumber(p.member_number, "") : "";
+        const paySearch = unifiedPaymentMethodLabel(p).toLowerCase();
+        return (
           p.name.toLowerCase().includes(qLower) ||
           (p.name_kana ?? "").toLowerCase().includes(qLower) ||
-          (p.email ?? "").toLowerCase().includes(qLower)
-      );
+          (p.email ?? "").toLowerCase().includes(qLower) ||
+          paySearch.includes(qLower) ||
+          (qDigits !== "" &&
+            (numRaw.includes(qDigits) || numPadded.includes(qDigits)))
+        );
+      });
     }
-    if (paymentFilter) {
-      list = list.filter((p) => getLatestMembership(p)?.payment_method === paymentFilter);
+    if (
+      paymentFilter &&
+      (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(paymentFilter)
+    ) {
+      const pk = paymentFilter as FeePaymentFilterKey;
+      list = list.filter((p) => feePaymentCategoryKey(p) === pk);
     }
     if (officerOnly) {
       list = list.filter((p) => (p.officer_title ?? "").trim() !== "");
@@ -241,13 +291,9 @@ export default function AdminMembersPage() {
     return sortOrder === "asc" ? <ArrowUp className="ml-1 inline size-3.5" /> : <ArrowDown className="ml-1 inline size-3.5" />;
   };
 
-  const today = new Date().toISOString().slice(0, 10);
   const canSelectForExtend = (p: ProfileWithMembership) =>
     p.status !== "pending"; // 承認待ち以外は一括延長・会員資格付与の対象
-  const unpaidProfiles = profiles.filter((p) => {
-    const exp = getLatestMembership(p)?.expiry_date;
-    return !exp || exp < today;
-  });
+  const fiscalYearOptions = useMemo(() => recentFiscalYears(3), []);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -331,6 +377,32 @@ export default function AdminMembersPage() {
     }
   };
 
+  const handleCsvPartialImport = async () => {
+    if (!csvPartialFile) return;
+    setCsvPartialLoading(true);
+    setCsvPartialResult(null);
+    const formData = new FormData();
+    formData.append("file", csvPartialFile);
+    const res = await fetch("/api/admin/members/csv-partial-import", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    setCsvPartialLoading(false);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setCsvPartialResult({
+        updated: data.updated ?? 0,
+        skipped: data.skipped ?? 0,
+        messages: Array.isArray(data.messages) ? data.messages : [],
+      });
+      setCsvPartialFile(null);
+      fetchProfiles();
+    } else {
+      alert((data as { error?: string }).error ?? "CSV の取り込みに失敗しました");
+    }
+  };
+
   const getEmailPayload = () => ({
     subject: emailSubject,
     email_body: emailBody,
@@ -404,39 +476,52 @@ export default function AdminMembersPage() {
     }
   };
 
-  const handleExportCsv = () => {
-    const PAYMENT_LABELS: Record<string, string> = { transfer: "振込", css: "CSS", stripe: "クレジットカード" };
-    const rows = filteredProfiles.map((p) => {
-      const latest = getLatestMembership(p);
-      return {
-        会員番号: p.member_number ?? "",
-        氏名: p.name,
-        ふりがな: p.name_kana ?? "",
-        メール: p.email ?? "",
-        郵便番号: p.zip_code ?? "",
-        住所: p.address ?? "",
-        電話番号: p.phone ?? "",
-        所属: p.affiliation ?? "",
-        種別: MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type,
-        ステータス: p.status,
-        ICA会員: p.is_ica_member ? "○" : "－",
-        役員: p.officer_title?.trim() ?? "",
-        有効期限: latest?.expiry_date ?? "",
-        支払方法: latest?.payment_method ? (PAYMENT_LABELS[latest.payment_method] ?? latest.payment_method) : "",
-        性別: p.gender ?? "",
-        生年月日: p.birth_date ?? "",
-        備考: p.notes ?? "",
-      };
-    });
-    const headers = Object.keys(rows[0] ?? {});
-    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => `"${String(r[h as keyof typeof r] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `会員一覧_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportCsv = async () => {
+    const ids = filteredProfiles.map((p) => p.id);
+    if (ids.length === 0) {
+      alert("出力する会員がありません。絞り込み条件をご確認ください。");
+      return;
+    }
+    const unpaidTargetLabel =
+      unpaidOnly && unpaidFeeMode !== "expiry"
+        ? `${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}分の会費が未納`
+        : null;
+    setCsvExporting(true);
+    try {
+      const res = await fetch("/api/admin/members/csv-export", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_ids: ids,
+          unpaid_target_label: unpaidTargetLabel,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert((data as { error?: string }).error ?? "CSV の取得に失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition");
+      let filename = `会員一覧_絞り込み${ids.length}件_${new Date().toISOString().slice(0, 10)}.csv`;
+      const m = cd?.match(/filename\*=UTF-8''([^;]+)/);
+      if (m?.[1]) {
+        try {
+          filename = decodeURIComponent(m[1].trim());
+        } catch {
+          /* keep default */
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setCsvExporting(false);
+    }
   };
 
   const openEmailToSelected = () => {
@@ -468,118 +553,97 @@ export default function AdminMembersPage() {
     localStorage.setItem(SIGNATURE_STORAGE_KEY, JSON.stringify(next));
   };
 
-  const handleIcaExportNew = async () => {
-    setIcaExporting(true);
-    try {
-      const res = await fetch("/api/admin/members/ica-export?mode=new", { credentials: "include" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "ICA出力に失敗しました");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ICA希望者_新規_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setIcaExporting(false);
-    }
-  };
-
-  const handleIcaExportRe = async () => {
-    if (!icaReFrom || !icaReTo) {
-      alert("開始日・終了日を指定してください");
-      return;
-    }
-    setIcaExporting(true);
-    try {
-      const params = new URLSearchParams({ mode: "re", from: icaReFrom.slice(0, 10), to: icaReTo.slice(0, 10) });
-      const res = await fetch(`/api/admin/members/ica-export?${params}`, { credentials: "include" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "ICA再出力に失敗しました");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ICA再出力_${icaReFrom}_${icaReTo}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setIcaReExportOpen(false);
-      setIcaReFrom("");
-      setIcaReTo("");
-    } finally {
-      setIcaExporting(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-navy">会員管理</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCsv}>
-            <Download className="size-4" />
-            CSV出力
-          </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={handleIcaExportNew}
-            disabled={icaExporting}
+            onClick={() => void handleExportCsv()}
+            disabled={csvExporting || loading}
+            title="現在の一覧（検索・絞り込み後）と同じ並びで出力します"
           >
-            {icaExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            新規ICA希望者出力
+            {csvExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            CSV出力（表示中）
           </Button>
-          <Dialog open={icaReExportOpen} onOpenChange={setIcaReExportOpen}>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setIcaReExportOpen(true)}
-            >
-              <Download className="size-4" />
-              ICA再出力（期間指定）
-            </Button>
-            <DialogContent>
+          <Dialog
+            open={csvPartialOpen}
+            onOpenChange={(open) => {
+              setCsvPartialOpen(open);
+              if (!open) {
+                setCsvPartialFile(null);
+                setCsvPartialResult(null);
+              }
+            }}
+          >
+            <DialogTrigger
+              render={
+                <Button variant="outline" size="sm" type="button">
+                  <Upload className="size-4" />
+                  CSV一括更新
+                </Button>
+              }
+            />
+            <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>ICA再出力（期間指定）</DialogTitle>
+                <DialogTitle>CSV で一括更新（差分）</DialogTitle>
                 <DialogDescription>
-                  出力済み日（ica_exported_at）または入会日の範囲で、ICA希望者を再出力します。フラグは変更しません。
+                  「CSV出力（表示中）」でダウンロードしたファイルと同じ列形式の UTF-8 CSV を選んでください。
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div>
-                  <Label htmlFor="ica-re-from">開始日</Label>
-                  <Input
-                    id="ica-re-from"
-                    type="date"
-                    value={icaReFrom}
-                    onChange={(e) => setIcaReFrom(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="ica-re-to">終了日</Label>
-                  <Input
-                    id="ica-re-to"
-                    type="date"
-                    value={icaReTo}
-                    onChange={(e) => setIcaReTo(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>値が<strong>空のセル</strong>は、その列はデータベースを変更しません。</li>
+                  <li>行を識別するため、<strong>会員ID</strong>列は削除・変更しないでください。</li>
+                  <li>
+                    <strong>会員番号</strong>列に値を入れた場合のみ更新されます（4 桁の「0001」形式でも可）。
+                  </li>
+                  <li>
+                    「会費支払い方法」列を参照します（旧 CSV の「支払い方法」列は互換のためそのままも可）。CSS
+                    ／シクミネット／振込／空欄（ー）／クレジットの表記で取り込めます。
+                  </li>
+                  <li>会員資格がまだない会員で「支払い方法」だけを変えたい場合は、<strong>有効期限</strong>も入力してください。</li>
+                </ul>
+              </div>
+              <div className="space-y-4 py-2">
+                <Input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => setCsvPartialFile(e.target.files?.[0] ?? null)}
+                />
+                {csvPartialResult && (
+                  <div className="rounded border border-border bg-muted/30 p-3 text-sm">
+                    <p>
+                      更新: <strong>{csvPartialResult.updated}</strong> 件 / スキップ:{" "}
+                      <strong>{csvPartialResult.skipped}</strong> 件
+                    </p>
+                    {csvPartialResult.messages.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-muted-foreground">メッセージ（最大50件）</summary>
+                        <ul className="mt-1 max-h-40 list-inside list-disc overflow-y-auto text-xs">
+                          {csvPartialResult.messages.map((m, i) => (
+                            <li key={i}>{m}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIcaReExportOpen(false)}>キャンセル</Button>
-                <Button onClick={handleIcaExportRe} disabled={icaExporting || !icaReFrom || !icaReTo}>
-                  {icaExporting ? <Loader2 className="size-4 animate-spin" /> : null}
-                  出力
+                <Button variant="outline" type="button" onClick={() => setCsvPartialOpen(false)}>
+                  閉じる
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                  onClick={() => void handleCsvPartialImport()}
+                  disabled={!csvPartialFile || csvPartialLoading}
+                >
+                  {csvPartialLoading ? <Loader2 className="size-4 animate-spin" /> : null}
+                  アップロードして反映
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -617,6 +681,14 @@ export default function AdminMembersPage() {
                 </div>
                 <p>
                   ICA資格が「会員」の行はICA会員として登録されます。役員列の値（理事・監事など）はそのまま役員職名として保存されます。
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">会費支払い方法</span>
+                  列がある場合のみ反映します。
+                  <strong>クレジットカード</strong>（「クレジット」「CREDIT」を含む表記）→
+                  カード経路、<strong>CSS</strong> → 銀行振込（CSS）経路、
+                  <strong>コンビニ</strong>・<strong>口座振替Web</strong>（「口座振替」と「Web」系を含む表記）・
+                  <strong>空欄</strong>・上記以外はいずれも一覧上は「その他」として保存します。
                 </p>
               </div>
               <div className="space-y-4 py-4">
@@ -823,7 +895,7 @@ export default function AdminMembersPage() {
           <div className="relative w-full min-w-[200px] sm:w-64">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="氏名・メールで検索"
+              placeholder="氏名・メール・会員番号で検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -852,14 +924,21 @@ export default function AdminMembersPage() {
             </SelectContent>
           </Select>
           <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v ?? "")}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue>{paymentFilter ? (PAYMENT_LABELS[paymentFilter] ?? paymentFilter) : "支払方法"}</SelectValue>
+            <SelectTrigger className="w-[min(100vw-2rem,280px)] sm:w-[280px]">
+              <SelectValue>
+                {paymentFilter
+                  ? (FEE_PAYMENT_FILTER_LABELS[paymentFilter as FeePaymentFilterKey] ??
+                    paymentFilter)
+                  : "会費支払い方法"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">指定なし</SelectItem>
-              <SelectItem value="transfer">振込</SelectItem>
-              <SelectItem value="css">CSS</SelectItem>
-              <SelectItem value="stripe">クレジットカード</SelectItem>
+              {FEE_PAYMENT_FILTER_KEYS.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {FEE_PAYMENT_FILTER_LABELS[k]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2" title="ICA会員で絞り込み">
@@ -878,13 +957,31 @@ export default function AdminMembersPage() {
             />
             <Label htmlFor="officer-only" className="text-sm cursor-pointer whitespace-nowrap">役員</Label>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Checkbox
               id="unpaid-only"
               checked={unpaidOnly}
               onChange={(e) => setUnpaidOnly(e.target.checked)}
             />
             <Label htmlFor="unpaid-only" className="text-sm cursor-pointer whitespace-nowrap">未納者</Label>
+            {unpaidOnly && (
+              <Select
+                value={unpaidFeeMode}
+                onValueChange={(v) => setUnpaidFeeMode(v ?? "expiry")}
+              >
+                <SelectTrigger className="w-[min(100vw-2rem,280px)] sm:w-[280px]">
+                  <SelectValue placeholder="未納の基準" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expiry">有効期限切れ・未登録（従来）</SelectItem>
+                  {fiscalYearOptions.map((fy) => (
+                    <SelectItem key={fy} value={String(fy)}>
+                      {formatFiscalYearLabel(fy)}の会費が未納
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <Button variant="outline" size="sm" onClick={fetchProfiles} {...(loading && { disabled: true })}>
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -904,7 +1001,9 @@ export default function AdminMembersPage() {
       {unpaidOnly && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-800">
-            未納者: {unpaidProfiles.length}件（有効期限切れまたは未登録）
+            {unpaidFeeMode === "expiry"
+              ? `未納者（有効期限）: ${filteredProfiles.length}件（表示中・検索後／有効期限切れまたは未登録）`
+              : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}会費）: ${filteredProfiles.length}件（表示中・検索後／承認待ち除く）`}
           </p>
         </div>
       )}
@@ -995,6 +1094,14 @@ export default function AdminMembersPage() {
         </DialogContent>
       </Dialog>
 
+      <div className="mb-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+        <h2 className="font-semibold text-navy">会費支払い方法</h2>
+        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+          Excel の「会費支払い方法」列に基づき、CSS・シクミネット・振込・ー（空欄）を表示します。クレジットカードは Stripe
+          の登録状況で「登録済み／未登録」を分けます。会費区分が未設定の場合は会員資格の支払区分から推定します。
+        </p>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-border bg-white">
         {loading ? (
           <div className="flex min-h-[200px] items-center justify-center">
@@ -1024,9 +1131,11 @@ export default function AdminMembersPage() {
                 </TableHead>
                 <TableHead>氏名</TableHead>
                 <TableHead>種別</TableHead>
-                <TableHead className="w-12 text-center">ICA</TableHead>
+                <TableHead className="w-12 text-center">ICA会員</TableHead>
                 <TableHead className="w-12 text-center">役員</TableHead>
                 <TableHead>メール</TableHead>
+                <TableHead className="min-w-[12rem] whitespace-nowrap">会費支払い方法</TableHead>
+                <TableHead className="min-w-[7rem] font-mono text-xs">会員ID</TableHead>
                 <TableHead>
                   <button
                     type="button"
@@ -1063,12 +1172,45 @@ export default function AdminMembersPage() {
                       onChange={() => toggleSelect(p.id)}
                     />
                   </TableCell>
-                  <TableCell>{p.member_number ?? "-"}</TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {formatMemberNumber(p.member_number, "-")}
+                  </TableCell>
                   <TableCell>{p.name}</TableCell>
                   <TableCell className="text-sm">{MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type}</TableCell>
                   <TableCell className="text-center">{p.is_ica_member ? "○" : "－"}</TableCell>
                   <TableCell className="text-sm">{p.officer_title?.trim() ?? "－"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.email}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      const payLabel = unifiedPaymentMethodLabel(p);
+                      const pk = feePaymentCategoryKey(p);
+                      const payClass =
+                        pk === "fee_css"
+                          ? "bg-amber-100 text-amber-900"
+                          : pk === "fee_shikuminet"
+                            ? "bg-purple-100 text-purple-950"
+                          : pk === "fee_furikomi"
+                            ? "bg-sky-100 text-sky-900"
+                          : pk === "fee_blank"
+                            ? "bg-muted text-muted-foreground"
+                          : pk === "card_registered"
+                            ? "bg-green-100 text-green-900"
+                            : "bg-orange-100 text-orange-950";
+                      return (
+                        <span
+                          className={`inline-block max-w-[14rem] rounded px-2 py-0.5 text-xs font-medium leading-snug ${payClass}`}
+                        >
+                          {payLabel}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell
+                    className="max-w-[120px] truncate font-mono text-[11px] text-muted-foreground"
+                    title={p.id}
+                  >
+                    {p.id}
+                  </TableCell>
                   <TableCell>
                     <span
                       className={`rounded px-2 py-0.5 text-xs font-medium ${

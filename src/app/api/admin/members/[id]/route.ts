@@ -142,8 +142,15 @@ export async function PATCH(
     }
     // 基本カラム（マイグレーション003）とオプションカラム（マイグレーション004）を分離
     const optionalUpdate: Record<string, unknown> = {};
-    if (is_ica_member !== undefined) optionalUpdate.is_ica_member = Boolean(is_ica_member);
-    if (ica_requested !== undefined) optionalUpdate.ica_requested = Boolean(ica_requested);
+    if (is_ica_member !== undefined) {
+      const v = Boolean(is_ica_member);
+      optionalUpdate.is_ica_member = v;
+      optionalUpdate.ica_requested = v;
+    } else if (ica_requested !== undefined) {
+      const v = Boolean(ica_requested);
+      optionalUpdate.ica_requested = v;
+      optionalUpdate.is_ica_member = v;
+    }
     if (is_css_user !== undefined) optionalUpdate.is_css_user = Boolean(is_css_user);
     if (officer_title !== undefined) optionalUpdate.officer_title = officer_title === "" || officer_title == null ? null : String(officer_title).trim();
     if (gender !== undefined) optionalUpdate.gender = gender ? String(gender).trim() : null;

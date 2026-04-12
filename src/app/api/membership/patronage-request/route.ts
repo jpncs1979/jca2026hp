@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
+import { normalizeMemberNumberInput } from "@/lib/member-number";
 
 const FIELDS: { key: string; label: string }[] = [
   { key: "name", label: "お名前" },
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
 
     const name = body.name ?? "";
     const email = body.email ?? "";
+    const rawMn = body.member_number?.trim() ?? "";
+    if (rawMn) {
+      const n = normalizeMemberNumberInput(rawMn);
+      body.member_number = n ?? rawMn;
+    }
     if (!name || !email) {
       return NextResponse.json(
         { error: "お名前とメールアドレスは必須です。" },

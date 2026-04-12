@@ -196,7 +196,7 @@ export default function PatronageRequestPage() {
                       <FormItem>
                         <FormLabel>会員番号（日本クラリネット協会会員の方）</FormLabel>
                         <FormControl>
-                          <Input placeholder="会員番号" {...field} />
+                          <Input placeholder="例: 0001" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

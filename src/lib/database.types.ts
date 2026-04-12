@@ -23,6 +23,10 @@ export interface Profile {
   membership_type: MembershipType;
   status: ProfileStatus;
   is_admin: boolean;
+  /** 銀行振込（CSS）経路。true の場合は事務局が手動で入金済み登録し、1月のカード自動請求はしない */
+  is_css_user?: boolean | null;
+  /** Stripe Customer ID（年会費の自動引き落とし・Checkout 再利用） */
+  stripe_customer_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +35,7 @@ export interface Membership {
   id: string;
   profile_id: string;
   join_date: string;
+  /** 会員資格の末日（会員年度は 4/1〜翌3/31。多くは YYYY-03-31） */
   expiry_date: string;
   payment_method: PaymentMethod;
   created_at: string;
@@ -67,5 +72,8 @@ export interface Payment {
   purpose: PaymentPurpose;
   method: PaymentMethod;
   transaction_id: string | null;
+  /** 会費の対象年度（事業年度 2/1〜翌1/31 の開始年）。マイグレーション 010 参照 */
+  membership_fiscal_year?: number | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 }

@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import {
+  isPaidForMembershipFiscalYear,
+  type PaymentRowForFee,
+} from "@/lib/membership-fee-status";
+import {
+  FEE_PAYMENT_FILTER_KEYS,
+  type FeePaymentFilterKey,
+} from "@/lib/excel-fee-payment";
+import { feePaymentCategoryKey, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
 
 export async function GET(request: Request) {
   try {
@@ -7,7 +16,9 @@ export async function GET(request: Request) {
     const icaOnly = searchParams.get("ica") === "1";
     const type = searchParams.get("type"); // regular, student, supporting, friend
     const unpaid = searchParams.get("unpaid") === "1";
+    const feeFyRaw = searchParams.get("fee_fy"); // 例: 2025（年度開始年）。未指定時は従来どおり有効期限ベース
     const status = searchParams.get("status"); // pending, active, expired
+    const payKindRaw = searchParams.get("pay_kind");
 
     const admin = createAdminClient();
     const selectAll = `
@@ -29,6 +40,10 @@ export async function GET(request: Request) {
         birth_date,
         notes,
         created_at,
+        is_css_user,
+        stripe_customer_id,
+        source,
+        import_payment_kind,
         memberships(join_date, expiry_date, payment_method)
       `;
     const selectBase = `
@@ -45,6 +60,10 @@ export async function GET(request: Request) {
         category,
         membership_type,
         created_at,
+        is_css_user,
+        stripe_customer_id,
+        source,
+        import_payment_kind,
         memberships(join_date, expiry_date, payment_method)
       `;
 
@@ -90,6 +109,10 @@ export async function GET(request: Request) {
         gender: null,
         birth_date: null,
         notes: null,
+        is_css_user: p.is_css_user ?? false,
+        stripe_customer_id: p.stripe_customer_id ?? null,
+        source: (p as { source?: string | null }).source ?? "signup",
+        import_payment_kind: (p as { import_payment_kind?: string | null }).import_payment_kind ?? null,
       }));
       if (icaOnly) {
         profiles = []; // 004 未適用では ICA フィルタ不可
@@ -100,14 +123,54 @@ export async function GET(request: Request) {
     }
 
     let list = profiles ?? [];
+    const payKind =
+      payKindRaw && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKindRaw)
+        ? (payKindRaw as FeePaymentFilterKey)
+        : null;
+    if (payKind) {
+      list = (list as ProfileForMemberCsv[]).filter(
+        (p) => feePaymentCategoryKey(p) === payKind
+      );
+    }
     if (unpaid) {
-      const today = new Date().toISOString().slice(0, 10);
-      list = list.filter((p: { memberships?: { expiry_date?: string }[] | null }) => {
-        const arr = p.memberships ?? [];
-        const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
-        const exp = latest?.expiry_date;
-        return !exp || exp < today;
-      });
+      const feeFy = feeFyRaw ? parseInt(feeFyRaw, 10) : NaN;
+      if (Number.isFinite(feeFy)) {
+        const ids = (list as { id: string }[]).map((p) => p.id);
+        const paymentsByProfile = new Map<string, PaymentRowForFee[]>();
+        const chunkSize = 150;
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const chunk = ids.slice(i, i + chunkSize);
+          if (chunk.length === 0) break;
+          const { data: payChunk } = await admin
+            .from("payments")
+            .select("profile_id, purpose, method, metadata, created_at")
+            .in("profile_id", chunk)
+            .eq("purpose", "membership_fee");
+          for (const row of payChunk ?? []) {
+            const pid = (row as { profile_id: string }).profile_id;
+            if (!paymentsByProfile.has(pid)) paymentsByProfile.set(pid, []);
+            paymentsByProfile.get(pid)!.push(row as PaymentRowForFee);
+          }
+        }
+        list = (list as { id: string; status?: string; memberships?: { expiry_date?: string }[] | null }[]).filter(
+          (p) => {
+            if (p.status === "pending") return false;
+            const arr = p.memberships ?? [];
+            const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
+            const exp = latest?.expiry_date ?? null;
+            const pays = paymentsByProfile.get(p.id) ?? [];
+            return !isPaidForMembershipFiscalYear(pays, exp, feeFy);
+          }
+        );
+      } else {
+        const today = new Date().toISOString().slice(0, 10);
+        list = list.filter((p: { memberships?: { expiry_date?: string }[] | null }) => {
+          const arr = p.memberships ?? [];
+          const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
+          const exp = latest?.expiry_date;
+          return !exp || exp < today;
+        });
+      }
     }
 
     return NextResponse.json({ profiles: list });

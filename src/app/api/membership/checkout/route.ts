@@ -118,6 +118,10 @@ export async function POST(request: Request) {
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     payment_method_types: ["card"],
+    customer_creation: "always",
+    payment_intent_data: {
+      setup_future_usage: "off_session",
+    },
     line_items: [
       {
         price_data: {
@@ -126,8 +130,8 @@ export async function POST(request: Request) {
             name: "日本クラリネット協会 入会金・会費",
             description:
               data.membership_type === "student"
-                ? "入会金・学生会員会費（1年分）"
-                : "入会金・正会員会費（1年分）",
+                ? "入会金・学生会員会費（事業年度1年分）"
+                : "入会金・正会員会費（事業年度1年分）",
           },
           unit_amount: amount,
         },

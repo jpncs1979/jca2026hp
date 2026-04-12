@@ -46,7 +46,6 @@ interface InitialData {
   status: string;
   membership_type: string;
   is_ica_member: boolean;
-  ica_requested: boolean;
   is_css_user: boolean;
   officer_title: string;
   gender: string;
@@ -92,7 +91,6 @@ export function AdminMemberEditForm({
           status: form.status,
           membership_type: form.membership_type,
           is_ica_member: form.is_ica_member,
-          ica_requested: form.ica_requested,
           is_css_user: form.is_css_user,
           officer_title: form.officer_title?.trim() || null,
           gender: form.gender || null,
@@ -192,22 +190,14 @@ export function AdminMemberEditForm({
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="ica_requested"
-                checked={form.ica_requested}
-                onChange={(e) => setForm((f) => ({ ...f, ica_requested: e.target.checked }))}
-                className="h-4 w-4 rounded border-border"
-              />
-              <Label htmlFor="ica_requested" className="cursor-pointer">ICA希望</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
                 id="is_css_user"
                 checked={form.is_css_user}
                 onChange={(e) => setForm((f) => ({ ...f, is_css_user: e.target.checked }))}
                 className="h-4 w-4 rounded border-border"
               />
-              <Label htmlFor="is_css_user" className="cursor-pointer">CSS（口座振替）対象</Label>
+              <Label htmlFor="is_css_user" className="cursor-pointer">
+                銀行振込（CSS）対象（入金は事務局が手動で「振込済み」登録／1月のカード自動請求はしない）
+              </Label>
             </div>
             <div className="flex items-center gap-2">
               <Label htmlFor="officer_title" className="cursor-pointer whitespace-nowrap">役員職名</Label>
@@ -287,11 +277,11 @@ export function AdminMemberEditForm({
             <CreditCard className="size-5 text-gold" />
             会員資格・有効期限
           </CardTitle>
-          <CardDescription>有効期限・支払方法</CardDescription>
+          <CardDescription>会員資格の末日（通常は会員年度の3/31）・支払方法</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="expiry_date">有効期限</Label>
+            <Label htmlFor="expiry_date">会員資格の末日（4/1〜翌3/31 の期間の終わり。多くは3/31）</Label>
             <Input
               id="expiry_date"
               type="date"

@@ -442,9 +442,9 @@ export default function ApplyPage() {
                   name="member_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>会員番号 *</FormLabel>
+                      <FormLabel>会員番号（4桁・例: 0001）*</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value ?? ""} placeholder="例: 12345" />
+                        <Input {...field} value={field.value ?? ""} placeholder="例: 0001" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
