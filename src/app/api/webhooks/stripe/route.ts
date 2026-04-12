@@ -3,13 +3,17 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { getFromHeader, OFFICE_FROM_EMAIL } from "@/lib/email";
+import { getCompetitionFromHeader, getFromHeader, OFFICE_FROM_EMAIL } from "@/lib/email";
 import { joinMembershipFeeFiscalYears } from "@/lib/membership-fees";
 import { membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear } from "@/lib/membership-fiscal-year";
 import {
   syncStripeCustomerDefaultPaymentMethod,
   syncStripeCustomerFromSetupCheckoutSession,
 } from "@/lib/stripe-customer-sync";
+import {
+  applicationRowToMailFields,
+  buildYoung2026ApplicationDetailsSection,
+} from "@/lib/young-2026-application-mail-html";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 function getStripe(): Stripe | null {
@@ -43,17 +47,15 @@ async function sendCompetitionApplicationPaidEmail(
     slug === YOUNG_2026.slug ? escapeHtml(YOUNG_2026.name) : `コンクール（${escapeHtml(slug)}）`;
 
   const name = escapeHtml(String(app.name ?? ""));
-  const furigana = escapeHtml(String(app.furigana ?? ""));
-  const birth = escapeHtml(String(app.birth_date ?? ""));
-  const memberType = escapeHtml(String(app.member_type ?? ""));
-  const memberNum = app.member_number ? escapeHtml(String(app.member_number)) : "";
-  const category = escapeHtml(String(app.category ?? ""));
-  const pre = app.selected_piece_preliminary
-    ? escapeHtml(String(app.selected_piece_preliminary))
-    : "";
-  const fin = app.selected_piece_final ? escapeHtml(String(app.selected_piece_final)) : "";
-  const video = app.video_url ? escapeHtml(String(app.video_url)) : "";
-  const acc = app.accompanist_info ? escapeHtml(String(app.accompanist_info)) : "";
+  const mailFields = applicationRowToMailFields(app);
+  const appId = typeof app.id === "string" ? app.id : "";
+  const amountYen =
+    typeof app.amount === "number" && Number.isFinite(app.amount) ? app.amount : null;
+  const detailsHtml = buildYoung2026ApplicationDetailsSection(mailFields, {
+    applicationId: appId || undefined,
+    amountYen,
+    paymentRouteLabel: "クレジットカード（Stripe）",
+  });
 
   const lines: string[] = [
     `<p>${name} 様</p>`,
@@ -64,20 +66,7 @@ async function sendCompetitionApplicationPaidEmail(
       : opts.simultaneousJoinState === "failed"
         ? `<p>同時入会をお申し込みいただいております。会員データベースへの反映で不備が生じた可能性があります。事務局までご連絡ください。</p>`
         : "",
-    `<hr style="margin:1.25em 0" />`,
-    `<p style="font-weight:bold">お申し込み内容</p>`,
-    `<ul style="margin:0;padding-left:1.25em">`,
-    `<li>お名前：${name}</li>`,
-    `<li>ふりがな：${furigana}</li>`,
-    `<li>生年月日：${birth}</li>`,
-    `<li>会員種別：${memberType}</li>`,
-    ...(memberNum ? [`<li>会員番号：${memberNum}</li>`] : []),
-    `<li>部門：${category}</li>`,
-    ...(pre ? [`<li>予選・課題曲（該当）：${pre}</li>`] : []),
-    ...(fin ? [`<li>本選・課題曲（該当）：${fin}</li>`] : []),
-    ...(video ? [`<li>予選動画URL：${video}</li>`] : []),
-    ...(acc ? [`<li>伴奏者・備考：${acc}</li>`] : []),
-    `</ul>`,
+    detailsHtml,
     `<p>ご不明な点がございましたら、事務局までお問い合わせください。</p>`,
     `<hr />`,
     `<p>一般社団法人 日本クラリネット協会事務局</p>`,
@@ -100,7 +89,7 @@ async function sendCompetitionApplicationPaidEmail(
     },
   });
 
-  const fromHeader = getFromHeader();
+  const fromHeader = getCompetitionFromHeader();
   const applicantHtml = lines.filter(Boolean).join("\n");
 
   try {
@@ -119,11 +108,11 @@ async function sendCompetitionApplicationPaidEmail(
   }
 
   const officeNotifyEmail = (process.env.OFFICE_NOTIFY_EMAIL ?? emailUser).trim();
-  const appId = typeof app.id === "string" ? app.id : "";
-  const amountStr =
-    typeof app.amount === "number" && Number.isFinite(app.amount)
-      ? `${app.amount.toLocaleString()}円`
-      : "—";
+  const officeDetailsHtml = buildYoung2026ApplicationDetailsSection(mailFields, {
+    applicationId: appId || undefined,
+    amountYen,
+    paymentRouteLabel: "クレジットカード（Stripe）",
+  });
 
   if (officeNotifyEmail) {
     try {
@@ -134,21 +123,14 @@ async function sendCompetitionApplicationPaidEmail(
         subject: `【事務局】${compTitle} 申込・決済完了`,
         html: `
           <p>ウェブ経由でコンクールの申込と決済が完了しました。</p>
-          <ul style="margin:0;padding-left:1.25em">
-            <li>申込ID（applications.id）：${escapeHtml(appId)}</li>
-            <li>氏名：${name}（${furigana}）</li>
-            <li>メール：${escapeHtml(emailRaw)}</li>
-            <li>会員種別：${memberType}</li>
-            <li>部門：${category}</li>
-            <li>参加費（申込時）：${escapeHtml(amountStr)}</li>
-            <li>同時入会：${
-              opts.simultaneousJoinState === "registered"
-                ? "会員登録まで完了"
-                : opts.simultaneousJoinState === "failed"
-                  ? "会員登録に失敗の可能性あり"
-                  : "なし／非対象"
-            }</li>
-          </ul>
+          ${officeDetailsHtml}
+          <p><strong>同時入会の状態：</strong>${
+            opts.simultaneousJoinState === "registered"
+              ? "会員登録まで完了"
+              : opts.simultaneousJoinState === "failed"
+                ? "会員登録に失敗の可能性あり（要確認）"
+                : "なし／非対象"
+          }</p>
           <p>管理画面のコンクール申込一覧でご確認ください。</p>
           <hr />
           <p>一般社団法人 日本クラリネット協会</p>

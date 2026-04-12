@@ -12,6 +12,10 @@ import {
   young2026ApplyFeeYen,
   young2026CategoryLabel,
 } from "@/lib/young-2026-apply-confirm";
+import {
+  young2026PieceFinalLabel,
+  young2026PiecePreliminaryLabel,
+} from "@/lib/young-2026-piece-field-labels";
 import { saveYoung2026BankDraft } from "@/lib/young-2026-bank-draft";
 import { Loader2 } from "lucide-react";
 
@@ -158,8 +162,10 @@ export default function Young2026ApplyConfirmPage() {
             {YOUNG_2026.name} お申し込み内容の確認
           </h1>
           <p className="mt-2 text-muted-foreground">
-            以下の内容でお間違いがなければ、<strong className="text-foreground">クレジットカード</strong>
-            または<strong className="text-foreground">銀行振込・郵便振替</strong>のいずれかのボタンからお進みください。
+            内容にお間違いがなければ、<strong className="text-foreground">クレジットカード</strong>
+            または<strong className="text-foreground">銀行振込・郵便振替</strong>
+            をお選びください。銀行振込の場合は、振込後に
+            <strong className="text-foreground">参加費振込の証明画像</strong>の送付が必要です。
             {data.member_type === "会員" ? (
               <span className="mt-2 block text-sm">
                 正会員の場合は、会員番号・メール・生年月日を会員データと照合します。
@@ -220,14 +226,18 @@ export default function Young2026ApplyConfirmPage() {
               <dd>{young2026CategoryLabel(data.category)}</dd>
             </div>
             {data.selected_piece_preliminary ? (
-              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">予選・課題曲など</dt>
+              <div className="grid gap-1 sm:grid-cols-[minmax(10rem,11rem)_1fr] sm:gap-3">
+                <dt className="text-muted-foreground text-pretty">
+                  {young2026PiecePreliminaryLabel(data.category)}
+                </dt>
                 <dd className="text-pretty">{data.selected_piece_preliminary}</dd>
               </div>
             ) : null}
             {data.selected_piece_final ? (
-              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">本選・課題曲など</dt>
+              <div className="grid gap-1 sm:grid-cols-[minmax(10rem,11rem)_1fr] sm:gap-3">
+                <dt className="text-muted-foreground text-pretty">
+                  {young2026PieceFinalLabel(data.category)}
+                </dt>
                 <dd className="text-pretty">{data.selected_piece_final}</dd>
               </div>
             ) : null}

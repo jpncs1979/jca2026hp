@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApplicantTable, type Applicant } from "./ApplicantTable";
+import { CompetitionApplicantsCsvButton } from "./CompetitionApplicantsCsvButton";
 
 export default async function AdminCompetitionsPage() {
   let applicants: Awaited<ReturnType<typeof fetchApplicants>> = [];
@@ -21,11 +22,14 @@ export default async function AdminCompetitionsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>申込者一覧</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            ジュニアA・B部門の動画URLをワンクリックで視聴・コピーできます
-          </p>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>申込者一覧</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              ジュニアA・B部門の動画URLをワンクリックで視聴・コピーできます
+            </p>
+          </div>
+          <CompetitionApplicantsCsvButton competitionSlug="young-2026" />
         </CardHeader>
         <CardContent>
           {applicants.length === 0 ? (
@@ -33,7 +37,7 @@ export default async function AdminCompetitionsPage() {
               申込データがありません
             </p>
           ) : (
-            <ApplicantTable applicants={applicants} />
+            <ApplicantTable applicants={applicants} competitionSlug="young-2026" />
           )}
         </CardContent>
       </Card>

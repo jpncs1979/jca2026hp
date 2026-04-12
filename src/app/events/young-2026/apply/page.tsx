@@ -402,7 +402,7 @@ export default function ApplyPage() {
                       <Input type="email" {...field} value={field.value ?? ""} placeholder="example@email.com" />
                     </FormControl>
                     <FormDescription>
-                      内容確認のうえクレジットカードまたは銀行振込をお選びください。完了後に確認メールをお送りします（銀行振込は振込証明画像の送付後にメールが届きます）
+                      お申し込みに関するご連絡に使用します。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -653,12 +653,6 @@ export default function ApplyPage() {
                 ) : (
                   <span className="text-muted-foreground">部門・会員種別を選択してください</span>
                 )}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                まず<strong className="text-foreground">「確認する」</strong>で申し込み内容の確認ページへ進み、内容にお間違いがなければ
-                <strong className="text-foreground">クレジットカード</strong>または
-                <strong className="text-foreground">銀行振込・郵便振替</strong>
-                をお選びください。銀行振込の場合は振込後に参加費振込の証明画像の送付が必要です。
               </p>
             </section>
 

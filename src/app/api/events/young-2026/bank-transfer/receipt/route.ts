@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { applicationRowToMailFields } from "@/lib/young-2026-application-mail-html";
 import { sendYoungBankTransferReceiptUploadedEmails } from "@/lib/young-2026-bank-mail";
 
 const BUCKET = "competition_transfer_receipts";
@@ -84,7 +85,9 @@ export async function POST(request: Request) {
     });
     const { data: row, error: fetchErr } = await db
       .from("applications")
-      .select("id, email, name, amount, payment_route, transfer_receipt_path, competition_id")
+      .select(
+        "id, email, name, furigana, birth_date, age_at_reference, member_type, member_number, category, selected_piece_preliminary, selected_piece_final, video_url, accompanist_info, amount, payment_route, transfer_receipt_path, competition_id"
+      )
       .eq("id", applicationId)
       .maybeSingle();
 
@@ -176,6 +179,7 @@ export async function POST(request: Request) {
         name: String(row.name ?? ""),
         applicationId,
         amount: typeof row.amount === "number" ? row.amount : null,
+        applicationFields: applicationRowToMailFields(row as Record<string, unknown>),
       });
     } catch (mailErr) {
       console.error("[bank-transfer/receipt] メール送信エラー（証明画像は保存済み）", mailErr);
