@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -94,9 +93,20 @@ const HERO_SLIDES = [
 const HERO_SLIDE_COUNT = HERO_SLIDES.length;
 const HERO_SLIDE_INTERVAL_MS = 6000;
 
+const HERO_SWIPE_THRESHOLD_PX = 48;
+
 // メインビジュアル スライド
 function HeroSlider() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  const goNext = useCallback(() => {
+    setCurrentSlide((s) => (s + 1) % HERO_SLIDE_COUNT);
+  }, []);
+
+  const goPrev = useCallback(() => {
+    setCurrentSlide((s) => (s - 1 + HERO_SLIDE_COUNT) % HERO_SLIDE_COUNT);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(
@@ -106,8 +116,30 @@ function HeroSlider() {
     return () => clearInterval(timer);
   }, []);
 
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStartX.current;
+      touchStartX.current = null;
+      if (start == null) return;
+      const end = e.changedTouches[0]?.clientX;
+      if (end == null) return;
+      const dx = end - start;
+      if (dx > HERO_SWIPE_THRESHOLD_PX) goPrev();
+      else if (dx < -HERO_SWIPE_THRESHOLD_PX) goNext();
+    },
+    [goNext, goPrev]
+  );
+
   return (
-    <section className="relative min-h-[70vh] w-full overflow-hidden">
+    <section
+      className="relative min-h-[70vh] w-full overflow-hidden touch-pan-y"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <Image
         src="/images/hero.png"
         alt="日本クラリネット協会"

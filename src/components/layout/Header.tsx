@@ -192,13 +192,13 @@ export function Header() {
                   <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     協会案内
                   </p>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="ml-2 flex flex-col gap-0.5 border-l-2 border-gold/25 pl-4">
                     {associationMenu.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
-                        className="rounded-lg px-3 py-2 font-medium text-foreground transition-colors hover:bg-muted"
+                        className="rounded-lg py-2 pr-2 font-medium text-foreground transition-colors hover:bg-muted"
                       >
                         {item.label}
                       </Link>
@@ -209,13 +209,13 @@ export function Header() {
                   <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     イベント
                   </p>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="ml-2 flex flex-col gap-0.5 border-l-2 border-gold/25 pl-4">
                     {eventsMenu.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
-                        className="rounded-lg px-3 py-2 font-medium text-foreground transition-colors hover:bg-muted"
+                        className="rounded-lg py-2 pr-2 font-medium text-foreground transition-colors hover:bg-muted"
                       >
                         {item.label}
                       </Link>
@@ -226,13 +226,13 @@ export function Header() {
                   <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     問い合わせ
                   </p>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="ml-2 flex flex-col gap-0.5 border-l-2 border-gold/25 pl-4">
                     {inquiryMenu.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
-                        className="rounded-lg px-3 py-2 font-medium text-foreground transition-colors hover:bg-muted"
+                        className="rounded-lg py-2 pr-2 font-medium text-foreground transition-colors hover:bg-muted"
                       >
                         {item.label}
                       </Link>
