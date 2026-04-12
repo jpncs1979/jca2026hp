@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { read, utils } from "xlsx";
 import { parseFeePaymentLabel } from "@/lib/excel-fee-payment";
+import { findBirthDateColumnIndex, parseImportDateCell } from "@/lib/parse-import-date";
 
 /**
  * Excel 会員データの列マッピング
@@ -17,12 +18,7 @@ function mapMembershipType(excelType: string): "regular" | "student" | "supporti
 }
 
 function parseDate(val: unknown): string | null {
-  if (!val) return null;
-  const s = String(val).trim();
-  if (!s) return null;
-  const d = new Date(s.replace(/\//g, "-"));
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return parseImportDateCell(val);
 }
 
 /** 1行目ヘッダから「会費支払い方法」列（会費＋支払を含む別名も可）。誤って別の「支払い方法」だけの列は使わない */
@@ -59,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     const buf = await file.arrayBuffer();
-    const wb = read(buf, { type: "array" });
+    const wb = read(buf, { type: "array", cellDates: true });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = utils.sheet_to_json<string[]>(ws, { header: 1, defval: "" }) as string[][];
 
@@ -79,7 +75,7 @@ export async function POST(request: Request) {
     const phoneIdx = header.findIndex((h) => h === "電話番号");
     const notesIdx = header.findIndex((h) => h === "備考");
     const officerTitleIdx = header.findIndex((h) => h === "役員");
-    const birthDateIdx = header.findIndex((h) => h === "生年月日");
+    const birthDateIdx = findBirthDateColumnIndex(header);
 
     if (nameIdx < 0 || emailIdx < 0) {
       return NextResponse.json({
@@ -88,7 +84,8 @@ export async function POST(request: Request) {
     }
     if (birthDateIdx < 0) {
       return NextResponse.json({
-        error: "Excel に「生年月日」列が必要です。会員の必須項目です。",
+        error:
+          "Excel に生年月日列が必要です（列名の例:「生年月日」「誕生日」「birth_date」）。",
       }, { status: 400 });
     }
 
@@ -107,7 +104,7 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const birthDateStr = parseDate(row[birthDateIdx]);
+      const birthDateStr = parseImportDateCell(row[birthDateIdx]);
       if (!birthDateStr) {
         skipped.push(`行${i + 1}: 生年月日が空または不正`);
         continue;
@@ -182,7 +179,18 @@ export async function POST(request: Request) {
             msg.includes("import_payment_kind") ||
             msg.includes("column")
           ) {
-            const fallbackUpdate = { name: profileBase.name, name_kana: profileBase.name_kana, email: profileBase.email, zip_code: profileBase.zip_code, address: profileBase.address, phone: profileBase.phone, membership_type: profileBase.membership_type, status: profileBase.status, updated_at: profileBase.updated_at };
+            const fallbackUpdate = {
+              name: profileBase.name,
+              name_kana: profileBase.name_kana,
+              email: profileBase.email,
+              birth_date: birthDateStr,
+              zip_code: profileBase.zip_code,
+              address: profileBase.address,
+              phone: profileBase.phone,
+              membership_type: profileBase.membership_type,
+              status: profileBase.status,
+              updated_at: profileBase.updated_at,
+            };
             const { error: upErr2 } = await admin.from("profiles").update(fallbackUpdate).eq("id", existing.id);
             if (upErr2) {
               skipped.push(`行${i + 1}: ${upErr2.message}`);

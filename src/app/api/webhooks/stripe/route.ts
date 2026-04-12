@@ -3,13 +3,14 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { getFromHeader } from "@/lib/email";
+import { getFromHeader, OFFICE_FROM_EMAIL } from "@/lib/email";
 import { joinMembershipFeeFiscalYears } from "@/lib/membership-fees";
 import { membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear } from "@/lib/membership-fiscal-year";
 import {
   syncStripeCustomerDefaultPaymentMethod,
   syncStripeCustomerFromSetupCheckoutSession,
 } from "@/lib/stripe-customer-sync";
+import { YOUNG_2026 } from "@/lib/young-2026";
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -19,6 +20,147 @@ function getStripe(): Stripe | null {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** コンクール申込（Stripe）決済完了時に申込者へ送る確認メール */
+async function sendCompetitionApplicationPaidEmail(
+  app: Record<string, unknown>,
+  opts: {
+    competitionSlug: string;
+    /** 同時入会でない / 会員登録まで完了 / 会員登録に失敗のいずれか */
+    simultaneousJoinState: "none" | "registered" | "failed";
+  }
+): Promise<void> {
+  const emailRaw = typeof app.email === "string" ? app.email.trim() : "";
+  if (!emailRaw) return;
+
+  const slug = opts.competitionSlug.trim() || YOUNG_2026.slug;
+  const compTitle = slug === YOUNG_2026.slug ? YOUNG_2026.name : `コンクール（${slug}）`;
+  const compNameHtml =
+    slug === YOUNG_2026.slug ? escapeHtml(YOUNG_2026.name) : `コンクール（${escapeHtml(slug)}）`;
+
+  const name = escapeHtml(String(app.name ?? ""));
+  const furigana = escapeHtml(String(app.furigana ?? ""));
+  const birth = escapeHtml(String(app.birth_date ?? ""));
+  const memberType = escapeHtml(String(app.member_type ?? ""));
+  const memberNum = app.member_number ? escapeHtml(String(app.member_number)) : "";
+  const category = escapeHtml(String(app.category ?? ""));
+  const pre = app.selected_piece_preliminary
+    ? escapeHtml(String(app.selected_piece_preliminary))
+    : "";
+  const fin = app.selected_piece_final ? escapeHtml(String(app.selected_piece_final)) : "";
+  const video = app.video_url ? escapeHtml(String(app.video_url)) : "";
+  const acc = app.accompanist_info ? escapeHtml(String(app.accompanist_info)) : "";
+
+  const lines: string[] = [
+    `<p>${name} 様</p>`,
+    `<p>この度は${compNameHtml}にお申し込みいただき、ありがとうございます。</p>`,
+    `<p>クレジットカードでのお支払いを確認し、<strong>お申し込みの登録が完了</strong>いたしました。</p>`,
+    opts.simultaneousJoinState === "registered"
+      ? `<p>併せて、<strong>協会への同時入会</strong>の手続きが完了し、会員データベースに登録されました。</p>`
+      : opts.simultaneousJoinState === "failed"
+        ? `<p>同時入会をお申し込みいただいております。会員データベースへの反映で不備が生じた可能性があります。事務局までご連絡ください。</p>`
+        : "",
+    `<hr style="margin:1.25em 0" />`,
+    `<p style="font-weight:bold">お申し込み内容</p>`,
+    `<ul style="margin:0;padding-left:1.25em">`,
+    `<li>お名前：${name}</li>`,
+    `<li>ふりがな：${furigana}</li>`,
+    `<li>生年月日：${birth}</li>`,
+    `<li>会員種別：${memberType}</li>`,
+    ...(memberNum ? [`<li>会員番号：${memberNum}</li>`] : []),
+    `<li>部門：${category}</li>`,
+    ...(pre ? [`<li>予選・課題曲（該当）：${pre}</li>`] : []),
+    ...(fin ? [`<li>本選・課題曲（該当）：${fin}</li>`] : []),
+    ...(video ? [`<li>予選動画URL：${video}</li>`] : []),
+    ...(acc ? [`<li>伴奏者・備考：${acc}</li>`] : []),
+    `</ul>`,
+    `<p>ご不明な点がございましたら、事務局までお問い合わせください。</p>`,
+    `<hr />`,
+    `<p>一般社団法人 日本クラリネット協会事務局</p>`,
+  ];
+
+  const emailUser = process.env.EMAIL_USER;
+  const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
+  if (!emailUser || !emailAppPassword) {
+    console.warn(
+      "[コンクール申込メール] EMAIL_USER / EMAIL_APP_PASSWORD 未設定のため送信しません（Vercel の環境変数を確認してください）"
+    );
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: emailUser,
+      pass: emailAppPassword.replace(/\s/g, ""),
+    },
+  });
+
+  const fromHeader = getFromHeader();
+  const applicantHtml = lines.filter(Boolean).join("\n");
+
+  try {
+    await transporter.sendMail({
+      from: fromHeader,
+      to: emailRaw,
+      replyTo: OFFICE_FROM_EMAIL,
+      subject: `【${compTitle}】お申し込み・お支払いが完了しました`,
+      html: applicantHtml,
+    });
+    console.log("[コンクール申込メール] 本人宛送信完了", emailRaw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[コンクール申込メール] 本人宛送信失敗:", msg, err);
+    throw err;
+  }
+
+  const officeNotifyEmail = (process.env.OFFICE_NOTIFY_EMAIL ?? emailUser).trim();
+  const appId = typeof app.id === "string" ? app.id : "";
+  const amountStr =
+    typeof app.amount === "number" && Number.isFinite(app.amount)
+      ? `${app.amount.toLocaleString()}円`
+      : "—";
+
+  if (officeNotifyEmail) {
+    try {
+      await transporter.sendMail({
+        from: fromHeader,
+        to: officeNotifyEmail,
+        replyTo: OFFICE_FROM_EMAIL,
+        subject: `【事務局】${compTitle} 申込・決済完了`,
+        html: `
+          <p>ウェブ経由でコンクールの申込と決済が完了しました。</p>
+          <ul style="margin:0;padding-left:1.25em">
+            <li>申込ID（applications.id）：${escapeHtml(appId)}</li>
+            <li>氏名：${name}（${furigana}）</li>
+            <li>メール：${escapeHtml(emailRaw)}</li>
+            <li>会員種別：${memberType}</li>
+            <li>部門：${category}</li>
+            <li>参加費（申込時）：${escapeHtml(amountStr)}</li>
+            <li>同時入会：${
+              opts.simultaneousJoinState === "registered"
+                ? "会員登録まで完了"
+                : opts.simultaneousJoinState === "failed"
+                  ? "会員登録に失敗の可能性あり"
+                  : "なし／非対象"
+            }</li>
+          </ul>
+          <p>管理画面のコンクール申込一覧でご確認ください。</p>
+          <hr />
+          <p>一般社団法人 日本クラリネット協会</p>
+        `,
+      });
+      console.log("[コンクール申込メール] 事務局宛送信完了", officeNotifyEmail);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[コンクール申込メール] 事務局宛送信失敗:", msg, err);
+    }
+  }
+}
 
 /** 入会決済完了時: プロフィール・会員契約・入金記録を作成し、入会完了メールを送信 */
 async function handleMembershipJoinCompleted(
@@ -457,6 +599,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
 
+    if (String(app.payment_status) === "paid") {
+      console.log("[Stripe Webhook] application already paid, idempotent skip", applicationId);
+      return NextResponse.json({ received: true });
+    }
+
     const { error: updateError } = await supabase
       .from("applications")
       .update({
@@ -470,10 +617,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Update failed" }, { status: 500 });
     }
 
+    const competitionSlugFromSession =
+      typeof session.metadata?.competition_slug === "string"
+        ? session.metadata.competition_slug.trim()
+        : YOUNG_2026.slug;
+
     if (isSimultaneousJoin) {
       const joinDate = new Date();
       const expiryDate = new Date(joinDate);
       expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+      const simultaneousSlug = competitionSlugFromSession || YOUNG_2026.slug;
 
       const { data: newProfile, error: profileError } = await supabase
         .from("profiles")
@@ -481,9 +635,10 @@ export async function POST(request: Request) {
           name: app.name,
           name_kana: app.furigana,
           email: app.email,
-          status: "pending",
+          status: "active",
           category: "general",
           membership_type: "regular",
+          simultaneous_join_competition_slug: simultaneousSlug,
         })
         .select("id")
         .single();
@@ -524,6 +679,30 @@ export async function POST(request: Request) {
         });
       }
     }
+
+    const { data: appAfterJoin } = await supabase
+      .from("applications")
+      .select("profile_id")
+      .eq("id", applicationId)
+      .single();
+
+    const simultaneousJoinState: "none" | "registered" | "failed" = !isSimultaneousJoin
+      ? "none"
+      : appAfterJoin?.profile_id
+        ? "registered"
+        : "failed";
+
+    try {
+      await sendCompetitionApplicationPaidEmail(app as Record<string, unknown>, {
+        competitionSlug: competitionSlugFromSession,
+        simultaneousJoinState,
+      });
+    } catch (emailErr) {
+      const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+      console.error("[コンクール申込メール] 送信失敗:", msg, emailErr);
+    }
+
+    return NextResponse.json({ received: true });
   }
 
   return NextResponse.json({ received: true });

@@ -79,7 +79,7 @@ export default async function AdminMemberEditPage({
           address: profile.address ?? "",
           phone: profile.phone ?? "",
           affiliation: profile.affiliation ?? "",
-          status: profile.status ?? "pending",
+          status: profile.status === "pending" ? "active" : profile.status ?? "active",
           membership_type: profile.membership_type ?? "regular",
           is_ica_member: profileAny.is_ica_member ?? false,
           is_css_user: profileAny.is_css_user ?? true,

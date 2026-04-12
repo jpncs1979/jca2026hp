@@ -10,6 +10,7 @@ import {
 } from "@/lib/membership-fee-status";
 import { formatMemberNumber } from "@/lib/member-number";
 import { unifiedPaymentMethodLabel, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
+import { YOUNG_2026 } from "@/lib/young-2026";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   regular: "正会員",
@@ -35,9 +36,10 @@ export default async function AdminMemberDetailPage({
   const selectFull = `
       id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
       affiliation, status, membership_type, is_ica_member, officer_title, birth_date, created_at,
-      is_css_user, stripe_customer_id, source, import_payment_kind,
+      is_css_user, stripe_customer_id, source, import_payment_kind, simultaneous_join_competition_slug,
       memberships(join_date, expiry_date, payment_method)
     `;
+  /** 新カラム未マイグレーション時のフォールバック（simultaneous_join_competition_slug は含めない） */
   const selectBase = `
       id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
       affiliation, status, membership_type, created_at,
@@ -59,6 +61,7 @@ export default async function AdminMemberDetailPage({
     error?.message?.includes("stripe_customer_id") ||
     error?.message?.includes("source") ||
     error?.message?.includes("import_payment_kind") ||
+    error?.message?.includes("simultaneous_join_competition_slug") ||
     error?.message?.includes("column")
   ) {
     const retry = await admin.from("profiles").select(selectBase).eq("id", id).single();
@@ -92,7 +95,16 @@ export default async function AdminMemberDetailPage({
     stripe_customer_id?: string | null;
     source?: string | null;
     import_payment_kind?: string | null;
+    simultaneous_join_competition_slug?: string | null;
   };
+
+  const sjSlug = profileExt.simultaneous_join_competition_slug?.trim() ?? "";
+  const simultaneousJoinLabel =
+    sjSlug === ""
+      ? ""
+      : sjSlug === YOUNG_2026.slug
+        ? YOUNG_2026.name
+        : sjSlug;
 
   const profileForPaymentLabel: ProfileForMemberCsv = {
     id: profile.id,
@@ -199,6 +211,12 @@ export default async function AdminMemberDetailPage({
                 </span>
               </dd>
             </div>
+            {simultaneousJoinLabel ? (
+              <div>
+                <dt className="text-muted-foreground">コンクール経由の同時入会</dt>
+                <dd className="font-medium text-navy">{simultaneousJoinLabel}</dd>
+              </div>
+            ) : null}
           </dl>
         </div>
 

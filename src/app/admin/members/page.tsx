@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Download,
   RefreshCw,
-  CheckCircle,
   Loader2,
   Upload,
   Mail,
@@ -65,7 +64,6 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
 
 const FILTER_LABELS: Record<string, string> = {
   all: "全会員",
-  pending: "承認待ち",
   student: "学生会員",
 };
 
@@ -115,7 +113,6 @@ function buildFetchUrl(
       params.set("fee_fy", unpaidFeeMode);
     }
   }
-  if (filter === "pending") params.set("status", "pending");
   if (filter === "student" && !type) params.set("type", "student");
   if (payKind && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKind)) {
     params.set("pay_kind", payKind);
@@ -133,7 +130,6 @@ type SortOrder = "asc" | "desc";
 
 export default function AdminMembersPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [profiles, setProfiles] = useState<ProfileWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -148,7 +144,6 @@ export default function AdminMembersPage() {
   const [unpaidFeeMode, setUnpaidFeeMode] = useState<string>("expiry");
   const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [extending, setExtending] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
   const [extendDate, setExtendDate] = useState(() => {
@@ -182,11 +177,6 @@ export default function AdminMembersPage() {
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
   const [csvExporting, setCsvExporting] = useState(false);
 
-  useEffect(() => {
-    const status = searchParams.get("status");
-    if (status === "pending") setFilter("pending");
-  }, [searchParams]);
-
   const fetchProfiles = async () => {
     setLoading(true);
     const url = buildFetchUrl(filter, icaOnly, typeFilter, unpaidOnly, unpaidFeeMode, paymentFilter);
@@ -217,13 +207,10 @@ export default function AdminMembersPage() {
     }
   }, [emailOpen]);
 
-  const pendingProfiles = profiles.filter((p) => p.status === "pending");
   const filterBased =
-    filter === "pending"
-      ? pendingProfiles
-      : filter === "student"
-        ? profiles.filter((p) => p.membership_type === "student" || p.category === "student")
-        : profiles;
+    filter === "student"
+      ? profiles.filter((p) => p.membership_type === "student" || p.category === "student")
+      : profiles;
 
   const filteredProfiles = useMemo(() => {
     let list = filterBased;
@@ -291,8 +278,7 @@ export default function AdminMembersPage() {
     return sortOrder === "asc" ? <ArrowUp className="ml-1 inline size-3.5" /> : <ArrowDown className="ml-1 inline size-3.5" />;
   };
 
-  const canSelectForExtend = (p: ProfileWithMembership) =>
-    p.status !== "pending"; // 承認待ち以外は一括延長・会員資格付与の対象
+  const canSelectForExtend = (_p: ProfileWithMembership) => true;
   const fiscalYearOptions = useMemo(() => recentFiscalYears(3), []);
 
   const toggleSelect = (id: string) => {
@@ -310,18 +296,6 @@ export default function AdminMembersPage() {
     } else {
       setSelectedIds(new Set(filteredProfiles.map((p) => p.id)));
     }
-  };
-
-  const handleApprove = async (profileId: string) => {
-    setApprovingId(profileId);
-    const res = await fetch("/api/admin/members/approve", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: profileId }),
-    });
-    setApprovingId(null);
-    if (res.ok) fetchProfiles();
   };
 
   const handleBulkExtend = async (expiryDate: string) => {
@@ -668,7 +642,7 @@ export default function AdminMembersPage() {
                   <ul className="mt-1 list-inside list-disc space-y-0.5">
                     <li>「名前」</li>
                     <li>「システム用メールアドレス」</li>
-                    <li>「生年月日」</li>
+                    <li>「生年月日」（または「誕生日」「birth_date」など同一意味の列名）</li>
                   </ul>
                 </div>
                 <div>
@@ -907,7 +881,6 @@ export default function AdminMembersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全会員</SelectItem>
-              <SelectItem value="pending">承認待ち</SelectItem>
               <SelectItem value="student">学生会員</SelectItem>
             </SelectContent>
           </Select>
@@ -990,20 +963,12 @@ export default function AdminMembersPage() {
         </div>
       </div>
 
-      {filter === "pending" && pendingProfiles.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-800">
-            {pendingProfiles.length}件の承認待ちがあります。承認後に「入会承認メール」が送信されます。
-          </p>
-        </div>
-      )}
-
       {unpaidOnly && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-800">
             {unpaidFeeMode === "expiry"
               ? `未納者（有効期限）: ${filteredProfiles.length}件（表示中・検索後／有効期限切れまたは未登録）`
-              : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}会費）: ${filteredProfiles.length}件（表示中・検索後／承認待ち除く）`}
+              : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}会費）: ${filteredProfiles.length}件（表示中・検索後）`}
           </p>
         </div>
       )}
@@ -1156,7 +1121,6 @@ export default function AdminMembersPage() {
                     <SortIcon col="expiry" />
                   </button>
                 </TableHead>
-                {filter === "pending" && <TableHead className="w-24">操作</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1225,25 +1189,6 @@ export default function AdminMembersPage() {
                     </span>
                   </TableCell>
                   <TableCell>{getLatestMembership(p)?.expiry_date ?? "-"}</TableCell>
-                  {filter === "pending" && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(p.id)}
-                        {...(approvingId === p.id && { disabled: true })}
-                        className="bg-gold text-gold-foreground hover:bg-gold-muted"
-                      >
-                        {approvingId === p.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="size-4" />
-                            承認
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))}
             </TableBody>

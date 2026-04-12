@@ -154,7 +154,6 @@ export async function GET(request: Request) {
         }
         list = (list as { id: string; status?: string; memberships?: { expiry_date?: string }[] | null }[]).filter(
           (p) => {
-            if (p.status === "pending") return false;
             const arr = p.memberships ?? [];
             const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
             const exp = latest?.expiry_date ?? null;

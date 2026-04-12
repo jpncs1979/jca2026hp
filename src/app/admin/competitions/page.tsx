@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApplicantTable } from "./ApplicantTable";
+import { ApplicantTable, type Applicant } from "./ApplicantTable";
 
 export default async function AdminCompetitionsPage() {
   let applicants: Awaited<ReturnType<typeof fetchApplicants>> = [];
@@ -53,13 +53,37 @@ async function fetchApplicants() {
     return [];
   }
 
-  const { data: applications, error } = await admin
+  let { data: applications, error } = await admin
     .from("applications")
     .select(
-      "id, name, furigana, category, selected_piece_preliminary, selected_piece_final, video_url, payment_status, created_at"
+      "id, name, furigana, category, selected_piece_preliminary, selected_piece_final, video_url, payment_status, payment_route, transfer_receipt_path, created_at"
     )
     .eq("competition_id", competition.id)
     .order("created_at", { ascending: false });
+
+  if (
+    error &&
+    (error.message?.includes("payment_route") ||
+      error.message?.includes("transfer_receipt_path") ||
+      error.message?.includes("column"))
+  ) {
+    const retry = await admin
+      .from("applications")
+      .select(
+        "id, name, furigana, category, selected_piece_preliminary, selected_piece_final, video_url, payment_status, created_at"
+      )
+      .eq("competition_id", competition.id)
+      .order("created_at", { ascending: false });
+    applications = (retry.data ?? []).map((row: unknown) => {
+      const r = row as Applicant;
+      return {
+        ...r,
+        payment_route: null,
+        transfer_receipt_path: null,
+      };
+    });
+    error = retry.error;
+  }
 
   if (error) {
     throw error;

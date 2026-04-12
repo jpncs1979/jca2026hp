@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +21,11 @@ import {
 } from "@/components/ui/form";
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { supabase } from "@/lib/supabase";
+import {
+  isRestorableYoung2026ApplyPayload,
+  loadYoung2026ApplyConfirmPayload,
+  saveYoung2026ApplyConfirmPayload,
+} from "@/lib/young-2026-apply-confirm";
 
 const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
 
@@ -70,6 +75,34 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+function draftToFormValues(d: {
+  name: string;
+  furigana: string;
+  email: string;
+  birth_date: string;
+  member_type: FormValues["member_type"];
+  member_number?: string;
+  category: FormValues["category"];
+  selected_piece_preliminary?: string | null;
+  selected_piece_final?: string | null;
+  video_url?: string | null;
+  accompanist_info?: string | null;
+}): FormValues {
+  return {
+    name: d.name,
+    furigana: d.furigana,
+    email: d.email,
+    birth_date: d.birth_date,
+    member_type: d.member_type,
+    member_number: d.member_number?.trim() ?? "",
+    category: d.category,
+    selected_piece_preliminary: d.selected_piece_preliminary ?? "",
+    selected_piece_final: d.selected_piece_final ?? "",
+    video_url: d.video_url ?? "",
+    accompanist_info: d.accompanist_info ?? "",
+  };
+}
 
 /** yyyy/mm/dd 形式の生年月日入力。年4桁で月へ、月2桁で日に自動フォーカス */
 function BirthDateInput({
@@ -180,6 +213,7 @@ function BirthDateInput({
 
 export default function ApplyPage() {
   const router = useRouter();
+  const draftHydratedRef = useRef(false);
   const [competitionId, setCompetitionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -233,59 +267,23 @@ export default function ApplyPage() {
     })();
   }, []);
 
+  /** 確認ページから「修正する」で戻ったとき、sessionStorage の下書きをフォームに流し込む（マウント後1回のみ） */
+  useEffect(() => {
+    if (loading || !competitionId || draftHydratedRef.current) return;
+    const raw = loadYoung2026ApplyConfirmPayload();
+    if (!raw || raw.competitionId !== competitionId || !isRestorableYoung2026ApplyPayload(raw)) {
+      return;
+    }
+    form.reset(draftToFormValues(raw));
+    draftHydratedRef.current = true;
+  }, [loading, competitionId, form]);
+
   const feeRaw =
     category && memberType
       ? memberType === "同時入会"
         ? (YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.非会員 ?? 10000) + YOUNG_2026.firstYearMembershipFee
         : YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.[memberType as "会員" | "非会員"]
       : undefined;
-
-  const onSubmit = async (values: FormValues) => {
-    if (!competitionId || !supabase) {
-      setError("申込の準備ができていません。環境変数の設定を確認するか、しばらくしてから再度お試しください。");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-
-    const birth = new Date(values.birth_date);
-    const age = calculateAge(birth);
-
-    const res = await fetch("/api/events/young-2026/apply", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        competition_id: competitionId,
-        name: values.name,
-        furigana: values.furigana,
-        email: values.email,
-        birth_date: values.birth_date,
-        age_at_reference: age,
-        member_type: values.member_type,
-        member_number: values.member_type === "会員" ? values.member_number || null : null,
-        category: values.category,
-        selected_piece_preliminary: values.selected_piece_preliminary || null,
-        selected_piece_final:
-          values.category === "ジュニアB" || values.category === "ヤング"
-            ? values.selected_piece_final || null
-            : null,
-        video_url: YOUNG_2026.requiresVideo.includes(values.category as "ジュニアA" | "ジュニアB")
-          ? values.video_url || null
-          : null,
-        accompanist_info: values.accompanist_info || null,
-      }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "申込の送信に失敗しました。しばらくしてから再度お試しください。");
-      return;
-    }
-
-    router.push("/events/young-2026/apply/complete");
-  };
 
   if (loading) {
     return (
@@ -340,13 +338,12 @@ export default function ApplyPage() {
 
       <div className="container mx-auto max-w-2xl px-4 py-12">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {error && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
-                {error}
-              </div>
-            )}
-
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+            }}
+            className="space-y-8"
+          >
             <section className="space-y-4">
               <h2 className="text-lg font-medium text-navy">応募者情報</h2>
               <FormField
@@ -405,7 +402,7 @@ export default function ApplyPage() {
                       <Input type="email" {...field} value={field.value ?? ""} placeholder="example@email.com" />
                     </FormControl>
                     <FormDescription>
-                      申込内容の確認メールをお送りします
+                      内容確認のうえクレジットカードまたは銀行振込をお選びください。完了後に確認メールをお送りします（銀行振込は振込証明画像の送付後にメールが届きます）
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -446,6 +443,9 @@ export default function ApplyPage() {
                       <FormControl>
                         <Input {...field} value={field.value ?? ""} placeholder="例: 0001" />
                       </FormControl>
+                      <FormDescription>
+                        会員番号・メールアドレス・生年月日は、協会の会員データと一致している必要があります。いずれかが異なる場合は「確認する」のときにエラーが表示されます。
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -655,57 +655,72 @@ export default function ApplyPage() {
                 )}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                支払方法：銀行振込またはクレジットカード（Stripe）をご選択ください
+                まず<strong className="text-foreground">「確認する」</strong>で申し込み内容の確認ページへ進み、内容にお間違いがなければ
+                <strong className="text-foreground">クレジットカード</strong>または
+                <strong className="text-foreground">銀行振込・郵便振替</strong>
+                をお選びください。銀行振込の場合は振込後に参加費振込の証明画像の送付が必要です。
               </p>
             </section>
 
             <div className="flex flex-wrap gap-4">
               <Button
-                type="submit"
-                disabled={submitting}
-                className="bg-gold text-gold-foreground hover:bg-gold-muted"
-              >
-                {submitting ? "送信中..." : "申し込む（銀行振込）"}
-              </Button>
-              <Button
                 type="button"
-                variant="outline"
                 disabled={submitting || feeRaw == null}
-                className="border-gold text-gold hover:bg-gold/10"
+                className="bg-gold text-gold-foreground hover:bg-gold-muted"
                 onClick={async () => {
                   const valid = await form.trigger();
                   if (!valid || !competitionId) return;
                   const values = form.getValues();
                   setSubmitting(true);
                   setError(null);
-                  const res = await fetch("/api/events/young-2026/checkout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      competition_id: competitionId,
+                  try {
+                    if (values.member_type === "会員") {
+                      const vRes = await fetch("/api/events/young-2026/verify-member", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          member_number: values.member_number,
+                          email: values.email,
+                          birth_date: values.birth_date,
+                        }),
+                      });
+                      const vJson = await vRes.json().catch(() => ({}));
+                      if (!vRes.ok) {
+                        setError(
+                          (vJson as { error?: string }).error ??
+                            "会員情報の確認に失敗しました。"
+                        );
+                        return;
+                      }
+                    }
+                    saveYoung2026ApplyConfirmPayload({
+                      competitionId,
                       name: values.name,
                       furigana: values.furigana,
                       email: values.email,
                       birth_date: values.birth_date,
                       member_type: values.member_type,
-                      member_number: values.member_number,
+                      member_number: values.member_number?.trim() || undefined,
                       category: values.category,
-                      selected_piece_preliminary: values.selected_piece_preliminary,
-                      selected_piece_final: values.selected_piece_final,
-                      video_url: values.video_url,
-                      accompanist_info: values.accompanist_info,
-                    }),
-                  });
-                  const data = await res.json().catch(() => ({}));
-                  setSubmitting(false);
-                  if (!res.ok) {
-                    setError(data.error ?? "決済の準備に失敗しました。");
-                    return;
+                      selected_piece_preliminary: values.selected_piece_preliminary || null,
+                      selected_piece_final:
+                        values.category === "ジュニアB" || values.category === "ヤング"
+                          ? values.selected_piece_final || null
+                          : null,
+                      video_url: YOUNG_2026.requiresVideo.includes(
+                        values.category as "ジュニアA" | "ジュニアB"
+                      )
+                        ? values.video_url || null
+                        : null,
+                      accompanist_info: values.accompanist_info || null,
+                    });
+                    router.push("/events/young-2026/apply/confirm");
+                  } finally {
+                    setSubmitting(false);
                   }
-                  if (data.url) window.location.href = data.url;
                 }}
               >
-                {submitting ? "処理中..." : "申し込む（クレジットカード）"}
+                {submitting ? "処理中..." : "確認する"}
               </Button>
               <Link href="/events/young-2026">
                 <Button type="button" variant="outline">
@@ -713,6 +728,14 @@ export default function ApplyPage() {
                 </Button>
               </Link>
             </div>
+            {error && (
+              <div
+                className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
           </form>
         </Form>
       </div>

@@ -1,6 +1,6 @@
-# Stripe Webhook 本番設定の手順（入会完了メールを届けるため）
+# Stripe Webhook 本番設定の手順（入会・コンクール申込の完了メールを届けるため）
 
-入会申し込みでクレジットカード決済が完了したときに、本人と事務局にメールを送るには、**Stripe が「決済が終わったよ」とあなたのサイトに通知する仕組み（Webhook）** を本番用に設定する必要があります。
+入会申し込みやヤングコンクール等の参加申込で、クレジットカード決済が完了したときに本人・事務局へメールを送るには、**Stripe が「決済が終わったよ」とあなたのサイトに通知する仕組み（Webhook）** を本番用に設定する必要があります。
 
 ここでは「Vercel にデプロイしたサイト」を前提に、**Stripe の Webhook URL を本番の URL に設定する手順**を説明します。
 
@@ -37,6 +37,7 @@ Vercel にデプロイしたサイトが、Stripe とメール送信で使う「
    | `EMAIL_USER` | 送信に使う Gmail アドレス | 例：`jpncs1979@gmail.com` |
    | `EMAIL_APP_PASSWORD` | Gmail の「アプリ パスワード」 | 2段階認証を有効にしたうえで発行 |
    | `EMAIL_FROM` | 送信元の表示（任意） | 例：`日本クラリネット協会 <jpncs1979@gmail.com>` |
+   | `OFFICE_NOTIFY_EMAIL` | 事務局への通知メール宛先（任意） | 例：`jca@jp-clarinet.org`。**省略時は `EMAIL_USER` と同じ**（コンクール申込・入会完了の事務局向けメール） |
    | `NEXT_PUBLIC_SITE_URL` | 本番の URL | 例：`https://jca2026hp.vercel.app` |
    | `NEXT_PUBLIC_SUPABASE_URL` | （既存の Supabase の URL） | そのまま |
    | `SUPABASE_SERVICE_ROLE_KEY` | （既存の Supabase のキー） | そのまま |

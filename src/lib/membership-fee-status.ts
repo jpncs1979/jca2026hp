@@ -110,7 +110,7 @@ export function isPaidForMembershipFiscalYear(
   return false;
 }
 
-/** 指定年度の会費が未納か（pending は判定対象外で true を返す＝一覧に出さない想定） */
+/** 指定年度の会費が未納か */
 export function isUnpaidForMembershipFiscalYear(
   payments: PaymentRowForFee[],
   latestExpiryDate: string | null | undefined,

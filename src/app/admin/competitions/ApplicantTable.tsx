@@ -21,6 +21,8 @@ export interface Applicant {
   selected_piece_final: string | null;
   video_url: string | null;
   payment_status: string;
+  payment_route?: string | null;
+  transfer_receipt_path?: string | null;
   created_at: string;
 }
 
@@ -45,6 +47,8 @@ export function ApplicantTable({ applicants }: { applicants: Applicant[] }) {
             <TableHead>本選課題曲</TableHead>
             <TableHead>動画URL</TableHead>
             <TableHead>決済</TableHead>
+            <TableHead>支払い経路</TableHead>
+            <TableHead>振込証明</TableHead>
             <TableHead>申込日</TableHead>
           </TableRow>
         </TableHeader>
@@ -99,6 +103,31 @@ export function ApplicantTable({ applicants }: { applicants: Applicant[] }) {
                 >
                   {a.payment_status === "paid" ? "入金済" : "未入金"}
                 </span>
+              </TableCell>
+              <TableCell className="text-sm">
+                {a.payment_route === "bank_transfer"
+                  ? "振込"
+                  : a.payment_route === "stripe_card"
+                    ? "カード"
+                    : "—"}
+              </TableCell>
+              <TableCell className="text-sm">
+                {a.payment_route === "bank_transfer" ? (
+                  a.transfer_receipt_path ? (
+                    <a
+                      href={`/api/admin/applications/${a.id}/receipt`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gold hover:underline"
+                    >
+                      表示
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">未送信</span>
+                  )
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {new Date(a.created_at).toLocaleDateString("ja-JP")}

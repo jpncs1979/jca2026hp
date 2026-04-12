@@ -540,7 +540,9 @@ function MypageContent(): any {
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
               )}
               {profile && profile.member_number == null && (
-                <p className="text-xs text-white/60">会員番号は事務局承認後に付与されます。</p>
+                <p className="text-xs text-white/60">
+                  会員番号がまだ表示されない場合は、表示を更新するか事務局へお問い合わせください。
+                </p>
               )}
               {profile && profile.is_css_user !== true && (
                 <div className="mt-3 border-t border-white/15 pt-3">
@@ -591,7 +593,7 @@ function MypageContent(): any {
             </CardContent>
           </Card>
 
-          {profile && profile.status !== "pending" && (
+          {profile && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">

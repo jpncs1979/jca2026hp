@@ -17,7 +17,6 @@ import { User, Mail, CreditCard } from "lucide-react";
 import { DeleteMemberButton } from "../delete-member-button";
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "承認待ち" },
   { value: "active", label: "有効" },
   { value: "expired", label: "期限切れ" },
 ];

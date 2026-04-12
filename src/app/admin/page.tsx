@@ -5,21 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Users, Trophy, ArrowRight } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  let pendingCount = 0;
   let totalMembers = 0;
   let young2026Count = 0;
 
   try {
     const admin = createAdminClient();
-    const [pendingRes, membersRes, appsRes] = await Promise.all([
-      admin.from("profiles").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      admin.from("profiles").select("id", { count: "exact", head: true }),
-      admin
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .eq("competition_id", (await admin.from("competitions").select("id").eq("slug", "young-2026").single()).data?.id ?? ""),
-    ]);
-    pendingCount = pendingRes.count ?? 0;
+    const membersRes = await admin.from("profiles").select("id", { count: "exact", head: true });
     totalMembers = membersRes.count ?? 0;
     const compId = (await admin.from("competitions").select("id").eq("slug", "young-2026").single()).data?.id;
     if (compId) {
@@ -34,21 +25,7 @@ export default async function AdminDashboardPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-navy">事務局ダッシュボード</h1>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link href="/admin/members?status=pending">
-          <Card className="transition-colors hover:bg-muted/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                承認待ち会員
-              </CardTitle>
-              <Users className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-gold">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground">承認が必要です</p>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid gap-4 md:grid-cols-2">
         <Link href="/admin/members">
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">

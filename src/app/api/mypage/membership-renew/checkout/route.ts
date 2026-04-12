@@ -66,13 +66,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "会員情報が見つかりません。" }, { status: 404 });
     }
 
-    if (profile.status === "pending") {
-      return NextResponse.json(
-        { error: "承認待ちのため、こちらからはお支払いできません。" },
-        { status: 400 }
-      );
-    }
-
     if (profile.is_css_user === true) {
       return NextResponse.json(
         {

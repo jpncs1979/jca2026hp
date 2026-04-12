@@ -27,6 +27,8 @@ export interface Profile {
   is_css_user?: boolean | null;
   /** Stripe Customer ID（年会費の自動引き落とし・Checkout 再利用） */
   stripe_customer_id?: string | null;
+  /** コンクール申込（同時入会）経由で登録された場合の大会スラッグ（例: young-2026） */
+  simultaneous_join_competition_slug?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +62,10 @@ export interface ApplicationRow {
   video_url: string | null;
   accompanist_info: string | null;
   payment_status: string;
+  /** stripe_card | bank_transfer（マイグレーション 018） */
+  payment_route?: string | null;
+  /** 銀行振込時の領収書画像（Storage パス） */
+  transfer_receipt_path?: string | null;
   amount: number | null;
   payment_date: string | null;
   created_at: string;

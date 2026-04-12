@@ -4,19 +4,12 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { parseCsvRow, splitCsvLines } from "@/lib/csv-parse";
 import { parseMemberNumberCell } from "@/lib/member-number";
 import { parseFeePaymentLabel, type FeePaymentDb } from "@/lib/excel-fee-payment";
+import { parseImportDateCell } from "@/lib/parse-import-date";
 
 const MAX_ROWS = 2000;
 
 function nonEmpty(v: string | undefined): v is string {
   return typeof v === "string" && v.trim() !== "";
-}
-
-function parseIsoDate(s: string): string | null {
-  const t = s.trim().replace(/\//g, "-");
-  if (!t) return null;
-  const d = new Date(t);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
 }
 
 function membershipTypeFromLabel(label: string): string | null {
@@ -32,7 +25,8 @@ function statusFromLabel(label: string): string | null {
   const t = label.trim();
   if (t === "有効" || t === "active") return "active";
   if (t === "期限切れ" || t === "expired") return "expired";
-  if (t === "承認待ち" || t === "pending") return "pending";
+  // 旧「承認待ち」表記は運用上すべて有効会員として取り込む
+  if (t === "承認待ち" || t === "pending") return "active";
   return null;
 }
 
@@ -165,7 +159,7 @@ export async function POST(request: Request) {
       if (nonEmpty(get("性別"))) profilePatch.gender = get("性別")!.trim();
 
       if (nonEmpty(get("生年月日"))) {
-        const bd = parseIsoDate(get("生年月日")!);
+        const bd = parseImportDateCell(get("生年月日")!);
         if (bd) profilePatch.birth_date = bd;
       }
 
@@ -202,7 +196,7 @@ export async function POST(request: Request) {
       }
 
       const expiryRaw = get("有効期限");
-      const expiryStr = nonEmpty(expiryRaw) ? parseIsoDate(expiryRaw!) : null;
+      const expiryStr = nonEmpty(expiryRaw) ? parseImportDateCell(expiryRaw!) : null;
 
       const profileKeys = Object.keys(profilePatch);
       const hasMembershipChange = Boolean(expiryStr || payParsed);

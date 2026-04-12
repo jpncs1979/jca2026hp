@@ -98,11 +98,6 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
               </p>
             </div>
           )}
-          {profile?.status === "pending" && (
-            <p className="rounded bg-amber-500/20 px-3 py-1 text-sm text-amber-200">
-              承認待ちです。事務局の承認後にご利用いただけます。
-            </p>
-          )}
         </CardContent>
       </Card>
 
