@@ -109,7 +109,7 @@ export default function EventsPage() {
                 <CardHeader>
                   <CardTitle className="text-xl">第３９回日本クラリネットフェスティバル in 広島</CardTitle>
                   <CardDescription>
-                    2027年2月26日・27日（予定）。詳細は後日公開いたします。
+                    2027年2月28日（日）（予定）。詳細は後日公開いたします。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

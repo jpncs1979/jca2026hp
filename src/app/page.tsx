@@ -20,6 +20,7 @@ import {
   BookOpen,
   Globe,
 } from "lucide-react";
+import { YOUNG_2026 } from "@/lib/young-2026";
 
 // スクロール表示用アニメーション
 function AnimatedSection({
@@ -50,7 +51,7 @@ function AnimatedSection({
 
 const HERO_SLIDES = [
   {
-    title: "第15回 ヤング・クラリネッティストコンクール（2026年夏）",
+    title: `第15回 ヤング・クラリネッティストコンクール（申込開始：${YOUNG_2026.applicationStartDisplay}）`,
     copy: "次代を担う、若き才能たちへ。",
     buttons: [
       { label: "詳細", href: "/events/young-2026" },
@@ -75,13 +76,13 @@ const HERO_SLIDES = [
   },
   {
     title: "第３９回日本クラリネットフェスティバル in 広島",
-    copy: "2027年2月26日・27日（予定）。クラリネットの祭典が広島で。",
+    copy: "2027年2月28日（日）（予定）。クラリネットの祭典が広島で。",
     buttons: [{ label: "最新情報", href: "/events/festival-2027" }],
     bg: "from-navy/92",
   },
   {
     title: "クラリネット・アンサンブルコンクール",
-    copy: "2027年 第19回。アンサンブルの調和と表現力を競います。",
+    copy: "2027年2月27日（土）本選。第19回。アンサンブルの調和と表現力を競います。",
     buttons: [
       { label: "参加要項", href: "/events/ensemble" },
       { label: "過去の受賞者", href: "/archive?competition=ensemble" },
@@ -371,7 +372,7 @@ export default function Home() {
                 </div>
                 <CardTitle className="text-lg font-medium">ヤングコンクール</CardTitle>
                 <CardDescription className="font-normal">
-                  2026年夏開催。若き才能の発掘と育成
+                  申込は{YOUNG_2026.applicationStartDisplay}開始。若き才能の発掘と育成
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -132,7 +132,7 @@ export default function PatronageRequestPage() {
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold text-navy md:text-4xl">後援依頼の申し込み</h1>
           <p className="mt-2 text-muted-foreground">
-            会員後援演奏会の後援をご希望の方は、下記フォームからお申し込みください。
+            後援演奏会の後援をご希望の方は、下記フォームからお申し込みください。
           </p>
           <p className="mt-1 text-sm text-muted-foreground">（{REQUIRED_MARK}は必須項目）</p>
         </div>

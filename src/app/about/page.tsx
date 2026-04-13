@@ -7,6 +7,7 @@ import {
 import { officers } from "@/data/officers";
 import { Target, Users } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export const metadata = {
   title: "協会案内 | 日本クラリネット協会",
@@ -38,6 +39,12 @@ export default function AboutPage() {
             <a href="#organization" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
               組織概要
             </a>
+            <Link
+              href="/contact"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy"
+            >
+              問い合わせ
+            </Link>
           </nav>
 
           <div className="space-y-16">

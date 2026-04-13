@@ -17,10 +17,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const concert = supportedConcerts.find((c) => c.slug === slug);
   if (!concert) {
-    return { title: "会員後援演奏会 | 日本クラリネット協会" };
+    return { title: "後援演奏会 | 日本クラリネット協会" };
   }
   return {
-    title: `${concert.dateLabel} ${concert.venue} | 会員後援演奏会`,
+    title: `${concert.dateLabel} ${concert.venue} | 後援演奏会`,
     description: `${concert.dateLabel}、${concert.venue}。協会後援の会員主催演奏会のご案内です。`,
   };
 }
@@ -40,7 +40,7 @@ export default async function SupportedConcertDetailPage({
         <div className="container mx-auto px-4">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-navy md:text-3xl">
             <Music2 className="size-7 shrink-0 text-gold md:size-8" />
-            会員後援演奏会
+            後援演奏会
           </h1>
           <p className="mt-2 text-sm text-muted-foreground md:text-base">
             {concert.dateLabel}　{concert.venue}
@@ -55,7 +55,7 @@ export default async function SupportedConcertDetailPage({
           <Link href="/members/supported-concerts">
             <Button variant="outline">
               <ArrowLeft className="mr-2 size-4" />
-              一覧へ戻る
+              お知らせへ戻る
             </Button>
           </Link>
         </div>

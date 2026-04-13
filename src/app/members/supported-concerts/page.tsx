@@ -1,13 +1,10 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Music2, ArrowLeft } from "lucide-react";
-import { supportedConcerts, supportedConcertDetailHref } from "@/data/supported-concerts";
+import { Music2 } from "lucide-react";
+import { supportedConcerts } from "@/data/supported-concerts";
 import { SupportedConcertsMarquee } from "@/components/supported-concerts/SupportedConcertsMarquee";
 import { SupportedConcertsCalendar } from "@/components/supported-concerts/SupportedConcertsCalendar";
-import { SupportedConcertPanel } from "@/components/supported-concerts/SupportedConcertPanel";
 
 export const metadata = {
-  title: "会員後援演奏会のお知らせ | 日本クラリネット協会",
+  title: "後援演奏会のお知らせ | 日本クラリネット協会",
   description:
     "協会会員の皆様が主催する演奏会のうち、協会が後援する演奏会のお知らせです。",
 };
@@ -19,7 +16,7 @@ export default function SupportedConcertsPage() {
         <div className="container mx-auto px-4">
           <h1 className="flex items-center gap-2 text-3xl font-bold text-navy md:text-4xl">
             <Music2 className="size-8 text-gold" />
-            会員後援演奏会のお知らせ
+            後援演奏会のお知らせ
           </h1>
           <p className="mt-2 text-muted-foreground">
             協会会員の皆様が主催する演奏会のうち、協会が後援する演奏会のお知らせです。
@@ -38,42 +35,13 @@ export default function SupportedConcertsPage() {
                 <SupportedConcertsCalendar concerts={supportedConcerts} />
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                チラシまたはカレンダーの公演日をクリックすると、各公演の詳細ページへ移動します。
+                チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。
               </p>
             </div>
           </section>
-
-          <section>
-            <h2 className="mb-6 text-xl font-semibold text-navy">公演一覧</h2>
-            <div className="space-y-8">
-              {supportedConcerts.map((concert) => (
-                <Link
-                  key={concert.slug}
-                  href={supportedConcertDetailHref(concert.slug)}
-                  className="block rounded-xl outline-none ring-offset-2 transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-gold"
-                >
-                  <SupportedConcertPanel concert={concert} />
-                </Link>
-              ))}
-            </div>
-          </section>
         </div>
 
-        <div className="mx-auto mt-12 flex max-w-4xl flex-wrap gap-4">
-          <Link href="/membership#members">
-            <Button variant="outline">
-              <ArrowLeft className="mr-2 size-4" />
-              入会案内に戻る
-            </Button>
-          </Link>
-          <Link href="/news">
-            <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-              ニュースを見る
-            </Button>
-          </Link>
-        </div>
-
-        <p className="mx-auto mt-8 max-w-4xl text-center text-sm text-muted-foreground">
+        <p className="mx-auto mt-12 max-w-4xl text-center text-sm text-muted-foreground">
           後援演奏会の掲載をご希望の会員の皆様は、事務局までお問い合わせください。
         </p>
       </div>

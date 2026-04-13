@@ -53,12 +53,8 @@ export function Header() {
   const eventsMenu = [
     { href: "/events#concours", label: "コンクール" },
     { href: "/events#events", label: "フェスティバル" },
-    { href: "/members/supported-concerts", label: "会員後援演奏会" },
-  ] as const;
-
-  const inquiryMenu = [
-    { href: "/contact", label: "問い合わせ" },
     { href: "/consultation", label: "相談室" },
+    { href: "/members/supported-concerts", label: "後援演奏会" },
   ] as const;
 
   return (
@@ -138,34 +134,6 @@ export function Header() {
             </ul>
           </div>
 
-          <div className="group relative">
-            <button
-              type="button"
-              className="flex items-center gap-0.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-navy"
-              aria-expanded="false"
-              aria-haspopup="menu"
-            >
-              問い合わせ
-              <ChevronDown className="size-4 opacity-70" aria-hidden />
-            </button>
-            <ul
-              role="menu"
-              className="invisible absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-border bg-white py-1 shadow-md opacity-0 transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
-            >
-              {inquiryMenu.map((item) => (
-                <li key={item.href} role="none">
-                  <Link
-                    role="menuitem"
-                    href={item.href}
-                    className="block px-3 py-2 text-sm text-foreground hover:bg-muted hover:text-navy"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <Link
             href={mypageHref}
             className="rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-navy"
@@ -211,23 +179,6 @@ export function Header() {
                   </p>
                   <div className="ml-2 flex flex-col gap-0.5 border-l-2 border-gold/25 pl-4">
                     {eventsMenu.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileOpen(false)}
-                        className="rounded-lg py-2 pr-2 font-medium text-foreground transition-colors hover:bg-muted"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    問い合わせ
-                  </p>
-                  <div className="ml-2 flex flex-col gap-0.5 border-l-2 border-gold/25 pl-4">
-                    {inquiryMenu.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}

@@ -146,7 +146,7 @@ export default function EnsemblePage() {
             <h2 className="mb-4 text-xl font-medium text-navy">受賞者演奏会・お問い合わせ</h2>
             <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
               <p>
-                各部門最高位入賞団体に、本選翌日2月27日（日）開催「第39回日本クラリネットフェスティバル in 広島」での受賞者演奏会出演をお願いする場合があります（出演任意）。
+                各部門最高位入賞団体に、本選翌日2月28日（日）開催「第39回日本クラリネットフェスティバル in 広島」での受賞者演奏会出演をお願いする場合があります（出演任意）。
               </p>
               <p>※受賞者演奏会出演に係る費用（宿泊費等）は自己負担です。</p>
               <p>

@@ -5,7 +5,7 @@ import { Calendar, Music } from "lucide-react";
 
 export const metadata = {
   title: "第３９回日本クラリネットフェスティバル in 広島 | 日本クラリネット協会",
-  description: "2027年2月26日・27日、広島で開催予定の第39回日本クラリネットフェスティバル（詳細は後日公開）。",
+  description: "2027年2月28日（日）、広島で開催予定の第39回日本クラリネットフェスティバル（詳細は後日公開）。",
 };
 
 export default function Festival2027Page() {
@@ -19,7 +19,7 @@ export default function Festival2027Page() {
           </h1>
           <p className="mt-2 flex items-center gap-2 text-muted-foreground">
             <Calendar className="size-5 text-gold" />
-            2027年2月26日・27日（予定）
+            2027年2月28日（日）（予定）
           </p>
         </div>
       </div>

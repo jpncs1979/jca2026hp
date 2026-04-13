@@ -212,20 +212,7 @@ export default function Young2026DetailPage() {
           <section>
             <h2 className="mb-4 text-xl font-medium text-navy">申し込み受付期間</h2>
             <p className="text-foreground">{YOUNG_2026.applicationPeriod}</p>
-            <div className="mt-4 flex flex-wrap gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">申し込み先</p>
-                <p className="font-medium">{YOUNG_2026.organiser}ホームページ</p>
-                <a
-                  href={YOUNG_2026.applicationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gold hover:underline"
-                >
-                  {YOUNG_2026.applicationUrl}
-                </a>
-              </div>
-            </div>
+            
           </section>
 
           {/* 審査員 */}

@@ -36,6 +36,8 @@ export const YOUNG_2026 = {
   },
 
   applicationPeriod: "2026年7月5日（日）～ 7月19日（日）締切",
+  /** トップヒーロー等の「申込開始」表示用（applicationPeriod の開始日と一致させる） */
+  applicationStartDisplay: "2026年7月5日（日）",
   applicationUrl: "https://jp-clarinet.org/",
 
   referenceDate: "2026-04-01",

@@ -1,115 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const footerNavItems = [
-  { href: "/#news", label: "お知らせ（トップ）" },
-  { href: "/membership", label: "入会案内" },
-  { href: "/about", label: "協会案内" },
-  { href: "/events#concours", label: "コンクール" },
-  { href: "/events#events", label: "フェスティバル" },
-  { href: "/members/supported-concerts", label: "会員後援演奏会" },
-  { href: "/contact", label: "問い合わせ" },
-  { href: "/consultation", label: "相談室" },
-] as const;
-
-const footerLegalItems = [
-  { href: "/privacy", label: "プライバシーポリシー" },
-  { href: "/terms", label: "利用規約" },
-] as const;
-
 export function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="border-t border-border bg-navy text-navy-foreground">
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-          {/* Brand & description */}
-          <div className="max-w-sm">
-            <Link href="/" className="block w-fit">
-              <Image
-                src="/images/logowhite.png"
-                alt="JCA 一般社団法人 日本クラリネット協会"
-                width={160}
-                height={56}
-                className="h-10 w-auto md:h-12"
-              />
-            </Link>
-            <p className="mt-3 text-sm text-white/80">
-              クラリネットの普及・発展を目的に、
-              中高生から大人まで、愛好家からプロ奏者まで、幅広い層の皆様にクラリネットの魅力をお届けしています。
+    <footer className="border-t border-border bg-muted/30">
+      <div className="container mx-auto px-4 py-10 md:py-12">
+        <div className="flex flex-col items-center gap-6 text-center md:flex-row md:items-start md:justify-between md:text-left">
+          <Link
+            href="/"
+            className="flex shrink-0 flex-col items-center gap-2 transition-opacity hover:opacity-80 md:items-start"
+            aria-label="日本クラリネット協会 トップページ"
+          >
+            <Image
+              src="/images/logo.png"
+              alt="JCA 一般社団法人 日本クラリネット協会"
+              width={160}
+              height={56}
+              className="h-12 w-auto"
+            />
+            <p className="max-w-xs text-sm text-muted-foreground">
+              クラリネットの普及と発展を目指し、演奏・教育・研究の支援を行っています。
             </p>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex flex-col gap-6 sm:flex-row sm:gap-12">
-            <nav>
-              <h3 className="mb-3 text-sm font-semibold text-gold">
-                サイトナビゲーション
-              </h3>
-              <ul className="flex flex-col gap-2">
-                {footerNavItems.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="text-sm text-white/90 transition-colors hover:text-white"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <nav>
-              <h3 className="mb-3 text-sm font-semibold text-gold">
-                お問い合わせ
-              </h3>
-              <ul className="flex flex-col gap-2">
-                <li>
-                  <Link
-                    href="/contact"
-                    className="text-sm text-white/90 transition-colors hover:text-white"
-                  >
-                    お問い合わせ
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/mypage"
-                    className="text-sm text-white/90 transition-colors hover:text-white"
-                  >
-                    会員マイページ
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/news"
-                    className="text-sm text-white/90 transition-colors hover:text-white"
-                  >
-                    ニュース一覧（演奏会カレンダー）
-                  </Link>
-                </li>
-              </ul>
-            </nav>
-          </div>
+          </Link>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/20 pt-8 sm:flex-row">
-          <nav className="flex gap-6">
-            {footerLegalItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-xs text-white/70 transition-colors hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <p className="text-xs text-white/60" suppressHydrationWarning>
-            © {currentYear} 一般社団法人 日本クラリネット協会
-          </p>
+        <div className="mt-10 flex flex-col items-center gap-4 border-t border-border pt-8 text-center text-sm text-muted-foreground md:flex-row md:justify-between md:text-left">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-start">
+            <Link href="/privacy" className="transition-colors hover:text-foreground">
+              プライバシーポリシー
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">
+              利用規約
+            </Link>
+          </div>
+          <p className="font-soft">© {new Date().getFullYear()} 一般社団法人日本クラリネット協会</p>
         </div>
       </div>
     </footer>
