@@ -5,6 +5,7 @@ import { parseCsvRow, splitCsvLines } from "@/lib/csv-parse";
 import { parseMemberNumberCell } from "@/lib/member-number";
 import { parseFeePaymentLabel, type FeePaymentDb } from "@/lib/excel-fee-payment";
 import { parseImportDateCell } from "@/lib/parse-import-date";
+import { joinAddressLine } from "@/lib/japanese-address";
 
 const MAX_ROWS = 2000;
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       const { data: existing, error: fetchErr } = await admin
         .from("profiles")
         .select(
-          "id, email, name, name_kana, zip_code, address, phone, affiliation, membership_type, status, is_ica_member, officer_title, notes, gender, birth_date, is_css_user"
+          "id, email, name, name_kana, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, affiliation, membership_type, status, is_ica_member, officer_title, notes, gender, birth_date, is_css_user"
         )
         .eq("id", profileId)
         .maybeSingle();
@@ -152,6 +153,10 @@ export async function POST(request: Request) {
 
       if (nonEmpty(get("郵便番号"))) profilePatch.zip_code = get("郵便番号")!.trim();
       if (nonEmpty(get("住所"))) profilePatch.address = get("住所")!.trim();
+      if (nonEmpty(get("都道府県"))) profilePatch.address_prefecture = get("都道府県")!.trim();
+      if (nonEmpty(get("市区町村"))) profilePatch.address_city = get("市区町村")!.trim();
+      if (nonEmpty(get("番地"))) profilePatch.address_street = get("番地")!.trim();
+      if (nonEmpty(get("建物名"))) profilePatch.address_building = get("建物名")!.trim();
       if (nonEmpty(get("電話番号"))) profilePatch.phone = get("電話番号")!.trim();
       if (nonEmpty(get("所属"))) profilePatch.affiliation = get("所属")!.trim();
       if (nonEmpty(get("備考"))) profilePatch.notes = get("備考")!.trim();
@@ -198,6 +203,30 @@ export async function POST(request: Request) {
       const expiryRaw = get("有効期限");
       const expiryStr = nonEmpty(expiryRaw) ? parseImportDateCell(expiryRaw!) : null;
 
+      const ex = existing as Record<string, string | null | undefined>;
+      const mergedPref = String(
+        profilePatch.address_prefecture ?? ex.address_prefecture ?? ""
+      ).trim();
+      const mergedCity = String(profilePatch.address_city ?? ex.address_city ?? "").trim();
+      const mergedStreet = String(profilePatch.address_street ?? ex.address_street ?? "").trim();
+      const mergedBuilding = String(
+        profilePatch.address_building ?? ex.address_building ?? ""
+      ).trim();
+      if (
+        profilePatch.address_prefecture !== undefined ||
+        profilePatch.address_city !== undefined ||
+        profilePatch.address_street !== undefined ||
+        profilePatch.address_building !== undefined
+      ) {
+        const line = joinAddressLine({
+          prefecture: mergedPref,
+          city: mergedCity,
+          street: mergedStreet,
+          building: mergedBuilding,
+        });
+        if (line) profilePatch.address = line;
+      }
+
       const profileKeys = Object.keys(profilePatch);
       const hasMembershipChange = Boolean(expiryStr || payParsed);
 
@@ -218,6 +247,10 @@ export async function POST(request: Request) {
           "birth_date",
           "is_css_user",
           "import_payment_kind",
+          "address_prefecture",
+          "address_city",
+          "address_street",
+          "address_building",
         ];
         let err = (await admin.from("profiles").update(profilePatch).eq("id", profileId)).error;
         if (

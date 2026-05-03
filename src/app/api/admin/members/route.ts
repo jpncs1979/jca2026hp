@@ -17,8 +17,13 @@ export async function GET(request: Request) {
     const type = searchParams.get("type"); // regular, student, supporting, friend
     const unpaid = searchParams.get("unpaid") === "1";
     const feeFyRaw = searchParams.get("fee_fy"); // 例: 2025（年度開始年）。未指定時は従来どおり有効期限ベース
-    const status = searchParams.get("status"); // pending, active, expired
+    /** pending | active | expired | expelled | withdrawn（期限切れまたは強制退会） */
+    const status = searchParams.get("status");
     const payKindRaw = searchParams.get("pay_kind");
+
+    const PROFILE_STATUSES = ["pending", "active", "expired", "expelled"] as const;
+    const isProfileStatus = (s: string): s is (typeof PROFILE_STATUSES)[number] =>
+      (PROFILE_STATUSES as readonly string[]).includes(s);
 
     const admin = createAdminClient();
     const selectAll = `
@@ -29,6 +34,10 @@ export async function GET(request: Request) {
         email,
         zip_code,
         address,
+        address_prefecture,
+        address_city,
+        address_street,
+        address_building,
         phone,
         affiliation,
         status,
@@ -54,6 +63,10 @@ export async function GET(request: Request) {
         email,
         zip_code,
         address,
+        address_prefecture,
+        address_city,
+        address_street,
+        address_building,
         phone,
         affiliation,
         status,
@@ -80,7 +93,9 @@ export async function GET(request: Request) {
     if (type) {
       q = q.eq("membership_type", type);
     }
-    if (status) {
+    if (status === "withdrawn") {
+      q = q.in("status", ["expired", "expelled"]);
+    } else if (status && isProfileStatus(status)) {
       q = q.eq("status", status);
     }
 
@@ -96,7 +111,11 @@ export async function GET(request: Request) {
         .order("created_at", { ascending: false });
       let fallback = fallbackQ;
       if (type) fallback = fallback.eq("membership_type", type);
-      if (status) fallback = fallback.eq("status", status);
+      if (status === "withdrawn") {
+        fallback = fallback.in("status", ["expired", "expelled"]);
+      } else if (status && isProfileStatus(status)) {
+        fallback = fallback.eq("status", status);
+      }
       const res = await fallback;
       if (res.error) {
         console.error("Admin members API DB error (fallback):", res.error.message);

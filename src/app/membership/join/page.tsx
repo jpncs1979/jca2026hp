@@ -24,7 +24,13 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ENTRANCE_FEE, getMembershipJoinAmount } from "@/lib/membership-fees";
+import {
+  ENTRANCE_FEE,
+  getMembershipJoinAmount,
+  REGULAR_ANNUAL,
+  STUDENT_ANNUAL,
+} from "@/lib/membership-fees";
+import { JAPAN_PREFECTURES } from "@/lib/japanese-address";
 
 /** yyyy/mm/dd / yyyy-mm-dd / 8桁数字 を Date にパース。無効なら null */
 function parseBirthDate(s: string): Date | null {
@@ -133,7 +139,10 @@ const formSchema = z.object({
   birth_date: z.string().min(1, "生年月日を入力してください"),
   gender: z.string().optional(),
   zip_code: z.string().min(1, "郵便番号を入力してください"),
-  address: z.string().min(1, "住所を入力してください"),
+  address_prefecture: z.string().min(1, "都道府県を選択してください"),
+  address_city: z.string().min(1, "市区町村を入力してください"),
+  address_street: z.string().min(1, "番地を入力してください"),
+  address_building: z.string().optional(),
   phone: z.string().min(1, "電話番号を入力してください"),
   ica_requested: z.boolean(),
   membership_type: z.enum(["regular", "student"]),
@@ -164,7 +173,10 @@ export default function MembershipJoinPage() {
       birth_date: "",
       gender: "",
       zip_code: "",
-      address: "",
+      address_prefecture: "",
+      address_city: "",
+      address_street: "",
+      address_building: "",
       phone: "",
       ica_requested: false,
       membership_type: "regular",
@@ -172,11 +184,10 @@ export default function MembershipJoinPage() {
   });
 
   const membershipType = form.watch("membership_type");
-  const birthDateStr = form.watch("birth_date");
   const joinDate = new Date();
   const amount = getMembershipJoinAmount(membershipType, joinDate);
-  const joinMonth = joinDate.getMonth() + 1;
-  const isNovDecJanJoin = joinMonth === 11 || joinMonth === 12 || joinMonth === 1;
+  const annualExample =
+    membershipType === "student" ? STUDENT_ANNUAL : REGULAR_ANNUAL;
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -198,14 +209,17 @@ export default function MembershipJoinPage() {
           birth_date: birthDateForApi,
           gender: values.gender || undefined,
           zip_code: values.zip_code || undefined,
-          address: values.address || undefined,
+          address_prefecture: values.address_prefecture || undefined,
+          address_city: values.address_city || undefined,
+          address_street: values.address_street || undefined,
+          address_building: values.address_building?.trim() || undefined,
           phone: values.phone || undefined,
           // UIは「ICA入会を希望しない」チェックのため、送信時に反転する
           ica_requested: !values.ica_requested,
           membership_type: values.membership_type,
         }),
       });
-      let data: { error?: string; url?: string };
+      let data: { error?: string; url?: string; code?: string };
       try {
         data = await res.json();
       } catch {
@@ -217,7 +231,14 @@ export default function MembershipJoinPage() {
         return;
       }
       if (!res.ok) {
-        setErrorMessage(data.error ?? "申し込みの送信に失敗しました。");
+        if (data.code === "EXPELLED_REJOIN_CONTACT") {
+          setErrorMessage(
+            data.error ??
+              "このメールアドレスは会費未納による強制退会の対象です。再入会は事務局までお問い合わせください。"
+          );
+        } else {
+          setErrorMessage(data.error ?? "申し込みの送信に失敗しました。");
+        }
         return;
       }
       if (data.url) {
@@ -297,10 +318,20 @@ export default function MembershipJoinPage() {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <div className="space-y-0.5 leading-none">
+                        <div className="space-y-1.5 leading-snug">
                           <FormLabel className="font-normal">
                             ICA会員入会を希望しない
                           </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            <a
+                              href="https://japan-clarinet-association.jp/membership/ica"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline underline-offset-2 hover:text-foreground"
+                            >
+                              ICA（国際クラリネット協会）について
+                            </a>
+                          </p>
                         </div>
                       </FormItem>
                     )}
@@ -416,12 +447,62 @@ export default function MembershipJoinPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="address_prefecture"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>住所 *</FormLabel>
+                        <FormLabel>都道府県 *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選択してください" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60">
+                            {JAPAN_PREFECTURES.map((p) => (
+                              <SelectItem key={p} value={p}>
+                                {p}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address_city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>市区町村 *</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="東京都千代田区..." />
+                          <Input {...field} placeholder="例：千代田区丸の内" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address_street"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>番地 *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="例：1-1-1" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address_building"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>建物名・部屋番号</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="例：○○マンション 101号室（任意）" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -447,17 +528,8 @@ export default function MembershipJoinPage() {
                 <CardContent className="pt-6">
                   <p className="text-muted-foreground">
                     入会金 {ENTRANCE_FEE.toLocaleString()}円
-                    ＋ 会費（事業年度1年分）
+                    ＋ 年会費（例：{annualExample.toLocaleString()}円）
                     ＝ <strong className="text-foreground">{amount.toLocaleString()}円</strong>
-                    {isNovDecJanJoin ? (
-                      <span className="ml-1 text-sm">
-                        （11〜1月入会のため、翌事業年度分の会費を含みます）
-                      </span>
-                    ) : (
-                      <span className="ml-1 text-sm">
-                        （事業年度は2月1日〜翌年1月31日）
-                      </span>
-                    )}
                   </p>
                 </CardContent>
               </Card>

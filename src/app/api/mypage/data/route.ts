@@ -20,23 +20,51 @@ export async function GET() {
 
     const admin = createAdminClient();
     const selectCols =
+      "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, is_css_user, membership_type, stripe_customer_id, source";
+    const selectColsLegacy =
       "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, phone, is_css_user, membership_type, stripe_customer_id, source";
 
     // 1. user_id で検索
-    let { data: profile } = await admin
+    let { data: profile, error: errByUser } = await admin
       .from("profiles")
       .select(selectCols)
       .eq("user_id", u.id)
       .maybeSingle();
 
+    if (
+      errByUser &&
+      (errByUser.message?.includes("address_prefecture") ||
+        errByUser.message?.includes("column"))
+    ) {
+      const r = await admin
+        .from("profiles")
+        .select(selectColsLegacy)
+        .eq("user_id", u.id)
+        .maybeSingle();
+      profile = r.data;
+    }
+
     // 2. 見つからなければメールで検索（インポート会員対応）
     if (!profile && u.email) {
-      const { data: profByEmail } = await admin
+      let { data: profByEmail, error: errByEmail } = await admin
         .from("profiles")
         .select(selectCols)
         .is("user_id", null)
         .ilike("email", u.email.trim())
         .maybeSingle();
+      if (
+        errByEmail &&
+        (errByEmail.message?.includes("address_prefecture") ||
+          errByEmail.message?.includes("column"))
+      ) {
+        const r2 = await admin
+          .from("profiles")
+          .select(selectColsLegacy)
+          .is("user_id", null)
+          .ilike("email", u.email.trim())
+          .maybeSingle();
+        profByEmail = r2.data;
+      }
       profile = profByEmail;
     }
 

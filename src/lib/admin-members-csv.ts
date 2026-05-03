@@ -1,6 +1,7 @@
 /** 会員一覧 CSV（管理画面・API 共通） */
 
 import { formatMemberNumber } from "@/lib/member-number";
+import { joinAddressLine } from "@/lib/japanese-address";
 import {
   FEE_PAYMENT_FILTER_LABELS,
   type FeePaymentFilterKey,
@@ -23,6 +24,10 @@ export type ProfileForMemberCsv = {
   email: string;
   zip_code?: string | null;
   address?: string | null;
+  address_prefecture?: string | null;
+  address_city?: string | null;
+  address_street?: string | null;
+  address_building?: string | null;
   phone?: string | null;
   affiliation?: string | null;
   status: string;
@@ -102,6 +107,17 @@ export function profileToCsvRow(
   unpaidTargetLabel?: string | null
 ): Record<string, string> {
   const latest = getLatestMembershipCsv(p);
+  const pref = (p.address_prefecture ?? "").trim();
+  const city = (p.address_city ?? "").trim();
+  const street = (p.address_street ?? "").trim();
+  const building = (p.address_building ?? "").trim();
+  const lineFromParts = joinAddressLine({
+    prefecture: pref,
+    city,
+    street,
+    building,
+  });
+  const 住所連結 = lineFromParts || (p.address ?? "").trim();
   return {
     ...(unpaidTargetLabel ? { 未納の対象: unpaidTargetLabel } : {}),
     会員ID: p.id ?? "",
@@ -111,7 +127,11 @@ export function profileToCsvRow(
     ふりがな: p.name_kana ?? "",
     メール: p.email ?? "",
     郵便番号: p.zip_code ?? "",
-    住所: p.address ?? "",
+    都道府県: pref,
+    市区町村: city,
+    番地: street,
+    建物名: building,
+    住所: 住所連結,
     電話番号: p.phone ?? "",
     所属: p.affiliation ?? "",
     種別: MEMBERSHIP_LABELS_CSV[p.membership_type] ?? p.membership_type,

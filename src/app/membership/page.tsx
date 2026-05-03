@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Check, UserPlus, ArrowRight, Gift, Users, Music2, Globe } from "lucide-react";
+import { Check, UserPlus, ArrowRight, Gift, Users, Globe } from "lucide-react";
 
 export const metadata = {
   title: "入会案内 | 日本クラリネット協会",
@@ -137,41 +137,13 @@ export default function MembershipPage() {
                 <CardDescription>
                   ウェブから入会申し込みができます。クレジットカードでお支払いいただくと即時入会となります。
                   口座振替をご希望の方は、事務局までお問い合わせください。
+                  会費が事業年度ベースで3年連続未納となった場合は強制退会となり、ウェブからの再入会には事務局での対応が必要です。
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Link href="/membership/join">
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
                     ウェブで入会申し込み
-                    <ArrowRight className="ml-2 size-4" />
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* 会員の皆様へ */}
-          <section id="members">
-            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
-              <Users className="size-5 text-gold" />
-              会員の皆様へ
-            </h2>
-            <Card>
-              <CardHeader>
-                <div className="flex items-start gap-3">
-                  <Music2 className="mt-0.5 size-6 shrink-0 text-gold" />
-                  <div>
-                    <CardTitle className="text-base">後援演奏会の後援依頼</CardTitle>
-                    <CardDescription>
-                      協会会員の皆様が主催する演奏会について、協会の後援をご希望の場合は申し込みフォームからお申し込みください。
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Link href="/membership/patronage-request">
-                  <Button variant="outline">
-                    後援を申し込む
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
                 </Link>

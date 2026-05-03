@@ -66,6 +66,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "会員情報が見つかりません。" }, { status: 404 });
     }
 
+    if (profile.status === "expelled") {
+      return NextResponse.json(
+        {
+          error:
+            "会費未納により強制退会となっているため、こちらからのお支払いはできません。事務局までお問い合わせください。",
+        },
+        { status: 403 }
+      );
+    }
+
     if (profile.is_css_user === true) {
       return NextResponse.json(
         {

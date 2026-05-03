@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, FileUp } from "lucide-react";
+import { FileUp } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "お名前を入力してください"),
@@ -115,9 +115,6 @@ export default function PatronageRequestPage() {
                 <p className="text-muted-foreground">
                   後援依頼を送信しました。事務局にて確認のうえ、ご連絡いたします。
                 </p>
-                <Link href="/membership">
-                  <Button variant="outline">入会案内に戻る</Button>
-                </Link>
               </CardContent>
             </Card>
           </div>
@@ -140,16 +137,6 @@ export default function PatronageRequestPage() {
 
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl space-y-6">
-          <Link href="/membership" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-navy">
-            <ArrowLeft className="size-4" />
-            入会案内に戻る
-          </Link>
-
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-4 text-sm text-muted-foreground">
-            <p>※会員の皆様が出演する演奏会に後援させていただいております。</p>
-            <p className="mt-2">※後援させていただく場合、後援演奏会当日券に限り、会員に対し当日券額面入場料金の２割引にてご提供いただきますようお願いしております。</p>
-          </div>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">後援依頼フォーム</CardTitle>
@@ -386,7 +373,7 @@ export default function PatronageRequestPage() {
                     <Button type="submit" disabled={submitting} className="bg-gold text-gold-foreground hover:bg-gold-muted">
                       {submitting ? "送信中..." : "送信する"}
                     </Button>
-                    <Link href="/membership">
+                    <Link href="/">
                       <Button type="button" variant="outline">キャンセル</Button>
                     </Link>
                   </div>

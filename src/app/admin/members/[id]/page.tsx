@@ -11,6 +11,11 @@ import {
 import { formatMemberNumber } from "@/lib/member-number";
 import { unifiedPaymentMethodLabel, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { joinAddressLine } from "@/lib/japanese-address";
+import { EXPEL_REASON_THREE_YEAR_ARREARS } from "@/lib/membership-three-year-arrears";
+import { ReleaseRejoinEmailButton } from "./release-rejoin-email-button";
+import { MemberReviveButton } from "./member-revive-button";
+import { MemberApproveButton } from "./member-approve-button";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   regular: "正会員",
@@ -18,6 +23,21 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
   supporting: "賛助会員",
   friend: "会友",
 };
+
+/** 復活ダイアログの会員資格の末日の初期値 */
+function suggestReviveExpiry(latestExpiry: string | undefined): string {
+  const today = new Date().toISOString().slice(0, 10);
+  if (
+    latestExpiry &&
+    /^\d{4}-\d{2}-\d{2}$/.test(latestExpiry) &&
+    latestExpiry >= today
+  ) {
+    return latestExpiry;
+  }
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function AdminMemberDetailPage({
   params,
@@ -34,14 +54,19 @@ export default async function AdminMemberDetailPage({
 
   const admin = createAdminClient();
   const selectFull = `
-      id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
+      id, user_id, member_number, name, name_kana, email, zip_code, address,
+      address_prefecture, address_city, address_street, address_building,
+      phone,
       affiliation, status, membership_type, is_ica_member, officer_title, birth_date, created_at,
       is_css_user, stripe_customer_id, source, import_payment_kind, simultaneous_join_competition_slug,
+      expelled_at, expulsion_reason, email_before_rejoin_release,
       memberships(join_date, expiry_date, payment_method)
     `;
   /** 新カラム未マイグレーション時のフォールバック（simultaneous_join_competition_slug は含めない） */
   const selectBase = `
-      id, user_id, member_number, name, name_kana, email, zip_code, address, phone,
+      id, user_id, member_number, name, name_kana, email, zip_code, address,
+      address_prefecture, address_city, address_street, address_building,
+      phone,
       affiliation, status, membership_type, created_at,
       is_css_user, stripe_customer_id, source, import_payment_kind,
       memberships(join_date, expiry_date, payment_method)
@@ -62,6 +87,10 @@ export default async function AdminMemberDetailPage({
     error?.message?.includes("source") ||
     error?.message?.includes("import_payment_kind") ||
     error?.message?.includes("simultaneous_join_competition_slug") ||
+    error?.message?.includes("expelled_at") ||
+    error?.message?.includes("expulsion_reason") ||
+    error?.message?.includes("email_before_rejoin_release") ||
+    error?.message?.includes("address_prefecture") ||
     error?.message?.includes("column")
   ) {
     const retry = await admin.from("profiles").select(selectBase).eq("id", id).single();
@@ -204,13 +233,29 @@ export default async function AdminMemberDetailPage({
                       ? "bg-amber-100 text-amber-800"
                       : profile.status === "active"
                         ? "bg-green-100 text-green-800"
-                        : "bg-muted text-muted-foreground"
+                        : profile.status === "expelled"
+                          ? "bg-red-100 text-red-900"
+                          : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {profile.status === "pending" ? "承認待ち" : profile.status === "active" ? "有効" : "期限切れ"}
+                  {profile.status === "pending"
+                    ? "承認待ち"
+                    : profile.status === "active"
+                      ? "有効"
+                      : profile.status === "expelled"
+                        ? "強制退会"
+                        : "期限切れ"}
                 </span>
               </dd>
             </div>
+            {profile.status === "pending" ? (
+              <div className="mt-4">
+                <MemberApproveButton
+                  profileId={profile.id}
+                  memberName={profile.name ?? "会員"}
+                />
+              </div>
+            ) : null}
             {simultaneousJoinLabel ? (
               <div>
                 <dt className="text-muted-foreground">コンクール経由の同時入会</dt>
@@ -218,6 +263,41 @@ export default async function AdminMemberDetailPage({
               </div>
             ) : null}
           </dl>
+          {profile.status === "expelled" ? (
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+              <p className="font-medium">会費未納等により強制退会となっています。</p>
+              {(profile as { expelled_at?: string | null }).expelled_at ? (
+                <p className="mt-1 text-xs text-red-900/90">
+                  処理日時:{" "}
+                  {new Date(
+                    String((profile as { expelled_at?: string }).expelled_at)
+                  ).toLocaleString("ja-JP")}
+                </p>
+              ) : null}
+              {(profile as { expulsion_reason?: string | null }).expulsion_reason ===
+              EXPEL_REASON_THREE_YEAR_ARREARS ? (
+                <p className="mt-1 text-xs">理由: 事業年度ベースで直近3年連続の会費未納</p>
+              ) : (profile as { expulsion_reason?: string | null }).expulsion_reason ? (
+                <p className="mt-1 text-xs">
+                  理由: {(profile as { expulsion_reason?: string }).expulsion_reason}
+                </p>
+              ) : null}
+              <p className="mt-2 text-xs leading-relaxed">
+                本人がウェブから再入会する場合は、事務局で内容確認のうえ、下のボタンでログイン用メールを退避してください。退避後、本人は同じメールアドレスで入会申し込みからやり直せます。
+              </p>
+              <div className="mt-3">
+                <ReleaseRejoinEmailButton profileId={profile.id} />
+              </div>
+            </div>
+          ) : null}
+          {(profile as { email_before_rejoin_release?: string | null }).email_before_rejoin_release ? (
+            <div className="mt-3 text-xs">
+              <p className="text-muted-foreground">退避前のログイン用メール</p>
+              <p className="mt-1 break-all font-mono">
+                {(profile as { email_before_rejoin_release?: string }).email_before_rejoin_release}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-lg border border-border bg-white p-6">
@@ -248,14 +328,62 @@ export default async function AdminMemberDetailPage({
                 <dd>{profile.phone}</dd>
               </div>
             )}
-            {profile.address && (
-              <div>
-                <dt className="text-muted-foreground">住所</dt>
-                <dd>
-                  {profile.zip_code && `${profile.zip_code} `}
-                  {profile.address}
-                </dd>
-              </div>
+            {(profile.zip_code ||
+              profile.address ||
+              (profile as { address_prefecture?: string | null }).address_prefecture ||
+              (profile as { address_city?: string | null }).address_city ||
+              (profile as { address_street?: string | null }).address_street) && (
+              <>
+                {profile.zip_code ? (
+                  <div>
+                    <dt className="text-muted-foreground">郵便番号</dt>
+                    <dd>{profile.zip_code}</dd>
+                  </div>
+                ) : null}
+                {(profile as { address_prefecture?: string | null }).address_prefecture ? (
+                  <div>
+                    <dt className="text-muted-foreground">都道府県</dt>
+                    <dd>{(profile as { address_prefecture?: string }).address_prefecture}</dd>
+                  </div>
+                ) : null}
+                {(profile as { address_city?: string | null }).address_city ? (
+                  <div>
+                    <dt className="text-muted-foreground">市区町村</dt>
+                    <dd>{(profile as { address_city?: string }).address_city}</dd>
+                  </div>
+                ) : null}
+                {(profile as { address_street?: string | null }).address_street ? (
+                  <div>
+                    <dt className="text-muted-foreground">番地</dt>
+                    <dd>{(profile as { address_street?: string }).address_street}</dd>
+                  </div>
+                ) : null}
+                {(profile as { address_building?: string | null }).address_building ? (
+                  <div>
+                    <dt className="text-muted-foreground">建物名</dt>
+                    <dd>{(profile as { address_building?: string }).address_building}</dd>
+                  </div>
+                ) : null}
+                {(joinAddressLine({
+                  prefecture: (profile as { address_prefecture?: string | null }).address_prefecture,
+                  city: (profile as { address_city?: string | null }).address_city,
+                  street: (profile as { address_street?: string | null }).address_street,
+                  building: (profile as { address_building?: string | null }).address_building,
+                }) ||
+                  profile.address) && (
+                  <div>
+                    <dt className="text-muted-foreground">住所（連結）</dt>
+                    <dd>
+                      {joinAddressLine({
+                        prefecture: (profile as { address_prefecture?: string | null }).address_prefecture,
+                        city: (profile as { address_city?: string | null }).address_city,
+                        street: (profile as { address_street?: string | null }).address_street,
+                        building: (profile as { address_building?: string | null }).address_building,
+                      }) || profile.address}
+                    </dd>
+                  </div>
+                )}
+              </>
             )}
             {profile.affiliation && (
               <div>
@@ -290,9 +418,6 @@ export default async function AdminMemberDetailPage({
 
       <div className="rounded-lg border border-border bg-white p-6">
         <h2 className="mb-3 text-lg font-semibold text-navy">会費支払い状況（直近3年度）</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          会費の事業年度は2月1日〜翌年1月31日です。会員資格は4月1日〜翌3月31日で、有効期限は通常その会員年度の3月31日です。クレジット決済は「決済済み」、銀行振込（CSS）など事務局登録の入金や有効期限が会費年度末をカバーする場合は「支払い済み」と表示します。
-        </p>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
@@ -333,7 +458,14 @@ export default async function AdminMemberDetailPage({
         />
       </div>
 
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        {(profile.status === "expired" || profile.status === "expelled") && (
+          <MemberReviveButton
+            profileId={profile.id}
+            memberName={profile.name ?? "会員"}
+            defaultExpiryDate={suggestReviveExpiry(latestMembership?.expiry_date)}
+          />
+        )}
         <Link href={`/admin/members/${id}/edit`}>
           <button className="rounded-lg bg-gold px-4 py-2 text-sm font-medium text-gold-foreground hover:bg-gold-muted">
             編集する

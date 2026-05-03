@@ -67,6 +67,15 @@ const FILTER_LABELS: Record<string, string> = {
   student: "学生会員",
 };
 
+/** API の status クエリ（withdrawn = 期限切れ or 強制退会） */
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  pending: "承認待ち",
+  active: "有効",
+  expired: "期限切れ",
+  expelled: "強制退会",
+  withdrawn: "退会者（期限切れ・強制退会）",
+};
+
 const SIGNATURE_STORAGE_KEY = "admin_email_signatures";
 type StoredSignature = { id: string; name: string; content: string };
 
@@ -79,6 +88,10 @@ type ProfileWithMembership = {
   email: string;
   zip_code?: string | null;
   address?: string | null;
+  address_prefecture?: string | null;
+  address_city?: string | null;
+  address_street?: string | null;
+  address_building?: string | null;
   phone?: string | null;
   affiliation?: string | null;
   status: string;
@@ -100,6 +113,7 @@ function buildFetchUrl(
   filter: string,
   ica: boolean,
   type: string,
+  status: string,
   unpaid: boolean,
   unpaidFeeMode: string,
   payKind: string
@@ -107,6 +121,7 @@ function buildFetchUrl(
   const params = new URLSearchParams();
   if (ica) params.set("ica", "1");
   if (type) params.set("type", type);
+  if (status) params.set("status", status);
   if (unpaid) {
     params.set("unpaid", "1");
     if (unpaidFeeMode && unpaidFeeMode !== "expiry") {
@@ -138,6 +153,7 @@ export default function AdminMembersPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [icaOnly, setIcaOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
   /** 未納者: expiry=有効期限ベース、それ以外は会費の年度（2/1始まりの事業年度） */
@@ -176,10 +192,19 @@ export default function AdminMembersPage() {
   const [newSignatureContent, setNewSignatureContent] = useState("");
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
   const [csvExporting, setCsvExporting] = useState(false);
+  const [feeStatusCsvExporting, setFeeStatusCsvExporting] = useState(false);
 
   const fetchProfiles = async () => {
     setLoading(true);
-    const url = buildFetchUrl(filter, icaOnly, typeFilter, unpaidOnly, unpaidFeeMode, paymentFilter);
+    const url = buildFetchUrl(
+      filter,
+      icaOnly,
+      typeFilter,
+      statusFilter,
+      unpaidOnly,
+      unpaidFeeMode,
+      paymentFilter
+    );
     const res = await fetch(url);
     const data = await res.json();
     if (res.ok) setProfiles(data.profiles ?? []);
@@ -188,7 +213,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     fetchProfiles();
-  }, [filter, icaOnly, typeFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
+  }, [filter, icaOnly, typeFilter, statusFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
 
   useEffect(() => {
     if (!unpaidOnly && unpaidFeeMode !== "expiry") {
@@ -215,7 +240,11 @@ export default function AdminMembersPage() {
   const filteredProfiles = useMemo(() => {
     let list = filterBased;
     const q = searchQuery.trim();
-    if (q && q.toLowerCase() !== "all") {
+    if (q === "退会" || q === "退会者") {
+      list = list.filter((p) => p.status === "expired" || p.status === "expelled");
+    } else if (q === "強制退会") {
+      list = list.filter((p) => p.status === "expelled");
+    } else if (q && q.toLowerCase() !== "all") {
       const qLower = q.toLowerCase();
       const qDigits = q.trim();
       list = list.filter((p) => {
@@ -251,8 +280,13 @@ export default function AdminMembersPage() {
           const nb = b.member_number ?? 0;
           cmp = na - nb;
         } else if (sortKey === "status") {
-          const order = { pending: 0, active: 1, expired: 2 };
-          cmp = (order[a.status as keyof typeof order] ?? 0) - (order[b.status as keyof typeof order] ?? 0);
+          const order: Record<string, number> = {
+            pending: 0,
+            active: 1,
+            expired: 2,
+            expelled: 3,
+          };
+          cmp = (order[a.status] ?? 0) - (order[b.status] ?? 0);
         } else if (sortKey === "expiry") {
           const ea = getLatestMembership(a)?.expiry_date ?? "";
           const eb = getLatestMembership(b)?.expiry_date ?? "";
@@ -498,6 +532,40 @@ export default function AdminMembersPage() {
     }
   };
 
+  const handleExportFeeStatusCsv = async () => {
+    setFeeStatusCsvExporting(true);
+    try {
+      const res = await fetch("/api/admin/members/fee-status-csv-export", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert((data as { error?: string }).error ?? "CSV の取得に失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition");
+      let filename = `会費支払状況_全会員_${new Date().toISOString().slice(0, 10)}.csv`;
+      const m = cd?.match(/filename\*=UTF-8''([^;]+)/);
+      if (m?.[1]) {
+        try {
+          filename = decodeURIComponent(m[1].trim());
+        } catch {
+          /* keep default */
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setFeeStatusCsvExporting(false);
+    }
+  };
+
   const openEmailToSelected = () => {
     setEmailToSelected(true);
     setEmailOpen(true);
@@ -541,6 +609,20 @@ export default function AdminMembersPage() {
           >
             {csvExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
             CSV出力（表示中）
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleExportFeeStatusCsv()}
+            disabled={feeStatusCsvExporting}
+            title="会員名簿の全会員について、会費の年度別状況と支払い方法関連の列を出力します（絞り込みは反映されません）"
+          >
+            {feeStatusCsvExporting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            会費状況CSV（全会員）
           </Button>
           <Dialog
             open={csvPartialOpen}
@@ -869,7 +951,7 @@ export default function AdminMembersPage() {
           <div className="relative w-full min-w-[200px] sm:w-64">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="氏名・メール・会員番号で検索"
+              placeholder="氏名・メール・会員番号（「退会者」で退会系に絞込）"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -894,6 +976,21 @@ export default function AdminMembersPage() {
               <SelectItem value="student">学生会員</SelectItem>
               <SelectItem value="supporting">賛助会員</SelectItem>
               <SelectItem value="friend">会友</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "")}>
+            <SelectTrigger className="w-[min(100vw-2rem,220px)] sm:w-[220px]">
+              <SelectValue>
+                {statusFilter ? (STATUS_FILTER_LABELS[statusFilter] ?? statusFilter) : "ステータス"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">すべて</SelectItem>
+              <SelectItem value="active">有効</SelectItem>
+              <SelectItem value="pending">承認待ち</SelectItem>
+              <SelectItem value="expired">期限切れのみ</SelectItem>
+              <SelectItem value="expelled">強制退会のみ</SelectItem>
+              <SelectItem value="withdrawn">退会者（期限切れ・強制退会）</SelectItem>
             </SelectContent>
           </Select>
           <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v ?? "")}>
@@ -1174,10 +1271,18 @@ export default function AdminMembersPage() {
                           ? "bg-amber-100 text-amber-800"
                           : p.status === "active"
                             ? "bg-green-100 text-green-800"
-                            : "bg-muted text-muted-foreground"
+                            : p.status === "expelled"
+                              ? "bg-red-100 text-red-900"
+                              : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {p.status === "pending" ? "承認待ち" : p.status === "active" ? "有効" : "期限切れ"}
+                      {p.status === "pending"
+                        ? "承認待ち"
+                        : p.status === "active"
+                          ? "有効"
+                          : p.status === "expelled"
+                            ? "強制退会"
+                            : "期限切れ"}
                     </span>
                   </TableCell>
                   <TableCell>{getLatestMembership(p)?.expiry_date ?? "-"}</TableCell>

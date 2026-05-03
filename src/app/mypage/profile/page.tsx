@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -15,21 +22,27 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft } from "lucide-react";
+import { JAPAN_PREFECTURES, joinAddressLine } from "@/lib/japanese-address";
+
+type ProfileState = {
+  id: string;
+  name: string;
+  name_kana: string;
+  email: string;
+  zip_code: string | null;
+  address_prefecture: string;
+  address_city: string;
+  address_street: string;
+  address_building: string;
+  phone: string | null;
+  affiliation: string | null;
+};
 
 export default function ProfileEditPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<{
-    id: string;
-    name: string;
-    name_kana: string;
-    email: string;
-    zip_code: string | null;
-    address: string | null;
-    phone: string | null;
-    affiliation: string | null;
-  } | null>(null);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,14 +61,27 @@ export default function ProfileEditPage() {
         const res = await fetch("/api/mypage/data");
         const data = await res.json();
         if (res.ok && data.profile) {
-          const p = data.profile;
+          const p = data.profile as ProfileState & {
+            address?: string | null;
+            address_prefecture?: string | null;
+            address_city?: string | null;
+            address_street?: string | null;
+            address_building?: string | null;
+          };
+          const hasSplit =
+            (p.address_prefecture?.trim() ?? "") !== "" ||
+            (p.address_city?.trim() ?? "") !== "" ||
+            (p.address_street?.trim() ?? "") !== "";
           setProfile({
             id: p.id,
             name: p.name ?? "",
             name_kana: p.name_kana ?? "",
             email: p.email ?? "",
             zip_code: p.zip_code ?? null,
-            address: p.address ?? null,
+            address_prefecture: p.address_prefecture ?? "",
+            address_city: p.address_city ?? "",
+            address_street: hasSplit ? (p.address_street ?? "") : (p.address ?? ""),
+            address_building: p.address_building ?? "",
             phone: p.phone ?? null,
             affiliation: p.affiliation ?? null,
           });
@@ -74,16 +100,24 @@ export default function ProfileEditPage() {
     if (!profile) return;
     setSaving(true);
     setError(null);
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    const addressLine = joinAddressLine({
+      prefecture: profile.address_prefecture,
+      city: profile.address_city,
+      street: profile.address_street,
+      building: profile.address_building,
+    });
     const res = await fetch("/api/mypage/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        zip_code: formData.get("zip_code") || null,
-        address: formData.get("address") || null,
-        phone: formData.get("phone") || null,
-        affiliation: formData.get("affiliation") || null,
+        zip_code: profile.zip_code || null,
+        address: addressLine || null,
+        address_prefecture: profile.address_prefecture?.trim() || null,
+        address_city: profile.address_city?.trim() || null,
+        address_street: profile.address_street?.trim() || null,
+        address_building: profile.address_building?.trim() || null,
+        phone: profile.phone || null,
+        affiliation: profile.affiliation || null,
       }),
     });
     setSaving(false);
@@ -158,20 +192,86 @@ export default function ProfileEditPage() {
                 <Input type="email" value={profile.email} readOnly className="bg-muted" />
               </div>
               <div>
-                <Label>郵便番号</Label>
-                <Input name="zip_code" defaultValue={profile.zip_code ?? ""} placeholder="123-4567" />
+                <Label htmlFor="zip_code">郵便番号</Label>
+                <Input
+                  id="zip_code"
+                  value={profile.zip_code ?? ""}
+                  onChange={(e) => setProfile((p) => (p ? { ...p, zip_code: e.target.value } : p))}
+                  placeholder="123-4567"
+                />
               </div>
               <div>
-                <Label>住所</Label>
-                <Input name="address" defaultValue={profile.address ?? ""} placeholder="東京都..." />
+                <Label htmlFor="address_prefecture">都道府県</Label>
+                <Select
+                  value={profile.address_prefecture || undefined}
+                  onValueChange={(v) =>
+                    setProfile((p) => (p ? { ...p, address_prefecture: v } : p))
+                  }
+                >
+                  <SelectTrigger id="address_prefecture">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {JAPAN_PREFECTURES.map((pref) => (
+                      <SelectItem key={pref} value={pref}>
+                        {pref}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>電話番号</Label>
-                <Input name="phone" defaultValue={profile.phone ?? ""} placeholder="03-1234-5678" />
+                <Label htmlFor="address_city">市区町村</Label>
+                <Input
+                  id="address_city"
+                  value={profile.address_city}
+                  onChange={(e) =>
+                    setProfile((p) => (p ? { ...p, address_city: e.target.value } : p))
+                  }
+                  placeholder="例：千代田区丸の内"
+                />
               </div>
               <div>
-                <Label>所属</Label>
-                <Input name="affiliation" defaultValue={profile.affiliation ?? ""} placeholder="学校名・団体名など" />
+                <Label htmlFor="address_street">番地</Label>
+                <Input
+                  id="address_street"
+                  value={profile.address_street}
+                  onChange={(e) =>
+                    setProfile((p) => (p ? { ...p, address_street: e.target.value } : p))
+                  }
+                  placeholder="例：1-1-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address_building">建物名・部屋番号</Label>
+                <Input
+                  id="address_building"
+                  value={profile.address_building}
+                  onChange={(e) =>
+                    setProfile((p) => (p ? { ...p, address_building: e.target.value } : p))
+                  }
+                  placeholder="任意"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">電話番号</Label>
+                <Input
+                  id="phone"
+                  value={profile.phone ?? ""}
+                  onChange={(e) => setProfile((p) => (p ? { ...p, phone: e.target.value } : p))}
+                  placeholder="03-1234-5678"
+                />
+              </div>
+              <div>
+                <Label htmlFor="affiliation">所属</Label>
+                <Input
+                  id="affiliation"
+                  value={profile.affiliation ?? ""}
+                  onChange={(e) =>
+                    setProfile((p) => (p ? { ...p, affiliation: e.target.value } : p))
+                  }
+                  placeholder="学校名・団体名など"
+                />
               </div>
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={saving} className="bg-gold text-gold-foreground hover:bg-gold-muted">

@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -14,11 +21,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { User, Mail, CreditCard } from "lucide-react";
-import { DeleteMemberButton } from "../delete-member-button";
+import { MemberWithdrawalButton } from "../member-withdrawal-button";
+import { JAPAN_PREFECTURES, joinAddressLine } from "@/lib/japanese-address";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "有効" },
   { value: "expired", label: "期限切れ" },
+  { value: "expelled", label: "強制退会" },
 ];
 
 const MEMBERSHIP_OPTIONS = [
@@ -39,7 +48,10 @@ interface InitialData {
   name_kana: string;
   email: string;
   zip_code: string;
-  address: string;
+  address_prefecture: string;
+  address_city: string;
+  address_street: string;
+  address_building: string;
   phone: string;
   affiliation: string;
   status: string;
@@ -75,6 +87,12 @@ export function AdminMemberEditForm({
     setSaving(true);
     setError(null);
     try {
+      const addressLine = joinAddressLine({
+        prefecture: form.address_prefecture,
+        city: form.address_city,
+        street: form.address_street,
+        building: form.address_building,
+      });
       const res = await fetch(`/api/admin/members/${profileId}`, {
         method: "PATCH",
         credentials: "include",
@@ -84,7 +102,11 @@ export function AdminMemberEditForm({
           name_kana: form.name_kana || null,
           email: form.email || null,
           zip_code: form.zip_code || null,
-          address: form.address || null,
+          address: addressLine || null,
+          address_prefecture: form.address_prefecture?.trim() || null,
+          address_city: form.address_city?.trim() || null,
+          address_street: form.address_street?.trim() || null,
+          address_building: form.address_building?.trim() || null,
           phone: form.phone || null,
           affiliation: form.affiliation || null,
           status: form.status,
@@ -250,12 +272,48 @@ export function AdminMemberEditForm({
             />
           </div>
           <div>
-            <Label htmlFor="address">住所</Label>
+            <Label htmlFor="address_prefecture">都道府県</Label>
+            <Select
+              value={form.address_prefecture || undefined}
+              onValueChange={(v) => setForm((f) => ({ ...f, address_prefecture: v }))}
+            >
+              <SelectTrigger id="address_prefecture">
+                <SelectValue placeholder="選択" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {JAPAN_PREFECTURES.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="address_city">市区町村</Label>
             <Input
-              id="address"
-              value={form.address}
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              placeholder="東京都..."
+              id="address_city"
+              value={form.address_city}
+              onChange={(e) => setForm((f) => ({ ...f, address_city: e.target.value }))}
+              placeholder="例：千代田区丸の内"
+            />
+          </div>
+          <div>
+            <Label htmlFor="address_street">番地</Label>
+            <Input
+              id="address_street"
+              value={form.address_street}
+              onChange={(e) => setForm((f) => ({ ...f, address_street: e.target.value }))}
+              placeholder="例：1-1-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="address_building">建物名・部屋番号</Label>
+            <Input
+              id="address_building"
+              value={form.address_building}
+              onChange={(e) => setForm((f) => ({ ...f, address_building: e.target.value }))}
+              placeholder="任意"
             />
           </div>
           <div>
@@ -349,7 +407,9 @@ export function AdminMemberEditForm({
         <Link href={`/admin/members/${profileId}`}>
           <Button type="button" variant="outline">キャンセル</Button>
         </Link>
-        <DeleteMemberButton profileId={profileId} memberName={form.name || "会員"} />
+        {form.status === "active" && (
+          <MemberWithdrawalButton profileId={profileId} memberName={form.name || "会員"} />
+        )}
       </div>
     </form>
   );

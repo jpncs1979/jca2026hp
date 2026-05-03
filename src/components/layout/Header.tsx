@@ -47,6 +47,7 @@ export function Header() {
   const associationMenu = [
     { href: "/membership", label: "入会案内" },
     { href: "/about", label: "協会案内" },
+    { href: "/membership/patronage-request", label: "後援申請" },
     { href: "/contact", label: "問い合わせ" },
   ] as const;
 

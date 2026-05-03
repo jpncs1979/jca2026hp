@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { formatMemberNumber } from "@/lib/member-number";
+import { joinAddressLine } from "@/lib/japanese-address";
 
 interface MypageDashboardProps {
   userId: string;
@@ -114,9 +115,25 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-sm text-muted-foreground">
-            {profile?.address || profile?.phone
-              ? `${profile.address ?? ""} ${profile.phone ?? ""}`.trim() || "未登録"
-              : "未登録"}
+            {(() => {
+              const p = profile as {
+                address?: string | null;
+                address_prefecture?: string | null;
+                address_city?: string | null;
+                address_street?: string | null;
+                address_building?: string | null;
+                phone?: string | null;
+              } | null;
+              const addr =
+                joinAddressLine({
+                  prefecture: p?.address_prefecture,
+                  city: p?.address_city,
+                  street: p?.address_street,
+                  building: p?.address_building,
+                }) || (p?.address ?? "");
+              const tail = [addr, p?.phone ?? ""].filter(Boolean).join(" ");
+              return tail.trim() || "未登録";
+            })()}
           </p>
           <Link href="/mypage/profile">
             <Button variant="outline" size="sm">

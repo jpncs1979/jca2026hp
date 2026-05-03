@@ -6,6 +6,7 @@ import {
   type MembershipTypeForFee,
 } from "@/lib/membership-fees";
 import { normalizeBaseUrl } from "@/lib/utils";
+import { joinAddressLine } from "@/lib/japanese-address";
 
 const METADATA_TYPE_MEMBERSHIP_JOIN = "membership_join";
 
@@ -16,7 +17,14 @@ export type MembershipCheckoutBody = {
   birth_date: string;
   gender?: string;
   zip_code?: string;
-  address?: string;
+  /** 都道府県（必須） */
+  address_prefecture: string;
+  /** 市区町村（必須） */
+  address_city: string;
+  /** 番地（必須） */
+  address_street: string;
+  /** 建物名・部屋番号（任意） */
+  address_building?: string;
   phone?: string;
   affiliation?: "general" | "professional" | "student";
   ica_requested: boolean;
@@ -39,7 +47,14 @@ function parseBody(body: unknown): MembershipCheckoutBody | null {
   const ica_requested = o.ica_requested === true;
   const membership_type =
     o.membership_type === "student" ? "student" : "regular";
+  const address_prefecture =
+    typeof o.address_prefecture === "string" ? o.address_prefecture.trim() : "";
+  const address_city = typeof o.address_city === "string" ? o.address_city.trim() : "";
+  const address_street = typeof o.address_street === "string" ? o.address_street.trim() : "";
+  const address_building =
+    typeof o.address_building === "string" ? o.address_building.trim() : undefined;
   if (!name || !name_kana || !email || !birth_date) return null;
+  if (!address_prefecture || !address_city || !address_street) return null;
   const birth = new Date(birth_date.replace(/\//g, "-"));
   if (Number.isNaN(birth.getTime())) return null;
   return {
@@ -49,7 +64,10 @@ function parseBody(body: unknown): MembershipCheckoutBody | null {
     birth_date,
     gender: typeof o.gender === "string" ? o.gender.trim() : undefined,
     zip_code: typeof o.zip_code === "string" ? o.zip_code.trim() : undefined,
-    address: typeof o.address === "string" ? o.address.trim() : undefined,
+    address_prefecture,
+    address_city,
+    address_street,
+    address_building,
     phone: typeof o.phone === "string" ? o.phone.trim() : undefined,
     affiliation,
     ica_requested,
@@ -82,18 +100,39 @@ export async function POST(request: Request) {
   const data = parseBody(body);
   if (!data) {
     return NextResponse.json(
-      { error: "必須項目（氏名・ふりがな・メール・生年月日）を正しく入力してください。" },
+      {
+        error:
+          "必須項目（氏名・ふりがな・メール・生年月日・都道府県・市区町村・番地）を正しく入力してください。",
+      },
       { status: 400 }
     );
   }
 
+  const addressLine = joinAddressLine({
+    prefecture: data.address_prefecture,
+    city: data.address_city,
+    street: data.address_street,
+    building: data.address_building,
+  });
+
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data: existing } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, status")
     .eq("email", data.email)
     .limit(1)
     .maybeSingle();
+
+  if (existing?.status === "expelled") {
+    return NextResponse.json(
+      {
+        error:
+          "このメールアドレスは、会費未納による強制退会の対象となっています。再入会は事務局までお問い合わせください。",
+        code: "EXPELLED_REJOIN_CONTACT",
+      },
+      { status: 403 }
+    );
+  }
 
   if (existing) {
     return NextResponse.json(
@@ -146,7 +185,11 @@ export async function POST(request: Request) {
       birth_date: data.birth_date.slice(0, 20),
       gender: (data.gender ?? "").slice(0, 50),
       zip_code: (data.zip_code ?? "").slice(0, 20),
-      address: (data.address ?? "").slice(0, 500),
+      addr_pref: data.address_prefecture.slice(0, 40),
+      addr_city: data.address_city.slice(0, 120),
+      addr_str: data.address_street.slice(0, 200),
+      addr_bld: (data.address_building ?? "").slice(0, 120),
+      address: addressLine.slice(0, 500),
       phone: (data.phone ?? "").slice(0, 50),
       affiliation: data.affiliation ?? "general",
       ica_requested: data.ica_requested ? "1" : "0",

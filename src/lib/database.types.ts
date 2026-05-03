@@ -4,7 +4,7 @@
 
 export type ProfileCategory = "general" | "student" | "professional";
 export type MembershipType = "regular" | "student" | "supporting";
-export type ProfileStatus = "pending" | "active" | "expired";
+export type ProfileStatus = "pending" | "active" | "expired" | "expelled";
 export type PaymentMethod = "stripe" | "css" | "transfer";
 export type PaymentPurpose = "membership_fee" | "competition_fee";
 
@@ -17,6 +17,10 @@ export interface Profile {
   email: string;
   zip_code: string | null;
   address: string | null;
+  address_prefecture?: string | null;
+  address_city?: string | null;
+  address_street?: string | null;
+  address_building?: string | null;
   phone: string | null;
   affiliation: string | null;
   category: ProfileCategory;

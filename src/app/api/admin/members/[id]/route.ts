@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 
-/** 事務局が会員を削除（プロフィール・会員契約・入金記録を削除し、紐づく認証ユーザーがいれば削除） */
+/**
+ * 事務局による退会処理（会員資格の喪失のみ）。
+ * profiles / memberships / payments の行は削除せず、ステータスとログイン紐付けのみ更新する。
+ */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +31,7 @@ export async function DELETE(
 
     const { data: profile, error: fetchError } = await admin
       .from("profiles")
-      .select("id, user_id")
+      .select("id, user_id, status")
       .eq("id", profileId)
       .single();
 
@@ -36,27 +39,56 @@ export async function DELETE(
       return NextResponse.json({ error: "会員が見つかりません" }, { status: 404 });
     }
 
-    const userId = profile.user_id as string | null;
+    if (profile.status === "expelled") {
+      return NextResponse.json(
+        {
+          error:
+            "強制退会（3年未納等）の会員は、会員詳細の案内に従って対応してください。",
+        },
+        { status: 400 }
+      );
+    }
 
-    const { error: deleteError } = await admin.from("profiles").delete().eq("id", profileId);
-    if (deleteError) {
-      console.error("Admin member delete (profile):", deleteError);
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    const userId = profile.user_id as string | null;
+    const nowIso = new Date().toISOString();
+
+    const baseUpdate: Record<string, unknown> = {
+      status: "expired",
+      user_id: null,
+      updated_at: nowIso,
+    };
+
+    let upErr = (
+      await admin
+        .from("profiles")
+        .update({ ...baseUpdate, stripe_customer_id: null })
+        .eq("id", profileId)
+    ).error;
+
+    if (
+      upErr &&
+      (upErr.message?.includes("stripe_customer_id") || upErr.message?.includes("column"))
+    ) {
+      upErr = (await admin.from("profiles").update(baseUpdate).eq("id", profileId)).error;
+    }
+
+    if (upErr) {
+      console.error("Admin member withdraw (profile):", upErr);
+      return NextResponse.json({ error: upErr.message }, { status: 500 });
     }
 
     if (userId) {
       const { error: authError } = await admin.auth.admin.deleteUser(userId);
       if (authError) {
-        console.warn("Admin member delete (auth user):", authError);
-        // プロフィールは削除済みのためここでは 200 を返す
+        console.warn("Admin member withdraw (auth user):", authError);
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, membership_withdrawn: true });
   } catch (err) {
-    console.error("Admin member delete error:", err);
+    console.error("Admin member withdraw error:", err);
     return NextResponse.json(
-      { error: "削除に失敗しました" },
+      { error: "退会処理に失敗しました" },
       { status: 500 }
     );
   }
@@ -93,6 +125,10 @@ export async function PATCH(
       email,
       zip_code,
       address,
+      address_prefecture,
+      address_city,
+      address_street,
+      address_building,
       phone,
       affiliation,
       status,
@@ -127,11 +163,28 @@ export async function PATCH(
     }
     if (zip_code !== undefined) profileUpdate.zip_code = zip_code ? String(zip_code).trim() : null;
     if (address !== undefined) profileUpdate.address = address ? String(address).trim() : null;
+    if (address_prefecture !== undefined) {
+      profileUpdate.address_prefecture = address_prefecture
+        ? String(address_prefecture).trim()
+        : null;
+    }
+    if (address_city !== undefined) {
+      profileUpdate.address_city = address_city ? String(address_city).trim() : null;
+    }
+    if (address_street !== undefined) {
+      profileUpdate.address_street = address_street ? String(address_street).trim() : null;
+    }
+    if (address_building !== undefined) {
+      profileUpdate.address_building =
+        address_building != null && String(address_building).trim() !== ""
+          ? String(address_building).trim()
+          : null;
+    }
     if (phone !== undefined) profileUpdate.phone = phone ? String(phone).trim() : null;
     if (affiliation !== undefined) profileUpdate.affiliation = affiliation ? String(affiliation).trim() : null;
     if (status !== undefined) {
       const s = String(status);
-      if (["pending", "active", "expired"].includes(s)) profileUpdate.status = s;
+      if (["pending", "active", "expired", "expelled"].includes(s)) profileUpdate.status = s;
     }
     // membership_type: 004で friend を追加。003のみの場合は regular/student/supporting のみ許可
     const VALID_MEMBERSHIP_004 = ["regular", "student", "supporting", "friend"];
@@ -161,6 +214,22 @@ export async function PATCH(
       .from("profiles")
       .update(profileUpdate)
       .eq("id", profileId)).error;
+
+    if (
+      profileError &&
+      (profileError.message?.includes("address_prefecture") ||
+        profileError.message?.includes("address_city") ||
+        profileError.message?.includes("address_street") ||
+        profileError.message?.includes("address_building") ||
+        profileError.message?.includes("column"))
+    ) {
+      delete profileUpdate.address_prefecture;
+      delete profileUpdate.address_city;
+      delete profileUpdate.address_street;
+      delete profileUpdate.address_building;
+      const retryAddr = await admin.from("profiles").update(profileUpdate).eq("id", profileId);
+      profileError = retryAddr.error;
+    }
 
     // membership_type_check 違反時: 004未適用で friend が使えない場合、regular で再試行
     if (profileError?.message?.includes("membership_type") || profileError?.message?.includes("check constraint")) {

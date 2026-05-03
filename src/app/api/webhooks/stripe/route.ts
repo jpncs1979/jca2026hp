@@ -6,6 +6,7 @@ import nodemailer from "nodemailer";
 import { getCompetitionFromHeader, getFromHeader, OFFICE_FROM_EMAIL } from "@/lib/email";
 import { joinMembershipFeeFiscalYears } from "@/lib/membership-fees";
 import { membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear } from "@/lib/membership-fiscal-year";
+import { joinAddressLine } from "@/lib/japanese-address";
 import {
   syncStripeCustomerDefaultPaymentMethod,
   syncStripeCustomerFromSetupCheckoutSession,
@@ -169,28 +170,65 @@ async function handleMembershipJoinCompleted(
   const expiryStr = membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear(maxPaidFy);
   const fiscalYearsStr = feeFiscalYears.join(",");
 
-  const { data: newProfile, error: profileError } = await supabase
+  const pref = String(meta.addr_pref ?? meta.address_prefecture ?? "").trim();
+  const city = String(meta.addr_city ?? "").trim();
+  const street = String(meta.addr_str ?? "").trim();
+  const building = String(meta.addr_bld ?? "").trim();
+  const addressLine =
+    joinAddressLine({
+      prefecture: pref,
+      city,
+      street,
+      building,
+    }) || String(meta.address ?? "").trim();
+
+  const insertPayload: Record<string, unknown> = {
+    name: meta.name,
+    name_kana: meta.name_kana ?? meta.name,
+    email: meta.email,
+    zip_code: meta.zip_code || null,
+    address: addressLine || null,
+    address_prefecture: pref || null,
+    address_city: city || null,
+    address_street: street || null,
+    address_building: building || null,
+    phone: meta.phone || null,
+    affiliation: meta.affiliation || null,
+    gender: meta.gender || null,
+    birth_date: meta.birth_date || null,
+    category:
+      meta.affiliation === "student"
+        ? "student"
+        : meta.affiliation === "professional"
+          ? "professional"
+          : "general",
+    membership_type: meta.membership_type === "student" ? "student" : "regular",
+    status: "active",
+    /** 入会フォームで ICA 希望の場合は ICA 会員として登録（ica_requested と同値） */
+    ica_requested: meta.ica_requested === "1",
+    is_ica_member: meta.ica_requested === "1",
+    is_css_user: false,
+  };
+
+  let { data: newProfile, error: profileError } = await supabase
     .from("profiles")
-    .insert({
-      name: meta.name,
-      name_kana: meta.name_kana ?? meta.name,
-      email: meta.email,
-      zip_code: meta.zip_code || null,
-      address: meta.address || null,
-      phone: meta.phone || null,
-      affiliation: meta.affiliation || null,
-      gender: meta.gender || null,
-      birth_date: meta.birth_date || null,
-      category: meta.affiliation === "student" ? "student" : meta.affiliation === "professional" ? "professional" : "general",
-      membership_type: meta.membership_type === "student" ? "student" : "regular",
-      status: "active",
-      /** 入会フォームで ICA 希望の場合は ICA 会員として登録（ica_requested と同値） */
-      ica_requested: meta.ica_requested === "1",
-      is_ica_member: meta.ica_requested === "1",
-      is_css_user: false,
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
+
+  if (
+    profileError &&
+    (profileError.message?.includes("address_prefecture") ||
+      profileError.message?.includes("column"))
+  ) {
+    delete insertPayload.address_prefecture;
+    delete insertPayload.address_city;
+    delete insertPayload.address_street;
+    delete insertPayload.address_building;
+    const retry = await supabase.from("profiles").insert(insertPayload).select("id").single();
+    newProfile = retry.data;
+    profileError = retry.error;
+  }
 
   if (profileError || !newProfile) {
     console.error("[入会Webhook] プロフィール作成失敗", profileError);
@@ -310,6 +348,11 @@ async function handleMembershipJoinCompleted(
             <li>会員種別：${memberTypeLabel}</li>
             <li>入会日：${joinDate.toLocaleDateString("ja-JP")}</li>
             <li>ICA会員として登録：${meta.ica_requested === "1" ? "はい" : "いいえ"}</li>
+            <li>都道府県：${escapeHtml(pref || "—")}</li>
+            <li>市区町村：${escapeHtml(city || "—")}</li>
+            <li>番地：${escapeHtml(street || "—")}</li>
+            <li>建物名：${escapeHtml(building || "—")}</li>
+            <li>住所（連結）：${escapeHtml(addressLine || "—")}</li>
           </ul>
           <p>管理画面の会員一覧でご確認ください。</p>
           <hr />

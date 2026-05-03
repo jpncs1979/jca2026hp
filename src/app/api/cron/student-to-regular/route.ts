@@ -36,6 +36,7 @@ export async function GET(request: Request) {
     .from("profiles")
     .select("id, name, email, birth_date, membership_type")
     .eq("membership_type", "student")
+    .eq("status", "active")
     .not("birth_date", "is", null);
 
   if (fetchError) {

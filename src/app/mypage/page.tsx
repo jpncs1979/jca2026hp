@@ -531,10 +531,20 @@ function MypageContent(): any {
               </p>
               <span
                 className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                  profile?.status === "active" ? "bg-gold/30 text-gold" : "bg-white/20"
+                  profile?.status === "active"
+                    ? "bg-gold/30 text-gold"
+                    : profile?.status === "expelled"
+                      ? "bg-red-500/40 text-red-100"
+                      : "bg-white/20"
                 }`}
               >
-                {profile?.status === "active" ? "有効" : profile?.status === "pending" ? "承認待ち" : "期限切れ"}
+                {profile?.status === "active"
+                  ? "有効"
+                  : profile?.status === "pending"
+                    ? "承認待ち"
+                    : profile?.status === "expelled"
+                      ? "強制退会"
+                      : "期限切れ"}
               </span>
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
