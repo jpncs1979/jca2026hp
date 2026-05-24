@@ -62,11 +62,6 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
   friend: "会友",
 };
 
-const FILTER_LABELS: Record<string, string> = {
-  all: "全会員",
-  student: "学生会員",
-};
-
 /** API の status クエリ（withdrawn = 期限切れ or 強制退会） */
 const STATUS_FILTER_LABELS: Record<string, string> = {
   pending: "承認待ち",
@@ -110,7 +105,6 @@ type ProfileWithMembership = {
 };
 
 function buildFetchUrl(
-  filter: string,
   ica: boolean,
   type: string,
   status: string,
@@ -128,7 +122,6 @@ function buildFetchUrl(
       params.set("fee_fy", unpaidFeeMode);
     }
   }
-  if (filter === "student" && !type) params.set("type", "student");
   if (payKind && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKind)) {
     params.set("pay_kind", payKind);
   }
@@ -147,7 +140,6 @@ export default function AdminMembersPage() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<ProfileWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
@@ -197,7 +189,6 @@ export default function AdminMembersPage() {
   const fetchProfiles = async () => {
     setLoading(true);
     const url = buildFetchUrl(
-      filter,
       icaOnly,
       typeFilter,
       statusFilter,
@@ -213,7 +204,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     fetchProfiles();
-  }, [filter, icaOnly, typeFilter, statusFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
+  }, [icaOnly, typeFilter, statusFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
 
   useEffect(() => {
     if (!unpaidOnly && unpaidFeeMode !== "expiry") {
@@ -232,13 +223,8 @@ export default function AdminMembersPage() {
     }
   }, [emailOpen]);
 
-  const filterBased =
-    filter === "student"
-      ? profiles.filter((p) => p.membership_type === "student" || p.category === "student")
-      : profiles;
-
   const filteredProfiles = useMemo(() => {
-    let list = filterBased;
+    let list = profiles;
     const q = searchQuery.trim();
     if (q === "退会" || q === "退会者") {
       list = list.filter((p) => p.status === "expired" || p.status === "expelled");
@@ -296,7 +282,7 @@ export default function AdminMembersPage() {
       });
     }
     return list;
-  }, [filterBased, searchQuery, paymentFilter, officerOnly, sortKey, sortOrder]);
+  }, [profiles, searchQuery, paymentFilter, officerOnly, sortKey, sortOrder]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -957,15 +943,6 @@ export default function AdminMembersPage() {
               className="pl-9"
             />
           </div>
-          <Select value={filter} onValueChange={(v) => setFilter(v ?? "all")}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue>{FILTER_LABELS[filter] ?? "全会員"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全会員</SelectItem>
-              <SelectItem value="student">学生会員</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
             <SelectTrigger className="w-[140px]">
               <SelectValue>{typeFilter ? (MEMBERSHIP_LABELS[typeFilter] ?? typeFilter) : "会員種別"}</SelectValue>
