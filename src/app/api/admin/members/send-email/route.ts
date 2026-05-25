@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getFromHeader } from "@/lib/email";
 import nodemailer from "nodemailer";
+import {
+  fetchMembershipFeePaymentsByProfileIds,
+  filterProfilesByUnpaidMode,
+  UNPAID_FILTER_MODE_RECENT3,
+} from "@/lib/admin-members-unpaid-filter";
 
 /** 1回のリクエストで送信できる最大件数（Gmail: 個人500通/日、連続送信のレート制限対策） */
 const MAX_EMAILS_PER_REQUEST = 100;
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
 
     const isPreview = preview === true;
 
-    const selectBase = "id, name, email, membership_type, memberships(expiry_date)";
+    const selectBase = "id, name, email, membership_type, memberships(join_date, expiry_date)";
     const selectWithIca = `${selectBase}, is_ica_member`;
 
     let q = admin
@@ -125,11 +130,16 @@ export async function POST(request: Request) {
 
     let list = profiles ?? [];
     if (unpaid_only) {
-      const today = new Date().toISOString().slice(0, 10);
-      list = list.filter((p: { memberships?: { expiry_date?: string }[] | null }) => {
-        const exp = p.memberships?.[0]?.expiry_date;
-        return !exp || exp < today;
-      });
+      const ids = (list as { id: string }[]).map((p) => p.id);
+      const paymentsByProfile = await fetchMembershipFeePaymentsByProfileIds(
+        admin,
+        ids
+      );
+      list = filterProfilesByUnpaidMode(
+        list as { id: string; memberships?: { join_date?: string; expiry_date?: string }[] | null }[],
+        paymentsByProfile,
+        UNPAID_FILTER_MODE_RECENT3
+      );
     }
 
     const recipients = (list as { name?: string; email?: string }[])

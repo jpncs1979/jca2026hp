@@ -53,6 +53,10 @@ import {
   FEE_PAYMENT_FILTER_LABELS,
   type FeePaymentFilterKey,
 } from "@/lib/excel-fee-payment";
+import {
+  UNPAID_FILTER_MODE_EXPIRY,
+  UNPAID_FILTER_MODE_RECENT3,
+} from "@/lib/admin-members-unpaid-filter";
 import { formatMemberNumber } from "@/lib/member-number";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
@@ -118,9 +122,7 @@ function buildFetchUrl(
   if (status) params.set("status", status);
   if (unpaid) {
     params.set("unpaid", "1");
-    if (unpaidFeeMode && unpaidFeeMode !== "expiry") {
-      params.set("fee_fy", unpaidFeeMode);
-    }
+    params.set("fee_fy", unpaidFeeMode || UNPAID_FILTER_MODE_RECENT3);
   }
   if (payKind && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKind)) {
     params.set("pay_kind", payKind);
@@ -148,8 +150,8 @@ export default function AdminMembersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
-  /** 未納者: expiry=有効期限ベース、それ以外は会費の年度（2/1始まりの事業年度） */
-  const [unpaidFeeMode, setUnpaidFeeMode] = useState<string>("expiry");
+  /** 未納者: recent3=直近3年度・入金記録、年度=指定年度、expiry=有効期限（データ整備用） */
+  const [unpaidFeeMode, setUnpaidFeeMode] = useState<string>(UNPAID_FILTER_MODE_RECENT3);
   const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [extending, setExtending] = useState(false);
@@ -205,12 +207,6 @@ export default function AdminMembersPage() {
   useEffect(() => {
     fetchProfiles();
   }, [icaOnly, typeFilter, statusFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
-
-  useEffect(() => {
-    if (!unpaidOnly && unpaidFeeMode !== "expiry") {
-      setUnpaidFeeMode("expiry");
-    }
-  }, [unpaidOnly, unpaidFeeMode]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -477,9 +473,11 @@ export default function AdminMembersPage() {
       return;
     }
     const unpaidTargetLabel =
-      unpaidOnly && unpaidFeeMode !== "expiry"
-        ? `${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}分の会費が未納`
-        : null;
+      unpaidOnly && unpaidFeeMode === UNPAID_FILTER_MODE_RECENT3
+        ? "直近3年度のいずれか会費未納（入金記録ベース）"
+        : unpaidOnly && unpaidFeeMode !== UNPAID_FILTER_MODE_EXPIRY
+          ? `${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}分の会費が未納（入金記録ベース）`
+          : null;
     setCsvExporting(true);
     try {
       const res = await fetch("/api/admin/members/csv-export", {
@@ -842,7 +840,7 @@ export default function AdminMembersPage() {
                         </label>
                         <label className="flex items-center gap-2">
                           <Checkbox checked={emailCriteria.unpaid} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, unpaid: e.target.checked }))} />
-                          未納者
+                          未納者（直近3年度・入金記録）
                         </label>
                         <Select value={emailCriteria.type} onValueChange={(t) => setEmailCriteria((prev) => ({ ...prev, type: t ?? "" }))}>
                           <SelectTrigger className="w-[140px]">
@@ -1014,18 +1012,23 @@ export default function AdminMembersPage() {
             {unpaidOnly && (
               <Select
                 value={unpaidFeeMode}
-                onValueChange={(v) => setUnpaidFeeMode(v ?? "expiry")}
+                onValueChange={(v) => setUnpaidFeeMode(v ?? UNPAID_FILTER_MODE_RECENT3)}
               >
-                <SelectTrigger className="w-[min(100vw-2rem,280px)] sm:w-[280px]">
+                <SelectTrigger className="w-[min(100vw-2rem,320px)] sm:w-[320px]">
                   <SelectValue placeholder="未納の基準" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expiry">有効期限切れ・未登録（従来）</SelectItem>
+                  <SelectItem value={UNPAID_FILTER_MODE_RECENT3}>
+                    直近3年度のいずれか未払い（入金記録）
+                  </SelectItem>
                   {fiscalYearOptions.map((fy) => (
                     <SelectItem key={fy} value={String(fy)}>
-                      {formatFiscalYearLabel(fy)}の会費が未納
+                      {formatFiscalYearLabel(fy)}の会費が未納（入金記録）
                     </SelectItem>
                   ))}
+                  <SelectItem value={UNPAID_FILTER_MODE_EXPIRY}>
+                    有効期限切れ・未登録（データ整備用）
+                  </SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -1040,9 +1043,11 @@ export default function AdminMembersPage() {
       {unpaidOnly && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-800">
-            {unpaidFeeMode === "expiry"
-              ? `未納者（有効期限）: ${filteredProfiles.length}件（表示中・検索後／有効期限切れまたは未登録）`
-              : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}会費）: ${filteredProfiles.length}件（表示中・検索後）`}
+            {unpaidFeeMode === UNPAID_FILTER_MODE_EXPIRY
+              ? `有効期限切れ・未登録: ${filteredProfiles.length}件（表示中・検索後／データ整備用）`
+              : unpaidFeeMode === UNPAID_FILTER_MODE_RECENT3
+                ? `未納者（直近3年度・入金記録）: ${filteredProfiles.length}件（表示中・検索後）`
+                : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}・入金記録）: ${filteredProfiles.length}件（表示中・検索後）`}
           </p>
         </div>
       )}

@@ -67,6 +67,49 @@ function hasAnyFeePaymentForYear(payments: PaymentRowForFee[], fy: number): bool
   return payments.some((p) => paymentCoversFiscalYear(p, fy));
 }
 
+/** 入金記録のみで当該年度の会費が支払い済みか（有効期限は見ない） */
+export function isPaidForMembershipFiscalYearByPaymentOnly(
+  payments: PaymentRowForFee[],
+  fy: number
+): boolean {
+  const feePayments = payments.filter((p) => p.purpose === "membership_fee");
+  return hasStripeForYear(feePayments, fy) || hasAnyFeePaymentForYear(feePayments, fy);
+}
+
+/** 入会日より前の事業年度は未納判定の対象外 */
+export function fiscalYearAppliesToMember(
+  joinDateStr: string | null | undefined,
+  fy: number
+): boolean {
+  if (!joinDateStr?.trim()) return true;
+  const join = new Date(joinDateStr.trim());
+  if (Number.isNaN(join.getTime())) return true;
+  return fiscalYearForDate(join) <= fy;
+}
+
+/** 指定年度が入金記録ベースで未納か（入会前年度は false） */
+export function isUnpaidForMembershipFiscalYearByPaymentOnly(
+  payments: PaymentRowForFee[],
+  joinDateStr: string | null | undefined,
+  fy: number
+): boolean {
+  if (!fiscalYearAppliesToMember(joinDateStr, fy)) return false;
+  return !isPaidForMembershipFiscalYearByPaymentOnly(payments, fy);
+}
+
+/** 直近 yearsCount 事業年度のいずれかが入金記録ベースで未納 */
+export function hasUnpaidInRecentFiscalYearsByPaymentOnly(
+  payments: PaymentRowForFee[],
+  joinDateStr: string | null | undefined,
+  yearsCount = 3,
+  refDate = new Date()
+): boolean {
+  const years = recentFiscalYears(yearsCount, refDate);
+  return years.some((fy) =>
+    isUnpaidForMembershipFiscalYearByPaymentOnly(payments, joinDateStr, fy)
+  );
+}
+
 /**
  * 会費の表示用ステータス（過去3年度分）
  */

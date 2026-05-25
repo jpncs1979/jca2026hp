@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
-  isPaidForMembershipFiscalYear,
-  type PaymentRowForFee,
-} from "@/lib/membership-fee-status";
-import {
   FEE_PAYMENT_FILTER_KEYS,
   type FeePaymentFilterKey,
 } from "@/lib/excel-fee-payment";
 import { feePaymentCategoryKey, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
+import {
+  fetchMembershipFeePaymentsByProfileIds,
+  filterProfilesByUnpaidMode,
+  UNPAID_FILTER_MODE_RECENT3,
+} from "@/lib/admin-members-unpaid-filter";
 
 export async function GET(request: Request) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     const icaOnly = searchParams.get("ica") === "1";
     const type = searchParams.get("type"); // regular, student, supporting, friend
     const unpaid = searchParams.get("unpaid") === "1";
-    const feeFyRaw = searchParams.get("fee_fy"); // 例: 2025（年度開始年）。未指定時は従来どおり有効期限ベース
+    const feeFyRaw = searchParams.get("fee_fy"); // recent3 | expiry | 年度開始年（例: 2025）
     /** pending | active | expired | expelled | withdrawn（期限切れまたは強制退会） */
     const status = searchParams.get("status");
     const payKindRaw = searchParams.get("pay_kind");
@@ -152,43 +153,17 @@ export async function GET(request: Request) {
       );
     }
     if (unpaid) {
-      const feeFy = feeFyRaw ? parseInt(feeFyRaw, 10) : NaN;
-      if (Number.isFinite(feeFy)) {
-        const ids = (list as { id: string }[]).map((p) => p.id);
-        const paymentsByProfile = new Map<string, PaymentRowForFee[]>();
-        const chunkSize = 150;
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunk = ids.slice(i, i + chunkSize);
-          if (chunk.length === 0) break;
-          const { data: payChunk } = await admin
-            .from("payments")
-            .select("profile_id, purpose, method, metadata, created_at")
-            .in("profile_id", chunk)
-            .eq("purpose", "membership_fee");
-          for (const row of payChunk ?? []) {
-            const pid = (row as { profile_id: string }).profile_id;
-            if (!paymentsByProfile.has(pid)) paymentsByProfile.set(pid, []);
-            paymentsByProfile.get(pid)!.push(row as PaymentRowForFee);
-          }
-        }
-        list = (list as { id: string; status?: string; memberships?: { expiry_date?: string }[] | null }[]).filter(
-          (p) => {
-            const arr = p.memberships ?? [];
-            const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
-            const exp = latest?.expiry_date ?? null;
-            const pays = paymentsByProfile.get(p.id) ?? [];
-            return !isPaidForMembershipFiscalYear(pays, exp, feeFy);
-          }
-        );
-      } else {
-        const today = new Date().toISOString().slice(0, 10);
-        list = list.filter((p: { memberships?: { expiry_date?: string }[] | null }) => {
-          const arr = p.memberships ?? [];
-          const latest = [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
-          const exp = latest?.expiry_date;
-          return !exp || exp < today;
-        });
-      }
+      const unpaidMode = feeFyRaw?.trim() || UNPAID_FILTER_MODE_RECENT3;
+      const ids = (list as { id: string }[]).map((p) => p.id);
+      const paymentsByProfile = await fetchMembershipFeePaymentsByProfileIds(
+        admin,
+        ids
+      );
+      list = filterProfilesByUnpaidMode(
+        list as { id: string; memberships?: { join_date?: string; expiry_date?: string }[] | null }[],
+        paymentsByProfile,
+        unpaidMode
+      );
     }
 
     return NextResponse.json({ profiles: list });
