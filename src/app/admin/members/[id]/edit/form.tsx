@@ -275,7 +275,7 @@ export function AdminMemberEditForm({
             <Label htmlFor="address_prefecture">都道府県</Label>
             <Select
               value={form.address_prefecture || undefined}
-              onValueChange={(v) => setForm((f) => ({ ...f, address_prefecture: v }))}
+              onValueChange={(v) => setForm((f) => ({ ...f, address_prefecture: v ?? "" }))}
             >
               <SelectTrigger id="address_prefecture">
                 <SelectValue placeholder="選択" />
