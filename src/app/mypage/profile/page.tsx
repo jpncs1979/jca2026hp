@@ -205,7 +205,7 @@ export default function ProfileEditPage() {
                 <Select
                   value={profile.address_prefecture || undefined}
                   onValueChange={(v) =>
-                    setProfile((p) => (p ? { ...p, address_prefecture: v } : p))
+                    setProfile((p) => (p ? { ...p, address_prefecture: v ?? "" } : p))
                   }
                 >
                   <SelectTrigger id="address_prefecture">
