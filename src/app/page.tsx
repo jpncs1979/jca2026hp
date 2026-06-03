@@ -14,12 +14,13 @@ import {
 } from "@/components/ui/card";
 import {
   ArrowRight,
+  ExternalLink,
   Trophy,
-  MessageCircle,
   UserPlus,
   BookOpen,
   Globe,
 } from "lucide-react";
+import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 // スクロール表示用アニメーション
@@ -49,7 +50,20 @@ function AnimatedSection({
   );
 }
 
-const HERO_SLIDES = [
+type HeroSlideButton = {
+  label: string;
+  href: string;
+  external?: boolean;
+};
+
+type HeroSlide = {
+  title: string;
+  copy: string;
+  buttons: HeroSlideButton[];
+  bg: string;
+};
+
+const HERO_SLIDES: HeroSlide[] = [
   {
     title: `第15回 ヤング・クラリネッティストコンクール（申込開始：${YOUNG_2026.applicationStartDisplay}）`,
     copy: "次代を担う、若き才能たちへ。",
@@ -76,8 +90,10 @@ const HERO_SLIDES = [
   },
   {
     title: "第３９回日本クラリネットフェスティバル in 広島",
-    copy: "2027年2月28日（日）（予定）。クラリネットの祭典が広島で。",
-    buttons: [{ label: "最新情報", href: "/events/festival-2027" }],
+    copy: "2027年2月28日（日）（予定）。詳細は公式案内サイトでご確認ください。",
+    buttons: [
+      { label: "公式案内サイト", href: FESTIVAL_39_HIROSHIMA_OFFICIAL_URL, external: true },
+    ],
     bg: "from-navy/92",
   },
   {
@@ -85,11 +101,12 @@ const HERO_SLIDES = [
     copy: "2027年2月27日（土）本選。第19回。アンサンブルの調和と表現力を競います。",
     buttons: [
       { label: "参加要項", href: "/events/ensemble" },
+      { label: "参加申込", href: "/events/ensemble/apply" },
       { label: "過去の受賞者", href: "/archive?competition=ensemble" },
     ],
     bg: "from-navy/93",
   },
-] as const;
+];
 
 const HERO_SLIDE_COUNT = HERO_SLIDES.length;
 const HERO_SLIDE_INTERVAL_MS = 6000;
@@ -189,17 +206,35 @@ function HeroSlider() {
                   {slide.copy}
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  {slide.buttons.map((btn) => (
-                    <Link key={btn.label} href={btn.href}>
-                      <Button
-                        size="lg"
-                        className="bg-gold text-gold-foreground shadow-lg transition-all hover:scale-105 hover:bg-gold-muted hover:shadow-xl"
+                  {slide.buttons.map((btn) => {
+                    const btnClass =
+                      "bg-gold text-gold-foreground shadow-lg transition-all hover:scale-105 hover:bg-gold-muted hover:shadow-xl";
+                    const icon = btn.external ? (
+                      <ExternalLink className="ml-2 size-4" />
+                    ) : (
+                      <ArrowRight className="ml-2 size-4" />
+                    );
+                    return btn.external ? (
+                      <a
+                        key={btn.label}
+                        href={btn.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        {btn.label}
-                        <ArrowRight className="ml-2 size-4" />
-                      </Button>
-                    </Link>
-                  ))}
+                        <Button size="lg" className={btnClass}>
+                          {btn.label}
+                          {icon}
+                        </Button>
+                      </a>
+                    ) : (
+                      <Link key={btn.label} href={btn.href}>
+                        <Button size="lg" className={btnClass}>
+                          {btn.label}
+                          {icon}
+                        </Button>
+                      </Link>
+                    );
+                  })}
                 </div>
               </motion.div>
             ))}
@@ -363,7 +398,7 @@ export default function Home() {
             協会の取り組み
           </h2>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Link href="/events/young-2026" className="group">
             <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
               <CardHeader className="pb-2">
@@ -378,25 +413,6 @@ export default function Home() {
               <CardContent>
                 <span className="inline-flex items-center text-sm font-normal text-gold group-hover:underline">
                   詳細を見る
-                  <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/consultation" className="group">
-            <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
-              <CardHeader className="pb-2">
-                <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-navy/10 text-navy">
-                  <MessageCircle className="size-6" />
-                </div>
-                <CardTitle className="text-lg font-medium">クラリネット相談室</CardTitle>
-                <CardDescription className="font-normal">
-                  レッスンや相談のご案内
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <span className="inline-flex items-center text-sm font-normal text-gold group-hover:underline">
-                  詳しく見る
                   <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </CardContent>

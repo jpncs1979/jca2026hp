@@ -54,7 +54,6 @@ export function Header() {
   const eventsMenu = [
     { href: "/events#concours", label: "コンクール" },
     { href: "/events#events", label: "フェスティバル" },
-    { href: "/consultation", label: "相談室" },
     { href: "/members/supported-concerts", label: "後援演奏会" },
   ] as const;
 

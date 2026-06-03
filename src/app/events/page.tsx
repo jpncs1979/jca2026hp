@@ -7,8 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, ArrowRight, Trophy, Music } from "lucide-react";
+import { Calendar, ArrowRight, Trophy, Music, ExternalLink } from "lucide-react";
 import { competitions } from "@/data/competitions";
+import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 
 export const metadata = {
   title: "コンクール・イベント | 日本クラリネット協会",
@@ -66,18 +67,35 @@ export default function EventsPage() {
                         {event.status}
                       </span>
                     </div>
-                    <CardDescription>
-                      {event.period}　{event.venue}
+                    <CardDescription className="space-y-1">
+                      <span className="block">
+                        {event.period}　{event.venue}
+                      </span>
+                      {event.applicationPeriod ? (
+                        <span className="block font-medium text-navy/90">
+                          申込期間：{event.applicationPeriod}
+                        </span>
+                      ) : null}
+                      {event.videoSubmissionDeadline ? (
+                        <span className="block font-medium text-navy/90">
+                          予選動画提出：{event.videoSubmissionDeadline}まで
+                        </span>
+                      ) : null}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <p className="mb-6 text-muted-foreground">{event.description}</p>
                     <div className="flex flex-wrap gap-3">
+                      {event.status === "申込受付中" && event.applyHref ? (
+                        <Link href={event.applyHref}>
+                          <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                            参加申込
+                            <ArrowRight className="ml-2 size-4" />
+                          </Button>
+                        </Link>
+                      ) : null}
                       <Link href={event.href}>
-                        <Button
-                          variant={event.status === "申込受付中" ? "default" : "outline"}
-                          className={event.status === "申込受付中" ? "bg-gold text-gold-foreground hover:bg-gold-muted" : ""}
-                        >
+                        <Button variant="outline">
                           詳細を見る
                           <ArrowRight className="ml-2 size-4" />
                         </Button>
@@ -109,16 +127,29 @@ export default function EventsPage() {
                 <CardHeader>
                   <CardTitle className="text-xl">第３９回日本クラリネットフェスティバル in 広島</CardTitle>
                   <CardDescription>
-                    2027年2月28日（日）（予定）。詳細は後日公開いたします。
+                    2027年2月28日（日）（予定）。詳細は
+                    <a
+                      href={FESTIVAL_39_HIROSHIMA_OFFICIAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gold hover:underline"
+                    >
+                      公式案内サイト
+                    </a>
+                    をご覧ください。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/events/festival-2027">
-                    <Button variant="outline">
-                      最新情報を見る
-                      <ArrowRight className="ml-2 size-4" />
+                  <a
+                    href={FESTIVAL_39_HIROSHIMA_OFFICIAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                      公式案内サイト
+                      <ExternalLink className="ml-2 size-4" />
                     </Button>
-                  </Link>
+                  </a>
                 </CardContent>
               </Card>
 

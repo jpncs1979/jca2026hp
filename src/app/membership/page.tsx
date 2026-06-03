@@ -26,6 +26,17 @@ export default function MembershipPage() {
           <p className="mt-2 text-muted-foreground">
             日本クラリネット協会の会員になりませんか
           </p>
+          <div className="mt-8 flex flex-wrap gap-4">
+            <Link href="/membership/join">
+              <Button
+                size="lg"
+                className="bg-gold text-gold-foreground hover:bg-gold-muted"
+              >
+                入会申込
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -98,7 +109,7 @@ export default function MembershipPage() {
                 <p className="text-muted-foreground">
                   協会の事業年度（会費の計上）は毎年2月1日から翌年1月31日までです。入会時のお支払いは原則「入会金＋当該事業年度の会費」ですが、11月・12月・1月にご入会の場合は「入会金＋翌事業年度の会費」となります。
                   会員資格としての期間は、各年4月1日から翌年3月31日までです。1月までに翌事業年度分の会費がお支払い済みの場合、会員資格はその次の4月1日から始まる年度に及びます。
-                  会費のお支払いはクレジットカード（毎年1月22日頃に翌事業年度分の自動引き落とし）または銀行振込（CSS。事務局が手動で入金済みを登録）のいずれかです。
+                  会費のお支払いはクレジットカードのみです（入会時・マイページからの決済、および毎年1月22日頃の翌事業年度分の自動引き落とし）。
                 </p>
               </CardContent>
             </Card>
@@ -113,7 +124,7 @@ export default function MembershipPage() {
               <CardContent className="space-y-3 pt-6 text-sm leading-relaxed">
                 <p>
                   未成年者のお申し込みにあたっては保護者様のご同意が必要です。必ず保護者様のご同意を得てからお申し込みください。
-                  またご入金は保護者名でのお振込をお願いいたします。
+                  年会費のお支払いは保護者名義のクレジットカードでも可能です。
                 </p>
                 <p>クラリネット協会は電話等にて保護者様にご同意の確認をすることがあります。</p>
                 <p>

@@ -165,47 +165,11 @@ export default function Young2026DetailPage() {
           {/* 参加料支払い方法 */}
           <section>
             <h2 className="mb-6 text-xl font-medium text-navy">参加料支払い方法</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              当サイトからの参加お申し込みは、内容確認のうえ
+            <p className="text-sm text-muted-foreground">
+              当サイトからの参加お申し込みは、申込フォームで内容を入力し「確認する」で内容を確認したうえ、
               <strong className="text-foreground">クレジットカード（Stripe）</strong>
-              または<strong className="text-foreground">銀行振込・郵便振替</strong>
-              を選べます。申込フォームで入力後「確認する」で内容を確認し、お支払い方法を選んでください。
-              銀行振込の場合は、振込後に<strong className="text-foreground">参加費振込の証明（明細など）の画像を送付</strong>
-              していただきます。
+              で参加料をお支払いください。決済完了時点でお申し込み受付が完了します。
             </p>
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {YOUNG_2026.paymentMethod.postal.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 pt-0 text-sm">
-                  <p>郵便振替番号：{YOUNG_2026.paymentMethod.postal.郵便振替番号}</p>
-                  <p>口座名：{YOUNG_2026.paymentMethod.postal.口座名}</p>
-                  <p className="mt-2 text-muted-foreground">
-                    {YOUNG_2026.paymentMethod.postal.note}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {YOUNG_2026.paymentMethod.bank.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 pt-0 text-sm">
-                  <p>金融機関：{YOUNG_2026.paymentMethod.bank.金融機関}</p>
-                  <p>店名：{YOUNG_2026.paymentMethod.bank.店名}</p>
-                  <p>種目：{YOUNG_2026.paymentMethod.bank.種目}</p>
-                  <p>口座番号：{YOUNG_2026.paymentMethod.bank.口座番号}</p>
-                  <p>口座名：{YOUNG_2026.paymentMethod.bank.口座名}</p>
-                  <p className="mt-2 text-muted-foreground">
-                    {YOUNG_2026.paymentMethod.bank.note}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
           </section>
 
           {/* 申し込み受付期間・申し込み先 */}

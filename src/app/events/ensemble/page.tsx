@@ -6,7 +6,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, Music2, ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  Trophy,
+  Banknote,
+  Music2,
+  Award,
+  Users,
+  Megaphone,
+  Info,
+  MessageCircle,
+  FileText,
+} from "lucide-react";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
+import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 
 export const metadata = {
   title: "クラリネット・アンサンブルコンクール | 日本クラリネット協会",
@@ -19,16 +33,27 @@ export default function EnsemblePage() {
     <div className="font-soft">
       <div className="border-b border-border bg-muted/30 py-12 md:py-16">
         <div className="container mx-auto px-4">
-          <h1 className="flex items-center gap-2 text-3xl font-bold text-navy md:text-4xl">
-            <Music2 className="size-8 text-gold" />
-            クラリネット・アンサンブルコンクール
+          <h1 className="text-3xl font-bold text-navy md:text-4xl">
+            {ENSEMBLE_2027.name}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            2027年 第19回 参加要項
+            【主 催】{ENSEMBLE_2027.organiser}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            【協 賛】{ENSEMBLE_2027.sponsors.join("／")}
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
+            <Link href="/events/ensemble/apply">
+              <Button
+                size="lg"
+                className="bg-gold text-gold-foreground hover:bg-gold-muted"
+              >
+                参加申込
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </Link>
             <Link href="/archive?competition=ensemble">
-              <Button variant="outline" size="lg">
+              <Button size="lg" variant="outline">
                 過去の受賞者
                 <ArrowRight className="ml-2 size-4" />
               </Button>
@@ -40,133 +65,306 @@ export default function EnsemblePage() {
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-3xl space-y-12">
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">概要</h2>
-            <p className="leading-relaxed text-muted-foreground">
-              本コンクールは、クラリネットアンサンブルの楽しさを通じ、豊かな音楽性と音楽の基本および技術の向上を図ることを目的とします。
-              クラリネットの専門家が審査を行い、参加団体すべてに講評をお渡しします。全国どこからでもご参加いただけます。
-            </p>
+            <h2 className="mb-4 text-xl font-medium text-navy">目的</h2>
+            <p className="text-muted-foreground">{ENSEMBLE_2027.purpose}</p>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">開催概要</h2>
+            <h2 className="mb-4 text-xl font-medium text-navy">特色</h2>
+            <p className="text-muted-foreground">{ENSEMBLE_2027.feature}</p>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Calendar className="size-5" />
+              開催期日・会場
+            </h2>
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">開催情報</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-0">
-                <p className="flex items-center gap-2">
-                  <Calendar className="size-4 text-gold" />
-                  予選：2027年<span className="text-red-600 italic">2月上旬</span>（動画審査・非公開）
-                </p>
-                <p className="text-sm">
-                  本選：2027年2月27日（土） 東広島芸術文化ホール くららホール（公開）
-                </p>
-                <p className="text-sm text-muted-foreground">主催：一般社団法人日本クラリネット協会</p>
-                <p className="text-sm text-muted-foreground">
-                  協賛：株式会社石森管楽器／ザ クラリネット ショップ／野中貿易株式会社／株式会社ビュッフェ・クランポン・ジャパン／株式会社ヤマハミュージックジャパン
-                </p>
+              <CardContent className="pt-6">
+                <dl className="space-y-2">
+                  <div>
+                    <dt className="text-sm text-muted-foreground">予選</dt>
+                    <dd className="font-medium">{ENSEMBLE_2027.schedule.preliminary}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-muted-foreground">本選</dt>
+                    <dd className="font-medium">
+                      {ENSEMBLE_2027.schedule.final}　{ENSEMBLE_2027.schedule.finalVenue}
+                    </dd>
+                  </div>
+                </dl>
               </CardContent>
             </Card>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">部門・参加資格</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>1. 小・中学生部門：参加者全員が小・中学生以下であること。</p>
-              <p>2. 高校生部門：参加者全員が高校生以下であること。</p>
-              <p>3. 専門部門：音楽大学等でクラリネットを専攻中、あるいは専攻した者であること。</p>
-              <p>4. 一般部門：参加者の資格および年齢の制限なし（ただし専門部門該当者を除く）。</p>
-              <p>※一団体2名以上（上限なし、常識的なクラリネットアンサンブル人数の範囲内）。</p>
-              <p>※出演は1人1部門、1団体限り。国籍不問。指揮者なし。</p>
-              <p>
-                ※使用楽器はクラリネット属のみ（原曲でコントラバスクラリネットのパートを弦楽器コントラバスで演奏することは可）。
-              </p>
-            </div>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Users className="size-5" />
+              部門・参加資格
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.departmentNotes.map((note, i) => {
+                const isNumberedDept = /^[①②③④]/.test(note);
+                if (!isNumberedDept) {
+                  return (
+                    <li key={i} className="text-sm text-muted-foreground">
+                      {note}
+                    </li>
+                  );
+                }
+                const colon = note.indexOf("：");
+                const head = colon >= 0 ? note.slice(0, colon) : note;
+                const tail = colon >= 0 ? note.slice(colon) : "";
+                return (
+                  <li key={i}>
+                    <span className="font-bold">{head}</span>
+                    {tail}
+                  </li>
+                );
+              })}
+            </ul>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">演奏曲・審査</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>小・中学生部門／高校生部門：5分以内の自由曲</p>
-              <p>専門部門／一般部門：7分以内の自由曲</p>
-              <p>※予選と本選が同じ曲でも可。</p>
-              <p>※部門ごとに審査し、出演順は事務局が決定します。</p>
-              <p>※予選は非公開審査、本選は公開審査です。</p>
-              <p>※申込全団体に審査員講評を送付します。</p>
-            </div>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Music2 className="size-5" />
+              演奏曲
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.categories.map((cat) => (
+                <li key={cat.id}>
+                  {cat.label} … {cat.pieceLimit}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-sm text-muted-foreground">
+              ※ 予選と本選が同じ曲でも構いません。
+            </p>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">審査料・参加料</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>動画審査料（1団体）：小・中・高校生部門 5,000円（会員 3,000円）</p>
-              <p>動画審査料（1団体）：専門・一般部門 8,000円（会員 6,000円）</p>
-              <p>※演奏者に1人以上協会会員が含まれる団体は会員価格で応募可能。</p>
-              <p>本選参加料（本選出場時のみ・演奏者1人につき）：</p>
-              <p>小・中・高校生部門 非会員 2,000円／会員 無料</p>
-              <p>専門・一般部門 非会員 3,000円／会員 1,000円</p>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Banknote className="size-5" />
+              審査料・参加料
+            </h2>
+            <ul className="mb-8 space-y-2 text-sm leading-relaxed text-muted-foreground">
+              {ENSEMBLE_2027.feeOverview.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+
+            <h3 className="mb-4 text-lg font-medium text-navy">
+              動画審査料（予選・1団体につき）
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              申込時にクレジットカードでお支払いください。
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-3 text-left font-medium">部門</th>
+                    <th className="py-3 text-right font-medium">会員</th>
+                    <th className="py-3 text-right font-medium">非会員</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ENSEMBLE_2027.categories.map((cat) => (
+                    <tr key={cat.id} className="border-b border-border">
+                      <td className="py-3">{cat.label}</td>
+                      <td className="py-3 text-right">
+                        {ENSEMBLE_2027.fees[cat.id].会員.toLocaleString()}円
+                      </td>
+                      <td className="py-3 text-right">
+                        {ENSEMBLE_2027.fees[cat.id].非会員.toLocaleString()}円
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            <h3 className="mb-4 mt-10 text-lg font-medium text-navy">
+              参加料（本選・通過団体のみ・演奏者1人につき）
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              予選通過後、事務局からご案内する期日までにお支払いください。申込時の決済には含まれません。
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-3 text-left font-medium">部門</th>
+                    <th className="py-3 text-right font-medium">会員</th>
+                    <th className="py-3 text-right font-medium">非会員</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ENSEMBLE_2027.categories.map((cat) => {
+                    const f = ENSEMBLE_2027.finalParticipationFees[cat.id];
+                    const fmt = (n: number) =>
+                      n === 0 ? "無料" : `${n.toLocaleString()}円`;
+                    return (
+                      <tr key={cat.id} className="border-b border-border">
+                        <td className="py-3">{cat.label}</td>
+                        <td className="py-3 text-right">{fmt(f.会員)}</td>
+                        <td className="py-3 text-right">{fmt(f.非会員)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="mt-6 space-y-1 text-sm text-muted-foreground">
+              {ENSEMBLE_2027.feeNotes.map((note, i) => (
+                <li key={i}>{note}</li>
+              ))}
+            </ul>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">申込・動画提出</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>申込受付期間：2026年<span className="text-red-600 italic">〇月〇日</span>（ ）～2026年<span className="text-red-600 italic">〇月〇日</span>（ ）</p>
-              <p>予選動画提出期限：2026年<span className="text-red-600 italic">〇月〇日</span> （〇）</p>
-              <p>申込方法：協会ホームページからWeb申込。</p>
-              <p>予選動画はYouTube「限定公開」でアップロードし、URLを申込フォームへ記載してください。</p>
-              <p>申込後の連絡は代表者メール宛に行います。`jca@jp-clarinet.org` を受信できる設定をご確認ください。</p>
-              <p>入金確認をもって受付完了となります。申込確認後の取消について審査料は返却されません。</p>
-            </div>
+            <h2 className="mb-6 text-xl font-medium text-navy">
+              動画審査料のお支払い方法（申込時）
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {ENSEMBLE_2027.paymentMethod}
+            </p>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">支払い方法</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>郵便振替番号：00120-2-472961</p>
-              <p>口座名：一般社団法人日本クラリネット協会</p>
-              <p>通信欄に「コンクール参加」と団体名をご記入ください。</p>
-              <p>ゆうちょ銀行：〇一九（ゼロイチキュウ）店 当座 0472961 シャ）ニホンクラリネットキョウカイ</p>
-              <p>銀行振込時は振込人名を参加団体名とし、団体名の前に「コンクール」を付けてください。</p>
-            </div>
+            <h2 className="mb-4 text-xl font-medium text-navy">申し込み受付期間</h2>
+            <p className="text-foreground">
+              お申し込み（Web申込・審査料の入金確認）：{ENSEMBLE_2027.applicationPeriod}
+            </p>
+            <p className="mt-2 text-foreground">
+              予選動画の提出：{ENSEMBLE_2027.videoSubmissionDeadline}まで（申込とは別日程）
+            </p>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">発表・表彰</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>予選結果は<span className="text-red-600 italic">〇月〇日</span>（<span className="text-red-600 italic">〇</span>）までに協会ホームページで発表予定（本選出場団体にはメール通知）。</p>
-              <p>本選結果は審査終了後、会場および協会ホームページで発表します。</p>
-              <p>部門ごとに順位を決定して表彰（一般部門は金賞・銀賞・銅賞）。</p>
-              <p>小・中学生部門、高校生部門、専門部門では特に優秀な団体にグランプリ賞を授与します。</p>
-              <p>特別賞（奨励賞・努力賞など）を贈る場合があります。</p>
-            </div>
+            <h2 className="mb-6 text-xl font-medium text-navy">審査員（五十音順）</h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.judges.map((j) => (
+                <li key={j.name}>
+                  {j.name}
+                  {"affiliation" in j && j.affiliation ? `（${j.affiliation}）` : ""}
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-medium text-navy">受賞者演奏会・お問い合わせ</h2>
-            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              <p>
-                各部門最高位入賞団体に、本選翌日2月28日（日）開催「第39回日本クラリネットフェスティバル in 広島」での受賞者演奏会出演をお願いする場合があります（出演任意）。
-              </p>
-              <p>※受賞者演奏会出演に係る費用（宿泊費等）は自己負担です。</p>
-              <p>
-                その他のお問い合わせは
-                <Link href="/contact" className="text-gold hover:underline">
-                  お問い合わせフォーム
+            <h2 className="mb-6 text-xl font-medium text-navy">審査</h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.review.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Info className="size-5" />
+              参加上の注意
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.participationNotes.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <FileText className="size-5" />
+              申し込み方法
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.applicationMethod.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Megaphone className="size-5" />
+              発表
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.announcement.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <Award className="size-5" />
+              表彰
+            </h2>
+            <ul className="space-y-2">
+              {ENSEMBLE_2027.awards.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-xl font-medium text-navy">受賞者演奏会</h2>
+            <p className="text-muted-foreground">{ENSEMBLE_2027.winnerRecital}</p>
+            <p className="mt-2 text-sm">
+              <a
+                href={FESTIVAL_39_HIROSHIMA_OFFICIAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gold hover:underline"
+              >
+                第39回日本クラリネットフェスティバル in 東広島 公式案内サイト
+              </a>
+            </p>
+          </section>
+
+          <section>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <MessageCircle className="size-5" />
+              お問い合わせ先
+            </h2>
+            <Card>
+              <CardContent className="space-y-2 pt-6 text-sm">
+                <p>{ENSEMBLE_2027.contact.address}</p>
+                <p className="font-medium">{ENSEMBLE_2027.contact.organisation}</p>
+                <p>
+                  Tel：{ENSEMBLE_2027.contact.tel}　Fax：{ENSEMBLE_2027.contact.fax}
+                </p>
+                <p>
+                  メール：
+                  <a
+                    href={`mailto:${ENSEMBLE_2027.contact.email}`}
+                    className="text-gold hover:underline"
+                  >
+                    {ENSEMBLE_2027.contact.email}
+                  </a>
+                </p>
+                <Link href="/contact" className="inline-flex text-gold hover:underline">
+                  お問い合わせフォームへ
                 </Link>
-                をご利用ください。
-              </p>
-            </div>
+              </CardContent>
+            </Card>
           </section>
 
-          <div className="border-t border-border pt-12">
-            <Link href="/archive?competition=ensemble">
-              <Button variant="outline">
-                過去の受賞者アーカイブを見る
+          <section className="border-t border-border pt-12">
+            <Link href="/events/ensemble/apply">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto bg-gold text-gold-foreground hover:bg-gold-muted"
+              >
+                参加申込フォームへ
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
-          </div>
+          </section>
         </div>
       </div>
     </div>

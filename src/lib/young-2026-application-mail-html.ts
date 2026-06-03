@@ -4,6 +4,8 @@ import {
   young2026PieceFinalLabel,
   young2026PiecePreliminaryLabel,
 } from "@/lib/young-2026-piece-field-labels";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
+import { ensemble2027CategoryLabel } from "@/lib/ensemble-2027-apply-confirm";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 export type Young2026ApplicationMailFields = {
@@ -110,9 +112,13 @@ export function buildYoung2026ApplicationDetailsSection(
     applicationId?: string;
     amountYen?: number | null;
     paymentRouteLabel?: string;
+    competitionSlug?: string;
   }
 ): string {
-  const categoryLabel = young2026CategoryLabel(app.category);
+  const isEnsemble = opts?.competitionSlug === ENSEMBLE_2027.slug;
+  const categoryLabel = isEnsemble
+    ? ensemble2027CategoryLabel(app.category)
+    : young2026CategoryLabel(app.category);
   const parts: string[] = [
     `<hr style="margin:1.25em 0" />`,
     `<p style="font-weight:bold;margin-bottom:0.5em">お申し込み内容（ご確認用）</p>`,
@@ -123,20 +129,26 @@ export function buildYoung2026ApplicationDetailsSection(
     parts.push(`<li>申込ID：${escapeHtml(opts.applicationId)}</li>`);
   }
   if (opts?.amountYen != null && Number.isFinite(opts.amountYen)) {
-    parts.push(`<li>参加費：${escapeHtml(opts.amountYen.toLocaleString("ja-JP"))}円</li>`);
+    parts.push(
+      `<li>${isEnsemble ? "動画審査料" : "参加費"}：${escapeHtml(opts.amountYen.toLocaleString("ja-JP"))}円</li>`
+    );
   }
   if (opts?.paymentRouteLabel?.trim()) {
     parts.push(`<li>お支払い方法：${escapeHtml(opts.paymentRouteLabel.trim())}</li>`);
   }
 
   parts.push(
-    `<li>お名前：${escapeHtml(app.name)}</li>`,
-    `<li>ふりがな：${escapeHtml(app.furigana)}</li>`,
+    `<li>${isEnsemble ? "団体名" : "お名前"}：${escapeHtml(app.name)}</li>`,
+    `<li>${isEnsemble ? "団体名ふりがな" : "ふりがな"}：${escapeHtml(app.furigana)}</li>`,
     `<li>メールアドレス：${escapeHtml(app.email)}</li>`,
-    `<li>生年月日：${escapeHtml(formatBirthDisplay(app.birth_date))}</li>`
+    `<li>${isEnsemble ? "代表者生年月日" : "生年月日"}：${escapeHtml(formatBirthDisplay(app.birth_date))}</li>`
   );
 
-  if (app.age_at_reference != null && Number.isFinite(app.age_at_reference)) {
+  if (
+    !isEnsemble &&
+    app.age_at_reference != null &&
+    Number.isFinite(app.age_at_reference)
+  ) {
     const refIso =
       typeof YOUNG_2026.referenceDate === "string"
         ? YOUNG_2026.referenceDate.slice(0, 10)
@@ -154,11 +166,17 @@ export function buildYoung2026ApplicationDetailsSection(
 
   parts.push(`<li>部門：${escapeHtml(categoryLabel)}</li>`);
 
-  if (app.selected_piece_preliminary) {
+  if (isEnsemble && app.selected_piece_preliminary) {
+    parts.push(`<li>代表者氏名：${escapeHtml(app.selected_piece_preliminary)}</li>`);
+  }
+  if (isEnsemble && app.selected_piece_final) {
+    parts.push(`<li>電話番号：${escapeHtml(app.selected_piece_final)}</li>`);
+  }
+  if (!isEnsemble && app.selected_piece_preliminary) {
     const lab = escapeHtml(young2026PiecePreliminaryLabel(app.category));
     parts.push(`<li>${lab}：${escapeHtml(app.selected_piece_preliminary)}</li>`);
   }
-  if (app.selected_piece_final) {
+  if (!isEnsemble && app.selected_piece_final) {
     const lab = escapeHtml(young2026PieceFinalLabel(app.category));
     parts.push(`<li>${lab}：${escapeHtml(app.selected_piece_final)}</li>`);
   }
@@ -168,7 +186,7 @@ export function buildYoung2026ApplicationDetailsSection(
   }
   if (app.accompanist_info) {
     const acc = escapeHtml(app.accompanist_info).replace(/\r\n|\n|\r/g, "<br />");
-    parts.push(`<li>伴奏・備考：${acc}</li>`);
+    parts.push(`<li>${isEnsemble ? "団体情報・備考" : "伴奏・備考"}：${acc}</li>`);
   }
 
   parts.push(`</ul>`);

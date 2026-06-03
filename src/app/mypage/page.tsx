@@ -668,11 +668,6 @@ function MypageContent(): any {
                         : "年会費をクレジットカードで支払う（未納が複数ある場合は古い年度から）"}
                     </Button>
                   )}
-                {profile.is_css_user === true && (
-                  <p className="text-xs text-muted-foreground">
-                    口座振替（CSS）でお支払いの場合は、下の「クレジットカード支払いに切り替える」から切り替え後にカード決済できます。
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
@@ -685,7 +680,7 @@ function MypageContent(): any {
                   支払方法
                 </CardTitle>
                 <CardDescription>
-                  現在、会費は銀行振込（CSS）でお支払いいただいています。事務局が入金を確認したうえでシステム上「振込済み」として更新します。クレジットに切り替えたあと、マイページから年会費をカード決済すると Stripe に支払方法が保存され、以降は毎年1月頃に自動引き落としの対象になります。
+                  会費のお支払いはクレジットカードのみとなっています。下のボタンでクレジットカード払いに切り替えたうえ、カード登録・年会費の決済を行ってください。
                 </CardDescription>
               </CardHeader>
               <CardContent>

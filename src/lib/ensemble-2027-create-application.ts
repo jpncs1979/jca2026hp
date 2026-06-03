@@ -1,45 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { YOUNG_2026 } from "@/lib/young-2026";
+import { ENSEMBLE_2027, type Ensemble2027CategoryId } from "@/lib/ensemble-2027";
 import { normalizeMemberNumberInput } from "@/lib/member-number";
 import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
+import { isEnsemble2027ApplicationOpen } from "@/lib/ensemble-2027";
 
-const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
+const CATEGORY_IDS = ENSEMBLE_2027.categories.map((c) => c.id);
 
-function calculateAge(birthDate: Date): number {
-  let age = REFERENCE_DATE.getFullYear() - birthDate.getFullYear();
-  const m = REFERENCE_DATE.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && REFERENCE_DATE.getDate() < birthDate.getDate())) age--;
-  return age;
+function getAmount(category: Ensemble2027CategoryId, memberType: string): number {
+  const fees = ENSEMBLE_2027.fees[category];
+  if (!fees) return 8000;
+  return memberType === "会員" ? fees.会員 : fees.非会員;
 }
 
-function getAmount(
-  category: string,
-  memberType: string,
-  isActiveMember: boolean
-): number {
-  const cat = category as keyof typeof YOUNG_2026.fees;
-  const fees = YOUNG_2026.fees[cat];
-  if (!fees) return 10000;
-  return isActiveMember ? fees.会員 : fees.非会員;
-}
+export type Ensemble2027ApplicationPaymentRoute = "stripe_card";
 
-export type Young2026ApplicationPaymentRoute = "stripe_card" | "bank_transfer";
-
-export type Young2026ApplicationParsed = {
+export type Ensemble2027ApplicationParsed = {
+  /** 団体名 */
   name: string;
+  /** 団体名ふりがな */
   furigana: string;
   email: string;
+  /** 代表者生年月日 */
   birth_date: string;
   member_type: "会員" | "非会員";
   member_number: string;
-  category: "ジュニアA" | "ジュニアB" | "ヤング";
-  selected_piece_preliminary: string | null;
-  selected_piece_final: string | null;
+  category: Ensemble2027CategoryId;
+  /** 代表者氏名 */
+  representative_name: string;
+  /** 代表者電話 */
+  phone: string;
+  /** 演奏曲名 */
+  program_title: string;
+  /** 団体人数・メンバー名簿等 */
+  ensemble_details: string;
   video_url: string | null;
-  accompanist_info: string | null;
 };
 
-export function parseYoung2026ApplicationBody(body: unknown): Young2026ApplicationParsed | null {
+export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027ApplicationParsed | null {
   if (!body || typeof body !== "object") return null;
   const o = body as Record<string, unknown>;
   const name = typeof o.name === "string" ? o.name.trim() : "";
@@ -49,24 +46,32 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
   const member_type = typeof o.member_type === "string" ? o.member_type.trim() : "";
   const category = typeof o.category === "string" ? o.category.trim() : "";
   const member_number = typeof o.member_number === "string" ? o.member_number : "";
-  if (!name || !furigana || !email || !birth_date || !member_type || !category) return null;
-  if (member_type !== "会員" && member_type !== "非会員") return null;
-  if (category !== "ジュニアA" && category !== "ジュニアB" && category !== "ヤング") return null;
+  const representative_name =
+    typeof o.representative_name === "string" ? o.representative_name.trim() : "";
+  const phone = typeof o.phone === "string" ? o.phone.trim() : "";
+  const program_title = typeof o.program_title === "string" ? o.program_title.trim() : "";
+  const ensemble_details =
+    typeof o.ensemble_details === "string" ? o.ensemble_details.trim() : "";
 
-  const selected_piece_preliminary =
-    typeof o.selected_piece_preliminary === "string" && o.selected_piece_preliminary.trim()
-      ? o.selected_piece_preliminary.trim()
-      : null;
-  const selected_piece_final =
-    typeof o.selected_piece_final === "string" && o.selected_piece_final.trim()
-      ? o.selected_piece_final.trim()
-      : null;
+  if (
+    !name ||
+    !furigana ||
+    !email ||
+    !birth_date ||
+    !member_type ||
+    !category ||
+    !representative_name ||
+    !phone ||
+    !program_title ||
+    !ensemble_details
+  ) {
+    return null;
+  }
+  if (member_type !== "会員" && member_type !== "非会員") return null;
+  if (!CATEGORY_IDS.includes(category as Ensemble2027CategoryId)) return null;
+
   const video_url =
     typeof o.video_url === "string" && o.video_url.trim() ? o.video_url.trim() : null;
-  const accompanist_info =
-    typeof o.accompanist_info === "string" && o.accompanist_info.trim()
-      ? o.accompanist_info.trim()
-      : null;
 
   return {
     name,
@@ -75,48 +80,44 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
     birth_date,
     member_type,
     member_number,
-    category,
-    selected_piece_preliminary,
-    selected_piece_final,
+    category: category as Ensemble2027CategoryId,
+    representative_name,
+    phone,
+    program_title,
+    ensemble_details,
     video_url,
-    accompanist_info,
   };
 }
 
-/**
- * ヤングコンクール申込レコードを作成（会員照合・年齢チェック込み）。
- */
-export async function createYoung2026Application(
+export async function createEnsemble2027Application(
   db: SupabaseClient,
   body: unknown,
-  payment_route: Young2026ApplicationPaymentRoute
+  payment_route: Ensemble2027ApplicationPaymentRoute
 ): Promise<
   | {
       ok: true;
       applicationId: string;
       amount: number;
-      parsed: Young2026ApplicationParsed;
+      parsed: Ensemble2027ApplicationParsed;
     }
   | { ok: false; message: string; status?: number }
 > {
-  const parsed = parseYoung2026ApplicationBody(body);
+  if (!isEnsemble2027ApplicationOpen()) {
+    return {
+      ok: false,
+      message: `申込受付期間は${ENSEMBLE_2027.applicationPeriod}です。`,
+      status: 400,
+    };
+  }
+
+  const parsed = parseEnsemble2027ApplicationBody(body);
   if (!parsed) {
     return { ok: false, message: "必須項目が入力されていません。", status: 400 };
   }
 
   const birth = new Date(parsed.birth_date);
   if (Number.isNaN(birth.getTime())) {
-    return { ok: false, message: "生年月日が不正です。", status: 400 };
-  }
-
-  const age = calculateAge(birth);
-  const cat = YOUNG_2026.eligibility.categories.find((c) => c.id === parsed.category);
-  if (cat && age > cat.maxAge) {
-    return {
-      ok: false,
-      message: "2026年4月1日時点の年齢が部門の上限を超えています。",
-      status: 400,
-    };
+    return { ok: false, message: "代表者の生年月日が不正です。", status: 400 };
   }
 
   const memberNumberNorm =
@@ -124,7 +125,7 @@ export async function createYoung2026Application(
   if (parsed.member_type === "会員" && !memberNumberNorm) {
     return {
       ok: false,
-      message: "会員の場合は有効な会員番号を入力してください（例: 0001）。",
+      message: "会員価格でお申し込みの場合は、有効な会員番号を入力してください（例: 0001）。",
       status: 400,
     };
   }
@@ -143,15 +144,21 @@ export async function createYoung2026Application(
   const { data: comp, error: compErr } = await db
     .from("competitions")
     .select("id")
-    .eq("slug", YOUNG_2026.slug)
+    .eq("slug", ENSEMBLE_2027.slug)
     .single();
 
   if (compErr || !comp?.id) {
     return { ok: false, message: "申込の準備ができていません。", status: 500 };
   }
 
-  const isActiveMember = parsed.member_type === "会員" && !!memberNumberNorm;
-  const amount = getAmount(parsed.category, parsed.member_type, isActiveMember);
+  const amount = getAmount(parsed.category, parsed.member_type);
+
+  const accompanist_info = [
+    `代表者氏名：${parsed.representative_name}`,
+    `電話：${parsed.phone}`,
+    `演奏曲：${parsed.program_title}`,
+    parsed.ensemble_details,
+  ].join("\n");
 
   const insertRow: Record<string, unknown> = {
     competition_id: comp.id,
@@ -159,21 +166,14 @@ export async function createYoung2026Application(
     furigana: parsed.furigana,
     email: parsed.email,
     birth_date: parsed.birth_date,
-    age_at_reference: age,
+    age_at_reference: 0,
     member_type: parsed.member_type,
     member_number: memberNumberNorm,
     category: parsed.category,
-    selected_piece_preliminary: parsed.selected_piece_preliminary,
-    selected_piece_final:
-      parsed.category === "ジュニアB" || parsed.category === "ヤング"
-        ? parsed.selected_piece_final
-        : null,
-    video_url: YOUNG_2026.requiresVideo.includes(
-      parsed.category as "ジュニアA" | "ジュニアB"
-    )
-      ? parsed.video_url
-      : null,
-    accompanist_info: parsed.accompanist_info,
+    selected_piece_preliminary: parsed.representative_name,
+    selected_piece_final: parsed.phone,
+    video_url: parsed.video_url,
+    accompanist_info,
     payment_status: "pending",
     amount,
     payment_route,

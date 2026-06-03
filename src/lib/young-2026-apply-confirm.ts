@@ -9,7 +9,7 @@ export type Young2026ApplyConfirmPayload = {
   furigana: string;
   email: string;
   birth_date: string;
-  member_type: "会員" | "非会員" | "同時入会";
+  member_type: "会員" | "非会員";
   member_number?: string;
   category: string;
   selected_piece_preliminary?: string | null;
@@ -51,10 +51,6 @@ export function young2026ApplyFeeYen(
   memberType: string
 ): number | null {
   if (!category?.trim() || !memberType?.trim()) return null;
-  if (memberType === "同時入会") {
-    const c = category as keyof typeof YOUNG_2026.fees;
-    return (YOUNG_2026.fees[c]?.非会員 ?? 10000) + YOUNG_2026.firstYearMembershipFee;
-  }
   const c = category as keyof typeof YOUNG_2026.fees;
   const fees = YOUNG_2026.fees[c];
   if (!fees) return null;
@@ -68,7 +64,7 @@ export function young2026CategoryLabel(categoryId: string): string {
   return c?.label ?? categoryId;
 }
 
-const VALID_MEMBER_TYPES = ["会員", "非会員", "同時入会"] as const;
+const VALID_MEMBER_TYPES = ["会員", "非会員"] as const;
 const VALID_CATEGORIES = ["ジュニアA", "ジュニアB", "ヤング"] as const;
 
 /** ストレージの JSON がフォームに流し込み可能かざっと検証する */

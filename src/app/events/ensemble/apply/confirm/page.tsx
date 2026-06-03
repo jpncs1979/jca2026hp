@@ -4,18 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { YOUNG_2026 } from "@/lib/young-2026";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
 import {
-  clearYoung2026ApplyConfirmPayload,
-  loadYoung2026ApplyConfirmPayload,
-  type Young2026ApplyConfirmPayload,
-  young2026ApplyFeeYen,
-  young2026CategoryLabel,
-} from "@/lib/young-2026-apply-confirm";
-import {
-  young2026PieceFinalLabel,
-  young2026PiecePreliminaryLabel,
-} from "@/lib/young-2026-piece-field-labels";
+  clearEnsemble2027ApplyConfirmPayload,
+  ensemble2027ApplyFeeYen,
+  ensemble2027CategoryLabel,
+  loadEnsemble2027ApplyConfirmPayload,
+  type Ensemble2027ApplyConfirmPayload,
+} from "@/lib/ensemble-2027-apply-confirm";
 import { Loader2 } from "lucide-react";
 
 function formatBirthDisplay(iso: string): string {
@@ -25,16 +21,16 @@ function formatBirthDisplay(iso: string): string {
   return d.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
 }
 
-export default function Young2026ApplyConfirmPage() {
+export default function EnsembleApplyConfirmPage() {
   const router = useRouter();
-  const [data, setData] = useState<Young2026ApplyConfirmPayload | null>(null);
+  const [data, setData] = useState<Ensemble2027ApplyConfirmPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loaded = loadYoung2026ApplyConfirmPayload();
+    const loaded = loadEnsemble2027ApplyConfirmPayload();
     if (!loaded) {
-      router.replace("/events/young-2026/apply");
+      router.replace("/events/ensemble/apply");
       return;
     }
     setData(loaded);
@@ -51,10 +47,9 @@ export default function Young2026ApplyConfirmPage() {
     );
   }
 
-  const feeYen = young2026ApplyFeeYen(data.category, data.member_type);
+  const feeYen = ensemble2027ApplyFeeYen(data.category, data.member_type);
 
-  const buildSubmitPayload = (p: Young2026ApplyConfirmPayload) => ({
-    competition_id: p.competitionId,
+  const buildSubmitPayload = (p: Ensemble2027ApplyConfirmPayload) => ({
     name: p.name,
     furigana: p.furigana,
     email: p.email,
@@ -62,39 +57,34 @@ export default function Young2026ApplyConfirmPage() {
     member_type: p.member_type,
     member_number: p.member_number ?? "",
     category: p.category,
-    selected_piece_preliminary: p.selected_piece_preliminary,
-    selected_piece_final: p.selected_piece_final,
+    representative_name: p.representative_name,
+    phone: p.phone,
+    program_title: p.program_title,
+    ensemble_details: p.ensemble_details,
     video_url: p.video_url,
-    accompanist_info: p.accompanist_info,
   });
-
-  const verifyMemberIfNeeded = async (): Promise<boolean> => {
-    if (data.member_type !== "会員") return true;
-    const vRes = await fetch("/api/events/young-2026/verify-member", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        member_number: data.member_number ?? "",
-        email: data.email,
-        birth_date: data.birth_date,
-      }),
-    });
-    const vJson = await vRes.json().catch(() => ({}));
-    if (!vRes.ok) {
-      setError((vJson as { error?: string }).error ?? "会員情報の確認に失敗しました。");
-      return false;
-    }
-    return true;
-  };
 
   const handlePayCard = async () => {
     setLoading(true);
     setError(null);
-    if (!(await verifyMemberIfNeeded())) {
-      setLoading(false);
-      return;
+    if (data.member_type === "会員") {
+      const vRes = await fetch("/api/events/ensemble-2027/verify-member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_number: data.member_number ?? "",
+          email: data.email,
+          birth_date: data.birth_date,
+        }),
+      });
+      const vJson = await vRes.json().catch(() => ({}));
+      if (!vRes.ok) {
+        setError((vJson as { error?: string }).error ?? "会員情報の確認に失敗しました。");
+        setLoading(false);
+        return;
+      }
     }
-    const res = await fetch("/api/events/young-2026/checkout", {
+    const res = await fetch("/api/events/ensemble-2027/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildSubmitPayload(data)),
@@ -106,7 +96,7 @@ export default function Young2026ApplyConfirmPage() {
       return;
     }
     if (json.url) {
-      clearYoung2026ApplyConfirmPayload();
+      clearEnsemble2027ApplyConfirmPayload();
       window.location.href = json.url as string;
     }
   };
@@ -116,14 +106,15 @@ export default function Young2026ApplyConfirmPage() {
       <div className="border-b border-border bg-muted/30 py-8 md:py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-2xl font-bold text-navy md:text-3xl">
-            {YOUNG_2026.name} お申し込み内容の確認
+            {ENSEMBLE_2027.name} お申し込み内容の確認
           </h1>
           <p className="mt-2 text-muted-foreground">
             内容にお間違いがなければ、<strong className="text-foreground">クレジットカード</strong>
-            でお支払いください。決済完了時点でお申し込み受付が完了します。
+            で動画審査料（予選・1団体）をお支払いください（クレジットカードのみ）。決済完了時点でお申し込み受付が完了します。
+            本選の参加料は予選通過後に別途ご案内します。
             {data.member_type === "会員" ? (
               <span className="mt-2 block text-sm">
-                正会員の場合は、会員番号・メール・生年月日を会員データと照合します。
+                会員価格の場合は、会員番号・メール・代表者生年月日を会員データと照合します。
               </span>
             ) : null}
           </p>
@@ -141,7 +132,7 @@ export default function Young2026ApplyConfirmPage() {
           <h2 className="mb-4 text-lg font-semibold text-navy">申し込み内容</h2>
           <dl className="space-y-3 text-sm">
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-              <dt className="text-muted-foreground">お名前</dt>
+              <dt className="text-muted-foreground">団体名</dt>
               <dd className="font-medium">{data.name}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
@@ -149,12 +140,32 @@ export default function Young2026ApplyConfirmPage() {
               <dd>{data.furigana}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">部門</dt>
+              <dd>{ensemble2027CategoryLabel(data.category)}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">演奏曲</dt>
+              <dd>{data.program_title}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">団体情報</dt>
+              <dd className="whitespace-pre-wrap">{data.ensemble_details}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">代表者氏名</dt>
+              <dd>{data.representative_name}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">代表者生年月日</dt>
+              <dd>{formatBirthDisplay(data.birth_date)}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">メール</dt>
               <dd className="break-all">{data.email}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-              <dt className="text-muted-foreground">生年月日</dt>
-              <dd>{formatBirthDisplay(data.birth_date)}</dd>
+              <dt className="text-muted-foreground">電話</dt>
+              <dd>{data.phone}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">会員種別</dt>
@@ -166,41 +177,22 @@ export default function Young2026ApplyConfirmPage() {
                 <dd className="font-mono">{data.member_number.trim()}</dd>
               </div>
             ) : null}
-            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-              <dt className="text-muted-foreground">部門</dt>
-              <dd>{young2026CategoryLabel(data.category)}</dd>
-            </div>
-            {data.selected_piece_preliminary ? (
-              <div className="grid gap-1 sm:grid-cols-[minmax(10rem,11rem)_1fr] sm:gap-3">
-                <dt className="text-muted-foreground text-pretty">
-                  {young2026PiecePreliminaryLabel(data.category)}
-                </dt>
-                <dd className="text-pretty">{data.selected_piece_preliminary}</dd>
-              </div>
-            ) : null}
-            {data.selected_piece_final ? (
-              <div className="grid gap-1 sm:grid-cols-[minmax(10rem,11rem)_1fr] sm:gap-3">
-                <dt className="text-muted-foreground text-pretty">
-                  {young2026PieceFinalLabel(data.category)}
-                </dt>
-                <dd className="text-pretty">{data.selected_piece_final}</dd>
-              </div>
-            ) : null}
             {data.video_url?.trim() ? (
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
                 <dt className="text-muted-foreground">予選動画URL</dt>
                 <dd className="break-all">{data.video_url.trim()}</dd>
               </div>
-            ) : null}
-            {data.accompanist_info?.trim() ? (
+            ) : (
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">伴奏・備考</dt>
-                <dd className="whitespace-pre-wrap text-pretty">{data.accompanist_info.trim()}</dd>
+                <dt className="text-muted-foreground">予選動画URL</dt>
+                <dd className="text-muted-foreground">
+                  （未入力・{ENSEMBLE_2027.videoSubmissionDeadline}までに提出）
+                </dd>
               </div>
-            ) : null}
+            )}
             <div className="border-t border-border pt-4">
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">参加費（お支払い予定額）</dt>
+                <dt className="text-muted-foreground">動画審査料</dt>
                 <dd className="text-lg font-semibold text-gold tabular-nums">
                   {feeYen != null ? `${feeYen.toLocaleString()}円` : "—"}
                 </dd>
@@ -225,12 +217,12 @@ export default function Young2026ApplyConfirmPage() {
               "クレジットカードで支払う"
             )}
           </Button>
-          <Link href="/events/young-2026/apply">
+          <Link href="/events/ensemble/apply">
             <Button type="button" variant="outline">
               修正する
             </Button>
           </Link>
-          <Link href="/events/young-2026">
+          <Link href="/events/ensemble">
             <Button type="button" variant="ghost">
               コンクール詳細に戻る
             </Button>

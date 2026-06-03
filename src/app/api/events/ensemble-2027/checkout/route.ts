@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import { YOUNG_2026 } from "@/lib/young-2026";
-import { createYoung2026Application } from "@/lib/young-2026-create-application";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
+import { createEnsemble2027Application } from "@/lib/ensemble-2027-create-application";
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const db = createClient(supabaseUrl, serviceRoleKey);
 
-    const created = await createYoung2026Application(db, body, "stripe_card");
+    const created = await createEnsemble2027Application(db, body, "stripe_card");
     if (!created.ok) {
       return NextResponse.json(
         { error: created.message },
@@ -32,11 +32,9 @@ export async function POST(request: Request) {
     }
 
     const { parsed } = created;
-    const category = parsed.category;
-    const memberType = parsed.member_type;
-
     const stripe = new Stripe(stripeSecret);
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? request.headers.get("origin") ?? "http://localhost:3000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? request.headers.get("origin") ?? "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -46,8 +44,8 @@ export async function POST(request: Request) {
           price_data: {
             currency: "jpy",
             product_data: {
-              name: `${YOUNG_2026.name} 参加費`,
-              description: `${category}部門`,
+              name: `${ENSEMBLE_2027.name} 動画審査料`,
+              description: `${parsed.category}（${parsed.member_type}）`,
             },
             unit_amount: created.amount,
           },
@@ -56,17 +54,17 @@ export async function POST(request: Request) {
       ],
       metadata: {
         application_id: created.applicationId,
-        competition_slug: YOUNG_2026.slug,
-        member_type: memberType,
+        competition_slug: ENSEMBLE_2027.slug,
+        member_type: parsed.member_type,
       },
-      success_url: `${baseUrl}/events/young-2026/apply/complete?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/events/young-2026/apply`,
+      success_url: `${baseUrl}/events/ensemble/apply/complete?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/events/ensemble/apply`,
       customer_email: parsed.email,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error("Checkout API error:", err);
+    console.error("Ensemble checkout API error:", err);
     return NextResponse.json(
       { error: "決済の準備中にエラーが発生しました。" },
       { status: 500 }

@@ -15,6 +15,7 @@ import {
   applicationRowToMailFields,
   buildYoung2026ApplicationDetailsSection,
 } from "@/lib/young-2026-application-mail-html";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 function getStripe(): Stripe | null {
@@ -43,9 +44,18 @@ async function sendCompetitionApplicationPaidEmail(
   if (!emailRaw) return;
 
   const slug = opts.competitionSlug.trim() || YOUNG_2026.slug;
-  const compTitle = slug === YOUNG_2026.slug ? YOUNG_2026.name : `コンクール（${slug}）`;
+  const compTitle =
+    slug === YOUNG_2026.slug
+      ? YOUNG_2026.name
+      : slug === ENSEMBLE_2027.slug
+        ? ENSEMBLE_2027.name
+        : `コンクール（${slug}）`;
   const compNameHtml =
-    slug === YOUNG_2026.slug ? escapeHtml(YOUNG_2026.name) : `コンクール（${escapeHtml(slug)}）`;
+    slug === YOUNG_2026.slug
+      ? escapeHtml(YOUNG_2026.name)
+      : slug === ENSEMBLE_2027.slug
+        ? escapeHtml(ENSEMBLE_2027.name)
+        : `コンクール（${escapeHtml(slug)}）`;
 
   const name = escapeHtml(String(app.name ?? ""));
   const mailFields = applicationRowToMailFields(app);
@@ -56,6 +66,7 @@ async function sendCompetitionApplicationPaidEmail(
     applicationId: appId || undefined,
     amountYen,
     paymentRouteLabel: "クレジットカード（Stripe）",
+    competitionSlug: slug,
   });
 
   const lines: string[] = [
@@ -113,6 +124,7 @@ async function sendCompetitionApplicationPaidEmail(
     applicationId: appId || undefined,
     amountYen,
     paymentRouteLabel: "クレジットカード（Stripe）",
+    competitionSlug: slug,
   });
 
   if (officeNotifyEmail) {

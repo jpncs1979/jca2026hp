@@ -25,6 +25,7 @@ import {
   isRestorableYoung2026ApplyPayload,
   loadYoung2026ApplyConfirmPayload,
   saveYoung2026ApplyConfirmPayload,
+  young2026ApplyFeeYen,
 } from "@/lib/young-2026-apply-confirm";
 
 const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
@@ -42,7 +43,7 @@ const formSchema = z.object({
   furigana: z.string().min(1, "ふりがなを入力してください"),
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
-  member_type: z.enum(["会員", "非会員", "同時入会"]),
+  member_type: z.enum(["会員", "非会員"]),
   member_number: z.string().optional(),
   category: z.enum(["ジュニアA", "ジュニアB", "ヤング"]),
   selected_piece_preliminary: z.string().optional(),
@@ -279,11 +280,7 @@ export default function ApplyPage() {
   }, [loading, competitionId, form]);
 
   const feeRaw =
-    category && memberType
-      ? memberType === "同時入会"
-        ? (YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.非会員 ?? 10000) + YOUNG_2026.firstYearMembershipFee
-        : YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.[memberType as "会員" | "非会員"]
-      : undefined;
+    category && memberType ? young2026ApplyFeeYen(category, memberType) : null;
 
   if (loading) {
     return (
@@ -386,7 +383,9 @@ export default function ApplyPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      {YOUNG_2026.referenceDate.replace(/-/g, "/")}時点の年齢で部門の適合判定を行います
+                      月・日はそれぞれ2桁で入力してください（例: 1月1日 → 01 / 01）。
+                      {YOUNG_2026.referenceDate.replace(/-/g, "/")}
+                      時点の年齢で部門の適合判定を行います。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -426,7 +425,6 @@ export default function ApplyPage() {
                       >
                         <option value="非会員">非会員</option>
                         <option value="会員">会員</option>
-                        <option value="同時入会">同時入会</option>
                       </select>
                     </FormControl>
                     <FormMessage />
@@ -646,10 +644,6 @@ export default function ApplyPage() {
               <p className="text-lg font-medium">
                 参加費：{feeRaw != null ? (
                   <span className="text-gold">{feeRaw.toLocaleString()}円</span>
-                ) : memberType === "同時入会" ? (
-                  <span className="text-gold">
-                    {category && (YOUNG_2026.fees[category as keyof typeof YOUNG_2026.fees]?.非会員 ?? 0) + YOUNG_2026.firstYearMembershipFee}円
-                  </span>
                 ) : (
                   <span className="text-muted-foreground">部門・会員種別を選択してください</span>
                 )}
