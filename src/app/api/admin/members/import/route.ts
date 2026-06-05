@@ -1,9 +1,16 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { read, utils } from "xlsx";
 import { parseFeePaymentLabel } from "@/lib/excel-fee-payment";
+import { profileChannelFromFeeImport } from "@/lib/payment-channel";
 import { findBirthDateColumnIndex, parseImportDateCell } from "@/lib/parse-import-date";
+import {
+  clearAdminMemberNumbers,
+  createImportMemberNumberCounters,
+  nextMemberNumberForImport,
+} from "@/lib/member-number-sequence";
 
 /**
  * Excel 会員データの列マッピング
@@ -27,6 +34,55 @@ function findFeePaymentColumnIndex(header: string[]): number {
   const exact = cells.findIndex((h) => h === "会費支払い方法");
   if (exact >= 0) return exact;
   return cells.findIndex((h) => /会費/.test(h) && /支払/.test(h));
+}
+
+/**
+ * email に対応する Auth ユーザーを用意し、その UID を返す。
+ * - 未登録なら email_confirm 済みで新規作成（ランダムな初期パスワード。本人が後でリセットして設定する）
+ * - 既に Auth に登録済みなら recovery リンク生成で既存 UID を検出（メールは送らない）
+ *
+ * 注意: profiles は事前に upsert 済みのため、createUser の handle_new_user トリガーは
+ * 既存メールをスキップする（022_handle_new_user_skip_existing_email）。よって二重 profiles は発生しない。
+ */
+async function ensureAuthUserId(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+  name: string
+): Promise<{ userId: string | null; error: string | null }> {
+  const tempPass = randomBytes(20).toString("base64url") + "Aa1!#x";
+  const { data: created, error: ce } = await admin.auth.admin.createUser({
+    email,
+    password: tempPass,
+    email_confirm: true,
+    user_metadata: { full_name: name || undefined, name: name || undefined },
+  });
+  if (!ce && created.user?.id) {
+    return { userId: created.user.id, error: null };
+  }
+
+  const msg = ce?.message ?? "";
+  const maybeDup =
+    msg.toLowerCase().includes("already") ||
+    msg.toLowerCase().includes("registered") ||
+    (ce as { status?: number })?.status === 422;
+
+  if (maybeDup) {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+    const redirectTo = `${siteUrl}/auth/callback?next=/auth/set-password`;
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo, redirect_to: redirectTo },
+    });
+    if (!linkErr) {
+      const uid = (linkData as { user?: { id?: string } })?.user?.id ?? null;
+      if (uid) return { userId: uid, error: null };
+    }
+    return { userId: null, error: linkErr?.message ?? "既存アカウントの検出に失敗しました。" };
+  }
+
+  return { userId: null, error: msg || "ログイン用アカウントの作成に失敗しました。" };
 }
 
 export async function POST(request: Request) {
@@ -55,7 +111,7 @@ export async function POST(request: Request) {
     }
 
     const buf = await file.arrayBuffer();
-    const wb = read(buf, { type: "array", cellDates: true });
+    const wb = read(buf, { type: "array", cellDates: false });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = utils.sheet_to_json<string[]>(ws, { header: 1, defval: "" }) as string[][];
 
@@ -92,6 +148,22 @@ export async function POST(request: Request) {
     const created: string[] = [];
     const updated: string[] = [];
     const skipped: string[] = [];
+    const linked: string[] = [];
+    const linkFailures: string[] = [];
+
+    await clearAdminMemberNumbers(admin);
+
+    const emailsInFile: string[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      const email = String(row[emailIdx] ?? "").trim();
+      if (email) emailsInFile.push(email);
+    }
+    if (emailsInFile.length > 0) {
+      await admin.from("profiles").update({ member_number: null }).in("email", emailsInFile);
+    }
+
+    const memberNumberCounters = createImportMemberNumberCounters();
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i] ?? [];
@@ -130,11 +202,18 @@ export async function POST(request: Request) {
 
       const { data: existing } = await admin
         .from("profiles")
-        .select("id, member_number")
+        .select("id, member_number, user_id")
         .eq("email", email)
         .single();
 
       const status = expiryStr && new Date(expiryStr) >= new Date() ? "active" : "expired";
+      let memberNumber: number;
+      try {
+        memberNumber = nextMemberNumberForImport(membershipType, memberNumberCounters);
+      } catch (e) {
+        skipped.push(`行${i + 1}: ${e instanceof Error ? e.message : String(e)}`);
+        continue;
+      }
       const profileBase = {
         name,
         name_kana: nameKana,
@@ -157,6 +236,7 @@ export async function POST(request: Request) {
       if (existing) {
         const updateData: Record<string, unknown> = {
           ...profileBase,
+          member_number: memberNumber,
           birth_date: birthDateStr,
           is_ica_member: isIca,
           ica_requested: isIca,
@@ -164,7 +244,7 @@ export async function POST(request: Request) {
           notes,
           ...(feePayment != null
             ? {
-                is_css_user: feePayment.is_css_user,
+                ...profileChannelFromFeeImport(feePayment),
                 import_payment_kind: feePayment.import_payment_kind,
               }
             : {}),
@@ -227,6 +307,7 @@ export async function POST(request: Request) {
         };
         const insertWithExtras = {
           ...insertBase,
+          member_number: memberNumber,
           birth_date: birthDateStr,
           is_ica_member: isIca,
           ica_requested: isIca,
@@ -235,7 +316,7 @@ export async function POST(request: Request) {
           source: "import" as const,
           ...(feePayment != null
             ? {
-                is_css_user: feePayment.is_css_user,
+                ...profileChannelFromFeeImport(feePayment),
                 import_payment_kind: feePayment.import_payment_kind,
               }
             : {}),
@@ -278,6 +359,24 @@ export async function POST(request: Request) {
         }
       }
 
+      // ログイン用 Auth アカウントを用意して user_id を紐付け（未紐付のときのみ）
+      if (profileId && !existing?.user_id) {
+        const { userId: authUserId, error: authErr } = await ensureAuthUserId(admin, email, name);
+        if (authUserId) {
+          const { error: linkErr } = await admin
+            .from("profiles")
+            .update({ user_id: authUserId, updated_at: new Date().toISOString() })
+            .eq("id", profileId);
+          if (linkErr) {
+            linkFailures.push(`${email}: ${linkErr.message}`);
+          } else {
+            linked.push(email);
+          }
+        } else if (authErr) {
+          linkFailures.push(`${email}: ${authErr}`);
+        }
+      }
+
       if (profileId && expiryStr) {
         const { data: mem } = await admin
           .from("memberships")
@@ -315,9 +414,13 @@ export async function POST(request: Request) {
       created: created.length,
       updated: updated.length,
       skipped: skipped.length,
+      linked: linked.length,
+      linkFailed: linkFailures.length,
       createdList: created,
       updatedList: updated,
       skippedList: skipped,
+      linkedList: linked,
+      linkFailedList: linkFailures,
     });
   } catch (err) {
     console.error("Import error:", err);

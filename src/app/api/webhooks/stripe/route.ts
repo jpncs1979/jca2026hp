@@ -220,6 +220,8 @@ async function handleMembershipJoinCompleted(
     ica_requested: meta.ica_requested === "1",
     is_ica_member: meta.ica_requested === "1",
     is_css_user: false,
+    payment_channel: "card",
+    payment_channel_note: null,
   };
 
   let { data: newProfile, error: profileError } = await supabase
@@ -254,6 +256,11 @@ async function handleMembershipJoinCompleted(
     expiry_date: expiryStr,
     payment_method: "stripe",
   });
+
+  await supabase
+    .from("profiles")
+    .update({ membership_valid_until: expiryStr, updated_at: new Date().toISOString() })
+    .eq("id", newProfile.id);
 
   const amount = session.amount_total ?? 0;
   const paymentBase = {
@@ -498,7 +505,11 @@ async function handleMembershipRenewalCompleted(
 
   await supabase
     .from("profiles")
-    .update({ status: "active", updated_at: new Date().toISOString() })
+    .update({
+      status: "active",
+      membership_valid_until: newExp,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", profileId);
 
   return { ok: true };

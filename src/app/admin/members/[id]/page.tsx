@@ -12,10 +12,15 @@ import { formatMemberNumber } from "@/lib/member-number";
 import { unifiedPaymentMethodLabel, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { joinAddressLine } from "@/lib/japanese-address";
-import { EXPEL_REASON_THREE_YEAR_ARREARS } from "@/lib/membership-three-year-arrears";
+import { paymentChannelLabel } from "@/lib/payment-channel";
+import {
+  computeMemberKindDisplay,
+  isThreeYearConsecutiveUnpaid,
+  type MemberKindDisplay,
+} from "@/lib/member-display-status";
 import { ReleaseRejoinEmailButton } from "./release-rejoin-email-button";
 import { MemberReviveButton } from "./member-revive-button";
-import { MemberApproveButton } from "./member-approve-button";
+import { MemberWithdrawalButton } from "./member-withdrawal-button";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   regular: "正会員",
@@ -58,8 +63,9 @@ export default async function AdminMemberDetailPage({
       address_prefecture, address_city, address_street, address_building,
       phone,
       affiliation, status, membership_type, is_ica_member, officer_title, birth_date, created_at,
-      is_css_user, stripe_customer_id, source, import_payment_kind, simultaneous_join_competition_slug,
-      expelled_at, expulsion_reason, email_before_rejoin_release,
+      is_css_user, payment_channel, payment_channel_note, membership_valid_until,
+      stripe_customer_id, source, import_payment_kind, simultaneous_join_competition_slug,
+      expelled_at, expulsion_reason, expulsion_note, email_before_rejoin_release,
       memberships(join_date, expiry_date, payment_method)
     `;
   /** 新カラム未マイグレーション時のフォールバック（simultaneous_join_competition_slug は含めない） */
@@ -121,6 +127,8 @@ export default async function AdminMemberDetailPage({
     officer_title?: string | null;
     birth_date?: string | null;
     is_css_user?: boolean | null;
+    payment_channel?: string | null;
+    payment_channel_note?: string | null;
     stripe_customer_id?: string | null;
     source?: string | null;
     import_payment_kind?: string | null;
@@ -162,6 +170,38 @@ export default async function AdminMemberDetailPage({
     3
   );
 
+  const membershipValidUntil =
+    (profile as { membership_valid_until?: string | null }).membership_valid_until ??
+    latestMembership?.expiry_date;
+
+  const feePayments = (feePayRows ?? []) as PaymentRowForFee[];
+  const memberKind: MemberKindDisplay = computeMemberKindDisplay(
+    {
+      status: profile.status ?? "",
+      memberships,
+      membership_valid_until: membershipValidUntil,
+    },
+    feePayments
+  );
+  const threeYearUnpaid = isThreeYearConsecutiveUnpaid(
+    {
+      status: profile.status ?? "",
+      memberships,
+      membership_valid_until: membershipValidUntil,
+    },
+    feePayments
+  );
+
+  const memberKindClass: Record<MemberKindDisplay, string> = {
+    会員: "bg-green-100 text-green-800",
+    非会員: "bg-muted text-muted-foreground",
+    未納あり: "bg-amber-100 text-amber-800",
+  };
+
+  const canWithdraw =
+    (profile.status === "active" || profile.status === "pending") &&
+    memberKind !== "非会員";
+
   return (
     <div className="space-y-6">
       <Link
@@ -173,6 +213,15 @@ export default async function AdminMemberDetailPage({
       </Link>
 
       <h1 className="text-2xl font-bold text-navy">会員詳細</h1>
+
+      {threeYearUnpaid ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-medium">3年連続未納の可能性があります</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            会費状況CSVの「3年連続未納」列と照合し、CSS会員は入金登録漏れがないか確認のうえ、必要なら下の「退会（資格喪失）」または編集画面から手動で退会処理してください。
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-white p-6">
@@ -225,37 +274,15 @@ export default async function AdminMemberDetailPage({
               <dd>{profileExt.birth_date ?? "－"}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">ステータス</dt>
+              <dt className="text-muted-foreground">会員区分</dt>
               <dd>
                 <span
-                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                    profile.status === "pending"
-                      ? "bg-amber-100 text-amber-800"
-                      : profile.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : profile.status === "expelled"
-                          ? "bg-red-100 text-red-900"
-                          : "bg-muted text-muted-foreground"
-                  }`}
+                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${memberKindClass[memberKind]}`}
                 >
-                  {profile.status === "pending"
-                    ? "承認待ち"
-                    : profile.status === "active"
-                      ? "有効"
-                      : profile.status === "expelled"
-                        ? "強制退会"
-                        : "期限切れ"}
+                  {memberKind}
                 </span>
               </dd>
             </div>
-            {profile.status === "pending" ? (
-              <div className="mt-4">
-                <MemberApproveButton
-                  profileId={profile.id}
-                  memberName={profile.name ?? "会員"}
-                />
-              </div>
-            ) : null}
             {simultaneousJoinLabel ? (
               <div>
                 <dt className="text-muted-foreground">コンクール経由の同時入会</dt>
@@ -264,26 +291,10 @@ export default async function AdminMemberDetailPage({
             ) : null}
           </dl>
           {profile.status === "expelled" ? (
-            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-950">
-              <p className="font-medium">会費未納等により強制退会となっています。</p>
-              {(profile as { expelled_at?: string | null }).expelled_at ? (
-                <p className="mt-1 text-xs text-red-900/90">
-                  処理日時:{" "}
-                  {new Date(
-                    String((profile as { expelled_at?: string }).expelled_at)
-                  ).toLocaleString("ja-JP")}
-                </p>
-              ) : null}
-              {(profile as { expulsion_reason?: string | null }).expulsion_reason ===
-              EXPEL_REASON_THREE_YEAR_ARREARS ? (
-                <p className="mt-1 text-xs">理由: 事業年度ベースで直近3年連続の会費未納</p>
-              ) : (profile as { expulsion_reason?: string | null }).expulsion_reason ? (
-                <p className="mt-1 text-xs">
-                  理由: {(profile as { expulsion_reason?: string }).expulsion_reason}
-                </p>
-              ) : null}
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+              <p className="font-medium">旧データ: 強制退会（expelled）ステータスです。表示上は非会員として扱います。</p>
               <p className="mt-2 text-xs leading-relaxed">
-                本人がウェブから再入会する場合は、事務局で内容確認のうえ、下のボタンでログイン用メールを退避してください。退避後、本人は同じメールアドレスで入会申し込みからやり直せます。
+                本人がウェブから再入会する場合は、事務局で内容確認のうえ、ログイン用メールを退避してください。
               </p>
               <div className="mt-3">
                 <ReleaseRejoinEmailButton profileId={profile.id} />
@@ -404,11 +415,15 @@ export default async function AdminMemberDetailPage({
           <dl className="space-y-3 text-sm">
             <div>
               <dt className="text-muted-foreground">会員資格の末日（4/1〜翌3/31）</dt>
-              <dd className="font-medium">{latestMembership.expiry_date ?? "-"}</dd>
+              <dd className="font-medium">{membershipValidUntil ?? "-"}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">会費支払い方法（一覧と同じ区分）</dt>
-              <dd className="font-medium">{unifiedPaymentMethodLabel(profileForPaymentLabel)}</dd>
+              <dt className="text-muted-foreground">会費支払い経路</dt>
+              <dd className="font-medium">{paymentChannelLabel(profileExt)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">一覧区分（互換）</dt>
+              <dd className="text-muted-foreground">{unifiedPaymentMethodLabel(profileForPaymentLabel)}</dd>
             </div>
           </dl>
         ) : (
@@ -459,6 +474,9 @@ export default async function AdminMemberDetailPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        {canWithdraw ? (
+          <MemberWithdrawalButton profileId={profile.id} memberName={profile.name ?? "会員"} />
+        ) : null}
         {(profile.status === "expired" || profile.status === "expelled") && (
           <MemberReviveButton
             profileId={profile.id}

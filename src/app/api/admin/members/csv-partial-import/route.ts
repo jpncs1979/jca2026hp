@@ -6,6 +6,7 @@ import { parseMemberNumberCell } from "@/lib/member-number";
 import { parseFeePaymentLabel, type FeePaymentDb } from "@/lib/excel-fee-payment";
 import { parseImportDateCell } from "@/lib/parse-import-date";
 import { joinAddressLine } from "@/lib/japanese-address";
+import { profileChannelFromFeeImport } from "@/lib/payment-channel";
 
 const MAX_ROWS = 2000;
 
@@ -196,7 +197,7 @@ export async function POST(request: Request) {
       const payCell = nonEmpty(payFee) ? payFee : nonEmpty(payLegacy) ? payLegacy : undefined;
       const payParsed = nonEmpty(payCell) ? paymentPatchFromLabel(payCell!) : null;
       if (payParsed) {
-        profilePatch.is_css_user = payParsed.is_css_user;
+        Object.assign(profilePatch, profileChannelFromFeeImport(payParsed));
         profilePatch.import_payment_kind = payParsed.import_payment_kind;
       }
 

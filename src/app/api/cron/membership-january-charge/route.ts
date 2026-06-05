@@ -11,6 +11,7 @@ import {
   targetFiscalYearJanuaryCardCharge,
 } from "@/lib/membership-january-charge";
 import { membershipEligibilityEndIsoFromMaxPaidBusinessFiscalYear } from "@/lib/membership-fiscal-year";
+import { isCardPaymentMember } from "@/lib/payment-channel";
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
 
   const { data: profiles, error: fetchErr } = await supabase
     .from("profiles")
-    .select("id, membership_type, status, is_css_user, stripe_customer_id")
+    .select("id, membership_type, status, is_css_user, payment_channel, payment_channel_note, stripe_customer_id")
     .eq("status", "active")
     .not("stripe_customer_id", "is", null);
 
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
     (p) =>
       typeof p.stripe_customer_id === "string" &&
       p.stripe_customer_id.trim() !== "" &&
-      p.is_css_user !== true
+      isCardPaymentMember(p)
   );
 
   if (cardTargets.length === 0) {

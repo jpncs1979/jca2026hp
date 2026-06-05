@@ -6,25 +6,25 @@ import {
 } from "@/lib/excel-fee-payment";
 import { feePaymentCategoryKey, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
 import {
-  fetchMembershipFeePaymentsByProfileIds,
-  filterProfilesByUnpaidMode,
-  UNPAID_FILTER_MODE_RECENT3,
-} from "@/lib/admin-members-unpaid-filter";
+  attachMemberKindToProfiles,
+  filterProfilesForAdminList,
+} from "@/lib/admin-member-kind-filter";
+
+const MEMBERSHIP_TYPES = ["regular", "student", "supporting", "friend"] as const;
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const icaOnly = searchParams.get("ica") === "1";
-    const type = searchParams.get("type"); // regular, student, supporting, friend
-    const unpaid = searchParams.get("unpaid") === "1";
-    const feeFyRaw = searchParams.get("fee_fy"); // recent3 | expiry | 年度開始年（例: 2025）
-    /** pending | active | expired | expelled | withdrawn（期限切れまたは強制退会） */
-    const status = searchParams.get("status");
+    const typeRaw = searchParams.get("type")?.trim() ?? "";
+    const unpaidOnly = searchParams.get("unpaid") === "1";
     const payKindRaw = searchParams.get("pay_kind");
 
-    const PROFILE_STATUSES = ["pending", "active", "expired", "expelled"] as const;
-    const isProfileStatus = (s: string): s is (typeof PROFILE_STATUSES)[number] =>
-      (PROFILE_STATUSES as readonly string[]).includes(s);
+    const typeFilter =
+      typeRaw === "non_member" ||
+      (MEMBERSHIP_TYPES as readonly string[]).includes(typeRaw)
+        ? (typeRaw as (typeof MEMBERSHIP_TYPES)[number] | "non_member")
+        : "";
 
     const admin = createAdminClient();
     const selectAll = `
@@ -51,6 +51,9 @@ export async function GET(request: Request) {
         notes,
         created_at,
         is_css_user,
+        payment_channel,
+        payment_channel_note,
+        membership_valid_until,
         stripe_customer_id,
         source,
         import_payment_kind,
@@ -81,23 +84,18 @@ export async function GET(request: Request) {
         memberships(join_date, expiry_date, payment_method)
       `;
 
-    // 会員名簿＝会員＋役員（004/006 未適用時は is_admin のみで判定）
     let q = admin
       .from("profiles")
       .select(selectAll)
       .or("is_admin.eq.false,is_admin.is.null,officer_title.not.is.null")
-      .order("created_at", { ascending: false });
+      .order("member_number", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
 
     if (icaOnly) {
       q = q.eq("is_ica_member", true);
     }
-    if (type) {
-      q = q.eq("membership_type", type);
-    }
-    if (status === "withdrawn") {
-      q = q.in("status", ["expired", "expelled"]);
-    } else if (status && isProfileStatus(status)) {
-      q = q.eq("status", status);
+    if (typeFilter && typeFilter !== "non_member") {
+      q = q.eq("membership_type", typeFilter);
     }
 
     let result = await q;
@@ -109,13 +107,11 @@ export async function GET(request: Request) {
         .from("profiles")
         .select(selectBase)
         .or("is_admin.eq.false,is_admin.is.null")
-        .order("created_at", { ascending: false });
+        .order("member_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
       let fallback = fallbackQ;
-      if (type) fallback = fallback.eq("membership_type", type);
-      if (status === "withdrawn") {
-        fallback = fallback.in("status", ["expired", "expelled"]);
-      } else if (status && isProfileStatus(status)) {
-        fallback = fallback.eq("status", status);
+      if (typeFilter && typeFilter !== "non_member") {
+        fallback = fallback.eq("membership_type", typeFilter);
       }
       const res = await fallback;
       if (res.error) {
@@ -135,7 +131,7 @@ export async function GET(request: Request) {
         import_payment_kind: (p as { import_payment_kind?: string | null }).import_payment_kind ?? null,
       }));
       if (icaOnly) {
-        profiles = []; // 004 未適用では ICA フィルタ不可
+        profiles = [];
       }
     } else if (error) {
       console.error("Admin members API DB error:", error.message, error);
@@ -152,21 +148,21 @@ export async function GET(request: Request) {
         (p) => feePaymentCategoryKey(p) === payKind
       );
     }
-    if (unpaid) {
-      const unpaidMode = feeFyRaw?.trim() || UNPAID_FILTER_MODE_RECENT3;
-      const ids = (list as { id: string }[]).map((p) => p.id);
-      const paymentsByProfile = await fetchMembershipFeePaymentsByProfileIds(
-        admin,
-        ids
-      );
-      list = filterProfilesByUnpaidMode(
-        list as { id: string; memberships?: { join_date?: string; expiry_date?: string }[] | null }[],
-        paymentsByProfile,
-        unpaidMode
-      );
-    }
 
-    return NextResponse.json({ profiles: list });
+    const withKind = await attachMemberKindToProfiles(
+      admin,
+      list as {
+        id: string;
+        status: string;
+        membership_type: string;
+        memberships?: { join_date?: string; expiry_date?: string }[] | null;
+        membership_valid_until?: string | null;
+      }[]
+    );
+
+    const filtered = filterProfilesForAdminList(withKind, typeFilter, unpaidOnly);
+
+    return NextResponse.json({ profiles: filtered });
   } catch (err) {
     console.error("Admin members API error:", err);
     return NextResponse.json(

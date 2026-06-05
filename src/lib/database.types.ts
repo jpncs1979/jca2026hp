@@ -7,6 +7,7 @@ export type MembershipType = "regular" | "student" | "supporting";
 export type ProfileStatus = "pending" | "active" | "expired" | "expelled";
 export type PaymentMethod = "stripe" | "css" | "transfer";
 export type PaymentPurpose = "membership_fee" | "competition_fee";
+export type PaymentChannel = "card" | "other";
 
 export interface Profile {
   id: string;
@@ -27,8 +28,18 @@ export interface Profile {
   membership_type: MembershipType;
   status: ProfileStatus;
   is_admin: boolean;
-  /** 銀行振込（CSS）経路。true の場合は事務局が手動で入金済み登録し、1月のカード自動請求はしない */
+  /** @deprecated payment_channel を使用。互換用 */
   is_css_user?: boolean | null;
+  /** 会費継続の支払い経路: card | other */
+  payment_channel?: PaymentChannel | null;
+  /** other 時のメモ（CSS は "CSS"） */
+  payment_channel_note?: string | null;
+  /** 会員資格の末日（一覧・照合の主参照） */
+  membership_valid_until?: string | null;
+  /** 手動強制退会時の事務局メモ */
+  expulsion_note?: string | null;
+  expelled_at?: string | null;
+  expulsion_reason?: string | null;
   /** Stripe Customer ID（年会費の自動引き落とし・Checkout 再利用） */
   stripe_customer_id?: string | null;
   /** コンクール申込（同時入会）経由で登録された場合の大会スラッグ（例: young-2026） */

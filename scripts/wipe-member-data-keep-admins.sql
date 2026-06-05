@@ -14,9 +14,9 @@
 --   - member_contents / competitions / applications（申込行そのもの）/ news など
 --
 -- 会員番号:
---   DB は整数（1, 2, …）。画面・CSV ではアプリが 4 桁ゼロ埋め（0001）で表示します。
---   残った profiles は 1 から連番に振り直し、member_number_seq も次の新規が
---   重複しないようリセットします（新規会員は「最後の番号 + 1」から）。
+--   DB は整数 1, 2, …（画面・CSV は 0001 等4桁ゼロ埋め）。
+--   管理者 is_admin は member_number = NULL（0001 は一般会員から）。
+--   非管理者のみ 1 から連番。scripts/renumber-member-numbers-4digit.sql も参照。
 -- =============================================================================
 
 BEGIN;
@@ -25,10 +25,16 @@ BEGIN;
 DELETE FROM public.profiles
 WHERE COALESCE(is_admin, false) = false;
 
--- 会員番号を 1 から振り直す（UNIQUE 回避のため負値 → 正の連番の 2 段階）
+UPDATE public.profiles
+SET member_number = NULL,
+    updated_at = now()
+WHERE COALESCE(is_admin, false) = true;
+
+-- 会員番号を 1 から振り直す（非管理者のみ・UNIQUE 回避のため負値 → 正の連番）
 WITH ordered AS (
   SELECT id, ROW_NUMBER() OVER (ORDER BY created_at NULLS LAST, id)::integer AS rn
   FROM public.profiles
+  WHERE COALESCE(is_admin, false) = false
 )
 UPDATE public.profiles p
 SET member_number = -o.rn,
@@ -39,6 +45,7 @@ WHERE p.id = o.id;
 WITH ordered AS (
   SELECT id, ROW_NUMBER() OVER (ORDER BY created_at NULLS LAST, id)::integer AS rn
   FROM public.profiles
+  WHERE COALESCE(is_admin, false) = false
 )
 UPDATE public.profiles p
 SET member_number = o.rn,
@@ -46,17 +53,12 @@ SET member_number = o.rn,
 FROM ordered o
 WHERE p.id = o.id;
 
--- シーケンス: 残件が 0 なら次は 1、それ以外は max(member_number) の次から
-SELECT CASE
-  WHEN NOT EXISTS (SELECT 1 FROM public.profiles) THEN
-    setval('public.member_number_seq', 1, false)
-  ELSE
-    setval(
-      'public.member_number_seq',
-      (SELECT MAX(member_number)::bigint FROM public.profiles),
-      true
-    )
-END;
+-- シーケンス: 非管理者が 0 人なら次は 1、それ以外は max(member_number) の次
+SELECT setval(
+  'public.member_number_seq',
+  GREATEST(COALESCE((SELECT MAX(member_number) FROM public.profiles), 0), 1),
+  (SELECT COUNT(*) > 0 FROM public.profiles WHERE member_number IS NOT NULL)
+);
 
 COMMIT;
 

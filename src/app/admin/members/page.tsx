@@ -43,7 +43,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { formatFiscalYearLabel, recentFiscalYears } from "@/lib/membership-fiscal-year";
+import type { MemberKindDisplay } from "@/lib/member-display-status";
 import {
   unifiedPaymentMethodLabel,
   feePaymentCategoryKey,
@@ -53,10 +53,6 @@ import {
   FEE_PAYMENT_FILTER_LABELS,
   type FeePaymentFilterKey,
 } from "@/lib/excel-fee-payment";
-import {
-  UNPAID_FILTER_MODE_EXPIRY,
-  UNPAID_FILTER_MODE_RECENT3,
-} from "@/lib/admin-members-unpaid-filter";
 import { formatMemberNumber } from "@/lib/member-number";
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
@@ -64,16 +60,26 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
   student: "学生会員",
   supporting: "賛助会員",
   friend: "会友",
+  non_member: "非会員",
 };
 
-/** API の status クエリ（withdrawn = 期限切れ or 強制退会） */
-const STATUS_FILTER_LABELS: Record<string, string> = {
-  pending: "承認待ち",
-  active: "有効",
-  expired: "期限切れ",
-  expelled: "強制退会",
-  withdrawn: "退会者（期限切れ・強制退会）",
-};
+/** 一覧の種別列 */
+function listMembershipTypeLabel(p: { member_kind?: MemberKindDisplay; membership_type: string }): string {
+  if (p.member_kind === "非会員") return "非会員";
+  return MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type;
+}
+
+/** 一覧表示用（賛助会員は名称から「法人」を除く） */
+function listMemberNameText(name: string | null | undefined, membershipType: string): string {
+  const raw = (name ?? "").trim();
+  if (!raw) return "";
+  if (membershipType !== "supporting") return raw;
+  const stripped = raw.replace(/法人/g, "").replace(/[\s　]+/g, " ").trim();
+  return stripped || raw;
+}
+
+const LIST_NAME_CELL_CLASS =
+  "max-w-[6.5rem] truncate whitespace-nowrap px-2 py-3 text-sm align-middle";
 
 const SIGNATURE_STORAGE_KEY = "admin_email_signatures";
 type StoredSignature = { id: string; name: string; content: string };
@@ -102,6 +108,11 @@ type ProfileWithMembership = {
   birth_date?: string | null;
   notes?: string | null;
   is_css_user?: boolean | null;
+  payment_channel?: string | null;
+  payment_channel_note?: string | null;
+  membership_valid_until?: string | null;
+  member_kind?: MemberKindDisplay;
+  three_year_consecutive_unpaid?: boolean;
   stripe_customer_id?: string | null;
   source?: string | null;
   import_payment_kind?: string | null;
@@ -111,19 +122,13 @@ type ProfileWithMembership = {
 function buildFetchUrl(
   ica: boolean,
   type: string,
-  status: string,
-  unpaid: boolean,
-  unpaidFeeMode: string,
+  unpaidOnly: boolean,
   payKind: string
 ): string {
   const params = new URLSearchParams();
   if (ica) params.set("ica", "1");
   if (type) params.set("type", type);
-  if (status) params.set("status", status);
-  if (unpaid) {
-    params.set("unpaid", "1");
-    params.set("fee_fy", unpaidFeeMode || UNPAID_FILTER_MODE_RECENT3);
-  }
+  if (unpaidOnly) params.set("unpaid", "1");
   if (payKind && (FEE_PAYMENT_FILTER_KEYS as readonly string[]).includes(payKind)) {
     params.set("pay_kind", payKind);
   }
@@ -135,7 +140,7 @@ function getLatestMembership(p: ProfileWithMembership): MembershipRow | undefine
   return [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
 }
 
-type SortKey = "member_number" | "status" | "expiry" | "";
+type SortKey = "member_number" | "type" | "expiry" | "";
 type SortOrder = "asc" | "desc";
 
 export default function AdminMembersPage() {
@@ -143,15 +148,12 @@ export default function AdminMembersPage() {
   const [profiles, setProfiles] = useState<ProfileWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("");
+  const [sortKey, setSortKey] = useState<SortKey>("member_number");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [icaOnly, setIcaOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
-  /** 未納者: recent3=直近3年度・入金記録、年度=指定年度、expiry=有効期限（データ整備用） */
-  const [unpaidFeeMode, setUnpaidFeeMode] = useState<string>(UNPAID_FILTER_MODE_RECENT3);
+  const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [extending, setExtending] = useState(false);
@@ -164,7 +166,15 @@ export default function AdminMembersPage() {
   const [extendConfirmOpen, setExtendConfirmOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; skippedList?: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{
+    created: number;
+    updated: number;
+    skipped: number;
+    linked: number;
+    linkFailed: number;
+    skippedList?: string[];
+    linkFailedList?: string[];
+  } | null>(null);
   const [csvPartialOpen, setCsvPartialOpen] = useState(false);
   const [csvPartialFile, setCsvPartialFile] = useState<File | null>(null);
   const [csvPartialLoading, setCsvPartialLoading] = useState(false);
@@ -177,7 +187,7 @@ export default function AdminMembersPage() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [emailSending, setEmailSending] = useState(false);
-  const [emailCriteria, setEmailCriteria] = useState({ ica: false, type: "", unpaid: false });
+  const [emailCriteria, setEmailCriteria] = useState({ ica: false, type: "" });
   const [emailToSelected, setEmailToSelected] = useState(false); // 選択した人に送信モード
   const [emailConfirmStep, setEmailConfirmStep] = useState(false); // 下書き確認表示中
   const [emailPreview, setEmailPreview] = useState<{ count: number; subject: string; body_preview: string; recipients_sample: string[] } | null>(null);
@@ -190,14 +200,7 @@ export default function AdminMembersPage() {
 
   const fetchProfiles = async () => {
     setLoading(true);
-    const url = buildFetchUrl(
-      icaOnly,
-      typeFilter,
-      statusFilter,
-      unpaidOnly,
-      unpaidFeeMode,
-      paymentFilter
-    );
+    const url = buildFetchUrl(icaOnly, typeFilter, unpaidOnly, paymentFilter);
     const res = await fetch(url);
     const data = await res.json();
     if (res.ok) setProfiles(data.profiles ?? []);
@@ -206,7 +209,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     fetchProfiles();
-  }, [icaOnly, typeFilter, statusFilter, unpaidOnly, unpaidFeeMode, paymentFilter]);
+  }, [icaOnly, typeFilter, unpaidOnly, paymentFilter]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -222,10 +225,10 @@ export default function AdminMembersPage() {
   const filteredProfiles = useMemo(() => {
     let list = profiles;
     const q = searchQuery.trim();
-    if (q === "退会" || q === "退会者") {
-      list = list.filter((p) => p.status === "expired" || p.status === "expelled");
-    } else if (q === "強制退会") {
-      list = list.filter((p) => p.status === "expelled");
+    if (q === "退会" || q === "退会者" || q === "非会員") {
+      list = list.filter((p) => p.member_kind === "非会員");
+    } else if (q === "未納") {
+      list = list.filter((p) => p.member_kind === "未納あり");
     } else if (q && q.toLowerCase() !== "all") {
       const qLower = q.toLowerCase();
       const qDigits = q.trim();
@@ -261,14 +264,8 @@ export default function AdminMembersPage() {
           const na = a.member_number ?? 0;
           const nb = b.member_number ?? 0;
           cmp = na - nb;
-        } else if (sortKey === "status") {
-          const order: Record<string, number> = {
-            pending: 0,
-            active: 1,
-            expired: 2,
-            expelled: 3,
-          };
-          cmp = (order[a.status] ?? 0) - (order[b.status] ?? 0);
+        } else if (sortKey === "type") {
+          cmp = listMembershipTypeLabel(a).localeCompare(listMembershipTypeLabel(b), "ja");
         } else if (sortKey === "expiry") {
           const ea = getLatestMembership(a)?.expiry_date ?? "";
           const eb = getLatestMembership(b)?.expiry_date ?? "";
@@ -295,7 +292,6 @@ export default function AdminMembersPage() {
   };
 
   const canSelectForExtend = (_p: ProfileWithMembership) => true;
-  const fiscalYearOptions = useMemo(() => recentFiscalYears(3), []);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -357,12 +353,15 @@ export default function AdminMembersPage() {
         created: data.created ?? 0,
         updated: data.updated ?? 0,
         skipped: data.skipped ?? 0,
+        linked: data.linked ?? 0,
+        linkFailed: data.linkFailed ?? 0,
         skippedList: data.skippedList ?? [],
+        linkFailedList: data.linkFailedList ?? [],
       });
       setImportFile(null);
       fetchProfiles();
     } else {
-      setImportResult({ created: 0, updated: 0, skipped: 0 });
+      setImportResult({ created: 0, updated: 0, skipped: 0, linked: 0, linkFailed: 0 });
       alert(data.error ?? "取り込みに失敗しました");
     }
   };
@@ -399,7 +398,6 @@ export default function AdminMembersPage() {
     profile_ids: emailToSelected ? Array.from(selectedIds) : undefined,
     ica_only: emailToSelected ? undefined : emailCriteria.ica,
     membership_type: emailToSelected ? undefined : (emailCriteria.type || undefined),
-    unpaid_only: emailToSelected ? undefined : emailCriteria.unpaid,
   });
 
   const handlePreviewDraft = async () => {
@@ -442,7 +440,6 @@ export default function AdminMembersPage() {
     if (payload.profile_ids) formData.append("profile_ids", JSON.stringify(payload.profile_ids));
     if (payload.ica_only) formData.append("ica_only", "true");
     if (payload.membership_type) formData.append("membership_type", payload.membership_type);
-    if (payload.unpaid_only) formData.append("unpaid_only", "true");
     emailAttachments.forEach((f) => formData.append("attachments", f));
     const res = await fetch("/api/admin/members/send-email", {
       method: "POST",
@@ -472,22 +469,13 @@ export default function AdminMembersPage() {
       alert("出力する会員がありません。絞り込み条件をご確認ください。");
       return;
     }
-    const unpaidTargetLabel =
-      unpaidOnly && unpaidFeeMode === UNPAID_FILTER_MODE_RECENT3
-        ? "直近3年度のいずれか会費未納（入金記録ベース）"
-        : unpaidOnly && unpaidFeeMode !== UNPAID_FILTER_MODE_EXPIRY
-          ? `${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}分の会費が未納（入金記録ベース）`
-          : null;
     setCsvExporting(true);
     try {
       const res = await fetch("/api/admin/members/csv-export", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile_ids: ids,
-          unpaid_target_label: unpaidTargetLabel,
-        }),
+        body: JSON.stringify({ profile_ids: ids }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -599,7 +587,7 @@ export default function AdminMembersPage() {
             size="sm"
             onClick={() => void handleExportFeeStatusCsv()}
             disabled={feeStatusCsvExporting}
-            title="会員名簿の全会員について、会費の年度別状況と支払い方法関連の列を出力します（絞り込みは反映されません）"
+            title="全会員の会費年度別状況・会員区分・3年連続未納列を出力（退会判断はExcelで確認し、会員詳細から手動退会）"
           >
             {feeStatusCsvExporting ? (
               <Loader2 className="size-4 animate-spin" />
@@ -700,36 +688,32 @@ export default function AdminMembersPage() {
             <DialogContent aria-describedby="excel-import-desc">
               <DialogHeader>
                 <DialogTitle>会員データ Excel 取り込み</DialogTitle>
+                <DialogDescription>
+                  1行目がヘッダーの .xlsx を選んでください。同じメールは更新、未登録は新規追加します。
+                </DialogDescription>
               </DialogHeader>
-              <div id="excel-import-desc" className="space-y-3 text-sm text-muted-foreground" role="region" aria-label="取り込み対象列の説明">
-                <p className="font-medium text-foreground">Excel の列名は以下と一致させてください。</p>
-                <div>
-                  <p className="font-medium text-foreground">必須列</p>
-                  <ul className="mt-1 list-inside list-disc space-y-0.5">
-                    <li>「名前」</li>
-                    <li>「システム用メールアドレス」</li>
-                    <li>「生年月日」（または「誕生日」「birth_date」など同一意味の列名）</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">あると取り込む列</p>
-                  <ul className="mt-1 list-inside list-disc space-y-0.5">
-                    <li>「名前(カナ)」「会員種別」「会員有効終了日」「ICA資格」「会費支払い方法」「役員」</li>
-                    <li>住所：「住所_郵便番号」「住所_都道府県」「住所_市区町村」「住所_番地」「住所_建物名」</li>
-                    <li>その他：「電話番号」「備考」</li>
-                  </ul>
-                </div>
+              <div id="excel-import-desc" className="text-sm" role="region" aria-label="取り込み対象列の説明">
                 <p>
-                  ICA資格が「会員」の行はICA会員として登録されます。役員列の値（理事・監事など）はそのまま役員職名として保存されます。
+                  <span className="font-medium text-foreground">必須列（3つ）</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    名前 / システム用メールアドレス / 生年月日（誕生日列でも可）
+                  </span>
                 </p>
-                <p>
-                  <span className="font-medium text-foreground">会費支払い方法</span>
-                  列がある場合のみ反映します。
-                  <strong>クレジットカード</strong>（「クレジット」「CREDIT」を含む表記）→
-                  カード経路、<strong>CSS</strong> → 銀行振込（CSS）経路、
-                  <strong>コンビニ</strong>・<strong>口座振替Web</strong>（「口座振替」と「Web」系を含む表記）・
-                  <strong>空欄</strong>・上記以外はいずれも一覧上は「その他」として保存します。
-                </p>
+                <details className="mt-2 text-muted-foreground">
+                  <summary className="cursor-pointer select-none text-foreground hover:text-navy">
+                    任意の列・会費支払い方法
+                  </summary>
+                  <p className="mt-2 leading-relaxed">
+                    列があれば取り込み：名前(カナ)、会員種別、会員有効終了日、ICA資格（「会員」でICA）、役員、会費支払い方法、住所_郵便番号〜建物名、電話番号、備考
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    会員番号は Excel の行順で自動採番します（正会員等は 0001〜、賛助会員は 9001〜）。
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    会費支払い方法：クレジット系→カード / CSS→口座振替 / 空欄・その他→その他
+                  </p>
+                </details>
               </div>
               <div className="space-y-4 py-4">
                 <Input
@@ -740,8 +724,28 @@ export default function AdminMembersPage() {
                 {importResult && (
                   <div className="space-y-2 text-sm">
                     <p className="text-muted-foreground">
-                      新規: {importResult.created}件 / 更新: {importResult.updated}件 / スキップ: {importResult.skipped}件
+                      新規: {importResult.created}件 / 更新: {importResult.updated}件 / スキップ:{" "}
+                      {importResult.skipped}件
                     </p>
+                    <p className="text-muted-foreground">
+                      ログインアカウント紐付け: {importResult.linked}件
+                      {importResult.linkFailed > 0 && (
+                        <span className="text-amber-700"> / 紐付け失敗: {importResult.linkFailed}件</span>
+                      )}
+                    </p>
+                    {importResult.linkFailed > 0 && importResult.linkFailedList && importResult.linkFailedList.length > 0 && (
+                      <details className="rounded border border-amber-200 bg-amber-50/50 p-2">
+                        <summary className="cursor-pointer text-amber-800">紐付け失敗の理由（最大20件）</summary>
+                        <ul className="mt-2 max-h-32 overflow-y-auto text-xs text-amber-900">
+                          {importResult.linkFailedList.slice(0, 20).map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                          {importResult.linkFailedList.length > 20 && (
+                            <li>...他 {importResult.linkFailedList.length - 20}件</li>
+                          )}
+                        </ul>
+                      </details>
+                    )}
                     {importResult.skipped > 0 && importResult.skippedList && importResult.skippedList.length > 0 && (
                       <details className="rounded border border-amber-200 bg-amber-50/50 p-2">
                         <summary className="cursor-pointer text-amber-800">スキップ理由（最大20件）</summary>
@@ -838,10 +842,6 @@ export default function AdminMembersPage() {
                           <Checkbox checked={emailCriteria.ica} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, ica: e.target.checked }))} />
                           ICA会員
                         </label>
-                        <label className="flex items-center gap-2">
-                          <Checkbox checked={emailCriteria.unpaid} onChange={(e) => setEmailCriteria((prev) => ({ ...prev, unpaid: e.target.checked }))} />
-                          未納者（直近3年度・入金記録）
-                        </label>
                         <Select value={emailCriteria.type} onValueChange={(t) => setEmailCriteria((prev) => ({ ...prev, type: t ?? "" }))}>
                           <SelectTrigger className="w-[140px]">
                             <SelectValue>{emailCriteria.type ? (MEMBERSHIP_LABELS[emailCriteria.type] ?? emailCriteria.type) : "会員種別"}</SelectValue>
@@ -935,7 +935,7 @@ export default function AdminMembersPage() {
           <div className="relative w-full min-w-[200px] sm:w-64">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="氏名・メール・会員番号（「退会者」で退会系に絞込）"
+              placeholder="氏名・フリガナ・会員番号（「非会員」「未納」で絞込）"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -943,29 +943,17 @@ export default function AdminMembersPage() {
           </div>
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue>{typeFilter ? (MEMBERSHIP_LABELS[typeFilter] ?? typeFilter) : "会員種別"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">全会員種別</SelectItem>
-              <SelectItem value="regular">正会員</SelectItem>
-              <SelectItem value="student">学生会員</SelectItem>
-              <SelectItem value="supporting">賛助会員</SelectItem>
-              <SelectItem value="friend">会友</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "")}>
-            <SelectTrigger className="w-[min(100vw-2rem,220px)] sm:w-[220px]">
               <SelectValue>
-                {statusFilter ? (STATUS_FILTER_LABELS[statusFilter] ?? statusFilter) : "ステータス"}
+                {typeFilter ? (MEMBERSHIP_LABELS[typeFilter] ?? typeFilter) : "種別"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">すべて</SelectItem>
-              <SelectItem value="active">有効</SelectItem>
-              <SelectItem value="pending">承認待ち</SelectItem>
-              <SelectItem value="expired">期限切れのみ</SelectItem>
-              <SelectItem value="expelled">強制退会のみ</SelectItem>
-              <SelectItem value="withdrawn">退会者（期限切れ・強制退会）</SelectItem>
+              <SelectItem value="regular">正会員</SelectItem>
+              <SelectItem value="student">学生会員</SelectItem>
+              <SelectItem value="supporting">賛助会員</SelectItem>
+              <SelectItem value="friend">会友</SelectItem>
+              <SelectItem value="non_member">非会員</SelectItem>
             </SelectContent>
           </Select>
           <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v ?? "")}>
@@ -1002,36 +990,15 @@ export default function AdminMembersPage() {
             />
             <Label htmlFor="officer-only" className="text-sm cursor-pointer whitespace-nowrap">役員</Label>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <Checkbox
               id="unpaid-only"
               checked={unpaidOnly}
               onChange={(e) => setUnpaidOnly(e.target.checked)}
             />
-            <Label htmlFor="unpaid-only" className="text-sm cursor-pointer whitespace-nowrap">未納者</Label>
-            {unpaidOnly && (
-              <Select
-                value={unpaidFeeMode}
-                onValueChange={(v) => setUnpaidFeeMode(v ?? UNPAID_FILTER_MODE_RECENT3)}
-              >
-                <SelectTrigger className="w-[min(100vw-2rem,320px)] sm:w-[320px]">
-                  <SelectValue placeholder="未納の基準" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNPAID_FILTER_MODE_RECENT3}>
-                    直近3年度のいずれか未払い（入金記録）
-                  </SelectItem>
-                  {fiscalYearOptions.map((fy) => (
-                    <SelectItem key={fy} value={String(fy)}>
-                      {formatFiscalYearLabel(fy)}の会費が未納（入金記録）
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={UNPAID_FILTER_MODE_EXPIRY}>
-                    有効期限切れ・未登録（データ整備用）
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            <Label htmlFor="unpaid-only" className="text-sm cursor-pointer whitespace-nowrap">
+              未納あり
+            </Label>
           </div>
           <Button variant="outline" size="sm" onClick={fetchProfiles} {...(loading && { disabled: true })}>
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -1039,18 +1006,6 @@ export default function AdminMembersPage() {
           </Button>
         </div>
       </div>
-
-      {unpaidOnly && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-800">
-            {unpaidFeeMode === UNPAID_FILTER_MODE_EXPIRY
-              ? `有効期限切れ・未登録: ${filteredProfiles.length}件（表示中・検索後／データ整備用）`
-              : unpaidFeeMode === UNPAID_FILTER_MODE_RECENT3
-                ? `未納者（直近3年度・入金記録）: ${filteredProfiles.length}件（表示中・検索後）`
-                : `未納者（${formatFiscalYearLabel(parseInt(unpaidFeeMode, 10))}・入金記録）: ${filteredProfiles.length}件（表示中・検索後）`}
-          </p>
-        </div>
-      )}
 
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted/30 p-4">
@@ -1165,23 +1120,21 @@ export default function AdminMembersPage() {
                     <SortIcon col="member_number" />
                   </button>
                 </TableHead>
-                <TableHead>氏名</TableHead>
-                <TableHead>種別</TableHead>
-                <TableHead className="w-12 text-center">ICA会員</TableHead>
-                <TableHead className="w-12 text-center">役員</TableHead>
-                <TableHead>メール</TableHead>
-                <TableHead className="min-w-[12rem] whitespace-nowrap">会費支払い方法</TableHead>
-                <TableHead className="min-w-[7rem] font-mono text-xs">会員ID</TableHead>
-                <TableHead>
+                <TableHead className={LIST_NAME_CELL_CLASS}>氏名</TableHead>
+                <TableHead className={LIST_NAME_CELL_CLASS}>フリガナ</TableHead>
+                <TableHead className="whitespace-nowrap">
                   <button
                     type="button"
-                    onClick={() => handleSort("status")}
+                    onClick={() => handleSort("type")}
                     className="inline-flex items-center font-medium hover:text-gold"
                   >
-                    ステータス
-                    <SortIcon col="status" />
+                    種別
+                    <SortIcon col="type" />
                   </button>
                 </TableHead>
+                <TableHead className="w-12 text-center">ICA会員</TableHead>
+                <TableHead className="w-12 text-center">役員</TableHead>
+                <TableHead className="min-w-[12rem] whitespace-nowrap">会費支払い方法</TableHead>
                 <TableHead>
                   <button
                     type="button"
@@ -1210,11 +1163,20 @@ export default function AdminMembersPage() {
                   <TableCell className="font-mono tabular-nums">
                     {formatMemberNumber(p.member_number, "-")}
                   </TableCell>
-                  <TableCell>{p.name}</TableCell>
-                  <TableCell className="text-sm">{MEMBERSHIP_LABELS[p.membership_type] ?? p.membership_type}</TableCell>
+                  <TableCell className={LIST_NAME_CELL_CLASS} title={listMemberNameText(p.name, p.membership_type)}>
+                    {listMemberNameText(p.name, p.membership_type) || "－"}
+                  </TableCell>
+                  <TableCell
+                    className={`${LIST_NAME_CELL_CLASS} text-muted-foreground`}
+                    title={listMemberNameText(p.name_kana, p.membership_type)}
+                  >
+                    {listMemberNameText(p.name_kana, p.membership_type) || "－"}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">
+                    {listMembershipTypeLabel(p)}
+                  </TableCell>
                   <TableCell className="text-center">{p.is_ica_member ? "○" : "－"}</TableCell>
                   <TableCell className="text-sm">{p.officer_title?.trim() ?? "－"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{p.email}</TableCell>
                   <TableCell>
                     {(() => {
                       const payLabel = unifiedPaymentMethodLabel(p);
@@ -1240,34 +1202,9 @@ export default function AdminMembersPage() {
                       );
                     })()}
                   </TableCell>
-                  <TableCell
-                    className="max-w-[120px] truncate font-mono text-[11px] text-muted-foreground"
-                    title={p.id}
-                  >
-                    {p.id}
-                  </TableCell>
                   <TableCell>
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium ${
-                        p.status === "pending"
-                          ? "bg-amber-100 text-amber-800"
-                          : p.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : p.status === "expelled"
-                              ? "bg-red-100 text-red-900"
-                              : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {p.status === "pending"
-                        ? "承認待ち"
-                        : p.status === "active"
-                          ? "有効"
-                          : p.status === "expelled"
-                            ? "強制退会"
-                            : "期限切れ"}
-                    </span>
+                    <span>{p.membership_valid_until ?? getLatestMembership(p)?.expiry_date ?? "-"}</span>
                   </TableCell>
-                  <TableCell>{getLatestMembership(p)?.expiry_date ?? "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

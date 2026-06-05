@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { paymentChannelPatchFromCssToggle } from "@/lib/payment-channel";
 
 /**
  * 事務局による退会処理（会員資格の喪失のみ）。
@@ -37,16 +38,6 @@ export async function DELETE(
 
     if (fetchError || !profile) {
       return NextResponse.json({ error: "会員が見つかりません" }, { status: 404 });
-    }
-
-    if (profile.status === "expelled") {
-      return NextResponse.json(
-        {
-          error:
-            "強制退会（3年未納等）の会員は、会員詳細の案内に従って対応してください。",
-        },
-        { status: 400 }
-      );
     }
 
     const userId = profile.user_id as string | null;
@@ -184,7 +175,8 @@ export async function PATCH(
     if (affiliation !== undefined) profileUpdate.affiliation = affiliation ? String(affiliation).trim() : null;
     if (status !== undefined) {
       const s = String(status);
-      if (["pending", "active", "expired", "expelled"].includes(s)) profileUpdate.status = s;
+      if (s === "pending") profileUpdate.status = "active";
+      else if (["active", "expired"].includes(s)) profileUpdate.status = s;
     }
     // membership_type: 004で friend を追加。003のみの場合は regular/student/supporting のみ許可
     const VALID_MEMBERSHIP_004 = ["regular", "student", "supporting", "friend"];
@@ -204,7 +196,9 @@ export async function PATCH(
       optionalUpdate.ica_requested = v;
       optionalUpdate.is_ica_member = v;
     }
-    if (is_css_user !== undefined) optionalUpdate.is_css_user = Boolean(is_css_user);
+    if (is_css_user !== undefined) {
+      Object.assign(optionalUpdate, paymentChannelPatchFromCssToggle(Boolean(is_css_user)));
+    }
     if (officer_title !== undefined) optionalUpdate.officer_title = officer_title === "" || officer_title == null ? null : String(officer_title).trim();
     if (gender !== undefined) optionalUpdate.gender = gender ? String(gender).trim() : null;
     if (birth_date !== undefined) optionalUpdate.birth_date = birth_date ? String(birth_date).trim() : null;
@@ -272,7 +266,9 @@ export async function PATCH(
 
       const membershipUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (join_date !== undefined) membershipUpdate.join_date = String(join_date).slice(0, 10);
-      if (expiry_date !== undefined) membershipUpdate.expiry_date = String(expiry_date).slice(0, 10);
+      if (expiry_date !== undefined) {
+        membershipUpdate.expiry_date = String(expiry_date).slice(0, 10);
+      }
       if (payment_method !== undefined) {
         const p = String(payment_method);
         if (["stripe", "css", "transfer"].includes(p)) membershipUpdate.payment_method = p;
@@ -283,6 +279,15 @@ export async function PATCH(
           .from("memberships")
           .update(membershipUpdate)
           .eq("id", latestMembership.id);
+        if (expiry_date !== undefined) {
+          await admin
+            .from("profiles")
+            .update({
+              membership_valid_until: String(expiry_date).slice(0, 10),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", profileId);
+        }
       } else if (expiry_date) {
         await admin.from("memberships").insert({
           profile_id: profileId,

@@ -19,6 +19,7 @@ import {
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { formatMemberNumber } from "@/lib/member-number";
 import { joinAddressLine } from "@/lib/japanese-address";
+import { isCardPaymentMember } from "@/lib/payment-channel";
 
 interface MypageDashboardProps {
   userId: string;
@@ -87,7 +88,7 @@ export async function MypageDashboard({ userId }: MypageDashboardProps) {
             <p className="text-xs text-white/70">会員資格の末日</p>
             <p className="text-lg font-medium">{expiryDate}</p>
           </div>
-          {profile?.is_css_user !== true && (
+          {profile && isCardPaymentMember(profile) && (
             <div>
               <p className="text-xs text-white/70">年会費（Stripe）カード</p>
               <p className={`text-sm ${stripeId ? "text-emerald-200" : "text-amber-100"}`}>

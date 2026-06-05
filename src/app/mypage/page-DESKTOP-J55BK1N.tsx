@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatMemberNumber } from "@/lib/member-number";
-import { isCardPaymentMember, isCssPaymentMember } from "@/lib/payment-channel";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,9 +50,6 @@ function MypageContent(): any {
     affiliation?: string | null;
     is_admin?: boolean | null;
     is_css_user?: boolean | null;
-    payment_channel?: string | null;
-    payment_channel_note?: string | null;
-    membership_valid_until?: string | null;
     membership_type?: string | null;
     stripe_customer_id?: string | null;
     source?: string | null;
@@ -535,14 +531,20 @@ function MypageContent(): any {
               </p>
               <span
                 className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                  profile?.status === "active" || profile?.status === "pending"
+                  profile?.status === "active"
                     ? "bg-gold/30 text-gold"
-                    : "bg-white/20"
+                    : profile?.status === "expelled"
+                      ? "bg-red-500/40 text-red-100"
+                      : "bg-white/20"
                 }`}
               >
-                {profile?.status === "active" || profile?.status === "pending"
-                  ? "会員"
-                  : "非会員"}
+                {profile?.status === "active"
+                  ? "有効"
+                  : profile?.status === "pending"
+                    ? "承認待ち"
+                    : profile?.status === "expelled"
+                      ? "強制退会"
+                      : "期限切れ"}
               </span>
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
@@ -552,7 +554,7 @@ function MypageContent(): any {
                   会員番号がまだ表示されない場合は、表示を更新するか事務局へお問い合わせください。
                 </p>
               )}
-              {profile && isCardPaymentMember(profile) && (
+              {profile && profile.is_css_user !== true && (
                 <div className="mt-3 border-t border-white/15 pt-3">
                   <p className="text-xs text-white/70">年会費の自動決済（Stripe）</p>
                   {typeof profile.stripe_customer_id === "string" &&
@@ -636,7 +638,7 @@ function MypageContent(): any {
                     </li>
                   ))}
                 </ul>
-                {isCardPaymentMember(profile) &&
+                {profile.is_css_user !== true &&
                   membershipFeeYears.some((r) => r.status === "未払い") && (
                     <Button
                       className="bg-gold text-gold-foreground hover:bg-gold-muted"
@@ -670,7 +672,7 @@ function MypageContent(): any {
             </Card>
           )}
 
-          {profile && isCssPaymentMember(profile) && (
+          {profile?.is_css_user === true && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -691,16 +693,7 @@ function MypageContent(): any {
                       const res = await fetch("/api/mypage/switch-to-card", { method: "POST", credentials: "include" });
                       const data = await res.json().catch(() => ({}));
                       if (res.ok) {
-                        setProfile((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                is_css_user: false,
-                                payment_channel: "card",
-                                payment_channel_note: null,
-                              }
-                            : null
-                        );
+                        setProfile((prev) => (prev ? { ...prev, is_css_user: false } : null));
                       } else {
                         alert(data.error ?? "切り替えに失敗しました");
                       }

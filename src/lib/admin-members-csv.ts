@@ -6,6 +6,12 @@ import {
   FEE_PAYMENT_FILTER_LABELS,
   type FeePaymentFilterKey,
 } from "@/lib/excel-fee-payment";
+import {
+  isCardPaymentMember,
+  isCssPaymentMember,
+  paymentChannelLabel,
+  type ProfilePaymentFields,
+} from "@/lib/payment-channel";
 
 export const MEMBERSHIP_LABELS_CSV: Record<string, string> = {
   regular: "正会員",
@@ -37,8 +43,11 @@ export type ProfileForMemberCsv = {
   gender?: string | null;
   birth_date?: string | null;
   notes?: string | null;
-  /** 銀行振込（CSS）経路。true なら会費は CSS */
+  /** @deprecated payment_channel を使用 */
   is_css_user?: boolean | null;
+  payment_channel?: string | null;
+  payment_channel_note?: string | null;
+  membership_valid_until?: string | null;
   /** Stripe Customer ID（カード登録の有無） */
   stripe_customer_id?: string | null;
   /** signup | import（Excel 等） */
@@ -55,9 +64,9 @@ export function getLatestMembershipCsv(
   return [...arr].sort((a, b) => (b.expiry_date ?? "").localeCompare(a.expiry_date ?? ""))[0];
 }
 
-/** CSS（銀行振込）経路か（プロフィールの is_css_user または会員レコードの payment_method） */
+/** CSS（口座振替）経路か */
 export function isCssFeeRouteForProfile(p: ProfileForMemberCsv): boolean {
-  if (p.is_css_user === true) return true;
+  if (isCssPaymentMember(p as ProfilePaymentFields)) return true;
   const pm = getLatestMembershipCsv(p)?.payment_method;
   return pm === "css";
 }
@@ -83,12 +92,16 @@ export function feePaymentCategoryKey(p: ProfileForMemberCsv): FeePaymentFilterK
     k === "online_stripe_ok" ||
     k === "online_stripe_pending";
 
+  if (isCardPaymentMember(p as ProfilePaymentFields)) {
+    if (hasCard || k === "online_stripe_ok") return "card_registered";
+    return "card_pending";
+  }
   if (stripeKind || pm === "stripe") {
     if (hasCard || k === "online_stripe_ok") return "card_registered";
     return "card_pending";
   }
 
-  if (isCssFeeRouteForProfile(p)) return "fee_css";
+  if (isCssPaymentMember(p as ProfilePaymentFields) || isCssFeeRouteForProfile(p)) return "fee_css";
   if (pm === "transfer") return "fee_furikomi";
   if (pm === "css") return "fee_css";
   return "fee_blank";
@@ -99,6 +112,9 @@ export function feePaymentCategoryKey(p: ProfileForMemberCsv): FeePaymentFilterK
  * CSS / シクミネット / 振込 / ー（空欄）/ クレジット（登録済・未）
  */
 export function unifiedPaymentMethodLabel(p: ProfileForMemberCsv): string {
+  if (p.payment_channel === "card" || p.payment_channel === "other") {
+    return paymentChannelLabel(p as ProfilePaymentFields);
+  }
   return FEE_PAYMENT_FILTER_LABELS[feePaymentCategoryKey(p)];
 }
 

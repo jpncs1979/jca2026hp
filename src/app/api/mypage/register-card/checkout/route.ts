@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { normalizeBaseUrl } from "@/lib/utils";
+import { isCardPaymentMember } from "@/lib/payment-channel";
 
 const METADATA_TYPE = "mypage_card_setup";
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
     const selectProfile =
-      "id, user_id, email, name, status, is_css_user, stripe_customer_id";
+      "id, user_id, email, name, status, is_css_user, payment_channel, payment_channel_note, stripe_customer_id";
 
     let { data: profile } = await admin
       .from("profiles")
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "会員情報が見つかりません。" }, { status: 404 });
     }
 
-    if (profile.is_css_user === true) {
+    if (!isCardPaymentMember(profile)) {
       return NextResponse.json(
         {
           error:

@@ -25,9 +25,8 @@ import { MemberWithdrawalButton } from "../member-withdrawal-button";
 import { JAPAN_PREFECTURES, joinAddressLine } from "@/lib/japanese-address";
 
 const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "expired", label: "期限切れ" },
-  { value: "expelled", label: "強制退会" },
+  { value: "active", label: "有効（会員）" },
+  { value: "expired", label: "期限切れ（退会済み）" },
 ];
 
 const MEMBERSHIP_OPTIONS = [

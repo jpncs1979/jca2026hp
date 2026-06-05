@@ -35,6 +35,7 @@ const SELECT_ALL = `
   stripe_customer_id,
   source,
   import_payment_kind,
+  membership_valid_until,
   memberships(join_date, expiry_date, payment_method)
 `;
 
@@ -60,6 +61,7 @@ const SELECT_BASE = `
   stripe_customer_id,
   source,
   import_payment_kind,
+  membership_valid_until,
   memberships(join_date, expiry_date, payment_method)
 `;
 

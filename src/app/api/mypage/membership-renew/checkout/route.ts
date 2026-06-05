@@ -9,6 +9,7 @@ import {
   type PaymentRowForFee,
 } from "@/lib/membership-fee-status";
 import { recentFiscalYears } from "@/lib/membership-fiscal-year";
+import { isCardPaymentMember } from "@/lib/payment-channel";
 
 const METADATA_TYPE = "membership_renewal";
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
     const selectProfile =
-      "id, user_id, email, name, membership_type, status, is_css_user, stripe_customer_id";
+      "id, user_id, email, name, membership_type, status, is_css_user, payment_channel, payment_channel_note, stripe_customer_id";
 
     let { data: profile } = await admin
       .from("profiles")
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (profile.is_css_user === true) {
+    if (!isCardPaymentMember(profile)) {
       return NextResponse.json(
         {
           error:

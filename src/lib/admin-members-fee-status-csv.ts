@@ -11,10 +11,16 @@ import {
 } from "@/lib/admin-members-csv";
 import {
   buildMembershipFeeYearRows,
+  hasUnpaidInRecentFiscalYearsByPaymentOnly,
   paymentCoversFiscalYear,
   type MembershipFeeDisplayStatus,
   type PaymentRowForFee,
 } from "@/lib/membership-fee-status";
+import {
+  computeMemberKindDisplay,
+  isThreeYearConsecutiveUnpaid,
+  type MemberKindInput,
+} from "@/lib/member-display-status";
 
 /** 出力する会費の事業年度の個数（新しい年度から遡る） */
 export const FEE_STATUS_FISCAL_YEARS_COUNT = 5;
@@ -41,7 +47,7 @@ export function formatFeeYearCellDetailed(
   );
   if (status === "未払い") return "未払い";
   if (covering.length === 0) {
-    if (status === "支払い済み") return "支払い済み（有効期限による扱い）";
+    if (status === "支払い済み" || status === "決済済み") return "済";
     return status;
   }
   const stripe = covering.some((p) => p.method === "stripe");
@@ -69,6 +75,21 @@ export function buildFeeStatusCsvRow(
   const hasStripeCustomer =
     typeof p.stripe_customer_id === "string" && p.stripe_customer_id.trim() !== "";
 
+  const kindInput: MemberKindInput = {
+    status: p.status ?? "",
+    memberships: p.memberships,
+    membership_valid_until:
+      (p as { membership_valid_until?: string | null }).membership_valid_until ?? null,
+  };
+  const memberKind = computeMemberKindDisplay(kindInput, payments, refDate);
+  const recent3Unpaid = hasUnpaidInRecentFiscalYearsByPaymentOnly(
+    payments,
+    latest?.join_date,
+    3,
+    refDate
+  );
+  const threeYearUnpaid = isThreeYearConsecutiveUnpaid(kindInput, payments, refDate);
+
   const row: Record<string, string> = {
     会員ID: p.id ?? "",
     会員番号:
@@ -76,12 +97,15 @@ export function buildFeeStatusCsvRow(
     氏名: p.name ?? "",
     メール: p.email ?? "",
     種別: MEMBERSHIP_LABELS_CSV[p.membership_type] ?? p.membership_type,
-    ステータス: p.status ?? "",
+    会員区分: memberKind,
+    DBステータス: p.status ?? "",
     会費支払い方法: unifiedPaymentMethodLabel(p),
     会員契約の支払手段コード: latest?.payment_method ?? "",
     import_payment_kind: p.import_payment_kind ?? "",
     Stripe顧客登録: hasStripeCustomer ? "あり" : "なし",
     会員資格の末日: latest?.expiry_date ?? "",
+    直近3年度に未納あり: recent3Unpaid ? "はい" : "いいえ",
+    "3年連続未納": threeYearUnpaid ? "はい" : "いいえ",
   };
 
   for (const yr of yearRows) {

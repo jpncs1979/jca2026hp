@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { paymentChannelPatchFromCssToggle } from "@/lib/payment-channel";
 
 /**
  * クレジットカード支払いに切り替えた際に呼ぶ。
- * 自分のプロフィールの is_css_user を false にし、銀行振込（CSS）経路から外す（1月のカード自動請求の対象になり得る）。
+ * CSS 経路からカード経路へ切替（1月のカード自動請求の対象になり得る）。
  */
 export async function POST() {
   try {
@@ -21,6 +22,8 @@ export async function POST() {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    const cardPatch = paymentChannelPatchFromCssToggle(false);
+
     if (!profile) {
       const { data: byEmail } = await admin
         .from("profiles")
@@ -33,15 +36,9 @@ export async function POST() {
       }
       const { error } = await admin
         .from("profiles")
-        .update({ is_css_user: false, updated_at: new Date().toISOString() })
+        .update({ ...cardPatch, updated_at: new Date().toISOString() })
         .eq("id", byEmail.id);
       if (error) {
-        if (error.message?.includes("is_css_user") || error.message?.includes("column")) {
-          return NextResponse.json(
-            { error: "is_css_user カラムがありません。マイグレーション 008 を実行してください。" },
-            { status: 500 }
-          );
-        }
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
       return NextResponse.json({ success: true });
@@ -49,15 +46,9 @@ export async function POST() {
 
     const { error } = await admin
       .from("profiles")
-      .update({ is_css_user: false, updated_at: new Date().toISOString() })
+      .update({ ...cardPatch, updated_at: new Date().toISOString() })
       .eq("id", profile.id);
     if (error) {
-      if (error.message?.includes("is_css_user") || error.message?.includes("column")) {
-        return NextResponse.json(
-          { error: "is_css_user カラムがありません。マイグレーション 008 を実行してください。" },
-          { status: 500 }
-        );
-      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true });

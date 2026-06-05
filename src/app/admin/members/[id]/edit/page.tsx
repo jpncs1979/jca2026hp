@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
+import { profileUsesCssChannel } from "@/lib/payment-channel";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowLeft } from "lucide-react";
 import { AdminMemberEditForm } from "./form";
@@ -114,14 +115,16 @@ export default async function AdminMemberEditPage({
           phone: profile.phone ?? "",
           affiliation: profile.affiliation ?? "",
           status:
-            profile.status === "pending"
-              ? "active"
-              : profile.status === "expelled"
-                ? "expelled"
-                : profile.status ?? "active",
+            profile.status === "pending" || profile.status === "expelled"
+              ? profile.status === "expelled"
+                ? "expired"
+                : "active"
+              : profile.status === "expired" || profile.status === "active"
+                ? profile.status
+                : "active",
           membership_type: profile.membership_type ?? "regular",
           is_ica_member: profileAny.is_ica_member ?? false,
-          is_css_user: profileAny.is_css_user ?? true,
+          is_css_user: profileUsesCssChannel(profileAny),
           officer_title: profileAny.officer_title ?? "",
           gender: profileAny.gender ?? "",
           birth_date: profileAny.birth_date ?? "",

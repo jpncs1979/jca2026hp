@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseMemberNumberCell } from "@/lib/member-number";
+import { memberNumberRangeError, parseMemberNumberCell } from "@/lib/member-number";
 
 export type Young2026MemberVerifyErrorCode =
   | "invalid_member_number"
@@ -13,7 +13,7 @@ export type Young2026MemberVerifyResult =
   | { ok: false; code: Young2026MemberVerifyErrorCode; message: string };
 
 const MESSAGES: Record<Young2026MemberVerifyErrorCode, string> = {
-  invalid_member_number: "会員番号の形式が正しくありません。",
+  invalid_member_number: memberNumberRangeError(),
   not_found:
     "この会員番号の会員が見つかりません。会員番号をご確認ください。",
   email_mismatch:
