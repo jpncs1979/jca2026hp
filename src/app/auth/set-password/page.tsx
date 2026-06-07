@@ -36,32 +36,42 @@ export default function SetPasswordPage() {
       router.replace("/mypage");
       return;
     }
-    const hasHash = typeof window !== "undefined" && !!window.location.hash;
-    const checkSession = () => {
+
+    let settled = false;
+    const markReady = () => {
+      if (settled) return;
+      settled = true;
+      setChecking(false);
+      setReady(true);
+    };
+
+    // /auth/confirm が verifyOtp で Cookie にセッションを確立済みのため、通常はここで取得できる
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) markReady();
+    });
+
+    // URL ハッシュ経由など、後からセッションが入る場合に備える
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) markReady();
+    });
+
+    // 一定時間待ってもセッションが確認できなければマイページへ
+    const t = setTimeout(() => {
+      if (settled) return;
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          setChecking(false);
-          setReady(true);
-        } else if (!hasHash) {
+          markReady();
+        } else {
           setChecking(false);
           router.replace("/mypage");
         }
       });
+    }, 3000);
+
+    return () => {
+      clearTimeout(t);
+      subscription?.unsubscribe();
     };
-    checkSession();
-    if (hasHash) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "INITIAL_SESSION" || event === "PASSWORD_RECOVERY") {
-          setChecking(false);
-          setReady(true);
-        }
-      });
-      const t = setTimeout(() => checkSession(), 2500);
-      return () => {
-        clearTimeout(t);
-        subscription?.unsubscribe();
-      };
-    }
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

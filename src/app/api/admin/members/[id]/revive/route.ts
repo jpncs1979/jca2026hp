@@ -10,17 +10,14 @@ function isIsoDate(d: string): boolean {
   return !Number.isNaN(t);
 }
 
-function recoveryRedirectTo(): string {
+/** hashed_token から自前の /auth/confirm リンクを組み立てる（verifyOtp で検証） */
+function buildConfirmLink(hashedToken: string): string {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
-  return `${siteUrl}/auth/callback?next=/auth/set-password`;
-}
-
-function extractActionLink(linkData: unknown): string | null {
-  const props = (linkData as { properties?: { action_link?: string } })?.properties;
-  const fromProps = props?.action_link;
-  if (fromProps) return fromProps;
-  return (linkData as { action_link?: string })?.action_link ?? null;
+  return (
+    `${siteUrl}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}` +
+    `&type=recovery&next=${encodeURIComponent("/auth/set-password")}`
+  );
 }
 
 async function generateRecoveryLink(
@@ -30,31 +27,21 @@ async function generateRecoveryLink(
   | { ok: true; userId: string; actionLink: string }
   | { ok: false; error: string }
 > {
-  const redirectTo = recoveryRedirectTo();
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: { redirectTo, redirect_to: redirectTo },
   });
   if (linkError) {
     return { ok: false, error: linkError.message };
   }
   const userId = (linkData as { user?: { id?: string } })?.user?.id;
-  const actionLink = extractActionLink(linkData);
-  if (!userId || !actionLink) {
+  // PKCE / URL ハッシュ依存を避けるため、action_link ではなく hashed_token を使う
+  const hashedToken = (linkData as { properties?: { hashed_token?: string } })
+    ?.properties?.hashed_token;
+  if (!userId || !hashedToken) {
     return { ok: false, error: "リカバリリンクの生成に失敗しました。" };
   }
-  let finalLink = actionLink;
-  try {
-    const url = new URL(finalLink);
-    if (!url.searchParams.has("redirect_to")) {
-      url.searchParams.set("redirect_to", redirectTo);
-      finalLink = url.toString();
-    }
-  } catch {
-    /* keep as-is */
-  }
-  return { ok: true, userId, actionLink: finalLink };
+  return { ok: true, userId, actionLink: buildConfirmLink(hashedToken) };
 }
 
 async function sendRecoveryMail(email: string, actionLink: string): Promise<string | null> {

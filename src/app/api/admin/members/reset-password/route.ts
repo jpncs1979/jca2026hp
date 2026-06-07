@@ -65,44 +65,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // メールリンククリック後は /auth/callback → パスワード再設定専用ページへ
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
       "http://localhost:3000";
-    const redirectTo = `${siteUrl}/auth/callback?next=/auth/set-password`;
 
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo, redirect_to: redirectTo },
     });
 
     if (linkError) {
       return NextResponse.json({ error: linkError.message }, { status: 500 });
     }
 
-    const props = (linkData as { properties?: { action_link?: string } })?.properties;
-    let actionLink =
-      props?.action_link
-      ?? (linkData as { action_link?: string })?.action_link;
+    // PKCE / URL ハッシュ依存を避けるため、Supabase の action_link ではなく
+    // hashed_token から自前の /auth/confirm リンクを組み立てる（verifyOtp で検証）
+    const hashedToken = (linkData as { properties?: { hashed_token?: string } })
+      ?.properties?.hashed_token;
 
-    if (!actionLink) {
+    if (!hashedToken) {
       return NextResponse.json(
         { error: "再設定リンクの生成に失敗しました。" },
         { status: 500 }
       );
     }
 
-    // Supabase が redirect_to を付けない場合に備え、メールのリンクに明示的に付与する
-    try {
-      const url = new URL(actionLink);
-      if (!url.searchParams.has("redirect_to")) {
-        url.searchParams.set("redirect_to", redirectTo);
-        actionLink = url.toString();
-      }
-    } catch {
-      // URL パース失敗時はそのまま使用
-    }
+    const actionLink =
+      `${siteUrl}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}` +
+      `&type=recovery&next=${encodeURIComponent("/auth/set-password")}`;
 
     const emailUser = process.env.EMAIL_USER;
     const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
