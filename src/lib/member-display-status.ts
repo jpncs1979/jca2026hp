@@ -54,7 +54,7 @@ export function hasAnyMembershipFeePayment(payments: PaymentRowForFee[]): boolea
 
 /**
  * 会員区分
- * - 非会員: 退会済み（expired）・強制退会記録（expelled）・資格期限切れ
+ * - 非会員: 退会済み（expired）・資格期限切れ
  * - 未納あり: 有効資格があるが直近3事業年度のいずれかが未納（入金記録ベース）
  * - 会員: 有効資格があり未納なし（会費の支払い記録がある想定）
  */
@@ -64,7 +64,7 @@ export function computeMemberKindDisplay(
   refDate = new Date()
 ): MemberKindDisplay {
   const st = m.status?.trim();
-  if (st === "expired" || st === "expelled") return "非会員";
+  if (st === "expired") return "非会員";
   if (!hasActiveMembershipTerm(m, refDate)) return "非会員";
 
   const join = latestJoin(m);

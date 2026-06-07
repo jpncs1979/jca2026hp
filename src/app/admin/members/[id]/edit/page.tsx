@@ -115,10 +115,8 @@ export default async function AdminMemberEditPage({
           phone: profile.phone ?? "",
           affiliation: profile.affiliation ?? "",
           status:
-            profile.status === "pending" || profile.status === "expelled"
-              ? profile.status === "expelled"
-                ? "expired"
-                : "active"
+            profile.status === "pending"
+              ? "active"
               : profile.status === "expired" || profile.status === "active"
                 ? profile.status
                 : "active",

@@ -81,8 +81,8 @@ async function sendRecoveryMail(email: string, actionLink: string): Promise<stri
 }
 
 /**
- * 期限切れ・強制退会の会員を有効化する。
- * - profiles.status を active にし、強制退会メタデータをクリア（可能なら）
+ * 期限切れ（退会済み）の会員を有効化する。
+ * - profiles.status を active にする
  * - 最新の memberships の有効期限を更新（無ければ新規行）
  * - user_id が空のときは Auth にユーザーを紐付け（既存メールならリカバリで検出、なければ新規作成）
  * - send_login_email が true のとき、パスワード設定用リンクをメール送信
@@ -145,9 +145,9 @@ export async function POST(
     }
 
     const st = String(profile.status ?? "");
-    if (st !== "expired" && st !== "expelled") {
+    if (st !== "expired") {
       return NextResponse.json(
-        { error: "期限切れまたは強制退会の会員のみ復活できます。" },
+        { error: "期限切れ（退会済み）の会員のみ復活できます。" },
         { status: 400 }
       );
     }
@@ -274,22 +274,7 @@ export async function POST(
       updated_at: nowIso,
     };
 
-    const withExpelClear: Record<string, unknown> = {
-      ...baseProfile,
-      expelled_at: null,
-      expulsion_reason: null,
-      email_before_rejoin_release: null,
-    };
-
-    let upErr = (await admin.from("profiles").update(withExpelClear).eq("id", profileId)).error;
-    if (
-      upErr &&
-      (upErr.message?.includes("column") ||
-        upErr.message?.includes("expelled_at") ||
-        upErr.message?.includes("schema"))
-    ) {
-      upErr = (await admin.from("profiles").update(baseProfile).eq("id", profileId)).error;
-    }
+    const upErr = (await admin.from("profiles").update(baseProfile).eq("id", profileId)).error;
 
     if (upErr) {
       console.error("revive profile update:", upErr);

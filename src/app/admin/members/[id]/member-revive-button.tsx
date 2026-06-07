@@ -94,7 +94,7 @@ export function MemberReviveButton({ profileId, memberName, defaultExpiryDate }:
             <DialogDescription className="space-y-2 text-left text-sm">
               <span>
                 <strong>{memberName}</strong> さんを<strong>有効会員（ステータス active）</strong>
-                に戻します。強制退会の場合は、強制退会の記録（日時・理由・メール退避記録）をクリアします。
+                に戻します。
               </span>
               <span className="block text-muted-foreground">
                 ログイン用アカウントが無い場合は、同じメールアドレスで Auth

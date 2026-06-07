@@ -4,7 +4,7 @@
 
 export type ProfileCategory = "general" | "student" | "professional";
 export type MembershipType = "regular" | "student" | "supporting";
-export type ProfileStatus = "pending" | "active" | "expired" | "expelled";
+export type ProfileStatus = "pending" | "active" | "expired";
 export type PaymentMethod = "stripe" | "css" | "transfer";
 export type PaymentPurpose = "membership_fee" | "competition_fee";
 export type PaymentChannel = "card" | "other";
@@ -36,9 +36,11 @@ export interface Profile {
   payment_channel_note?: string | null;
   /** 会員資格の末日（一覧・照合の主参照） */
   membership_valid_until?: string | null;
-  /** 手動強制退会時の事務局メモ */
+  /** 手動退会時の事務局メモ */
   expulsion_note?: string | null;
+  /** @deprecated 強制退会仕様は廃止。旧データ用に列のみ残存 */
   expelled_at?: string | null;
+  /** @deprecated 強制退会仕様は廃止。旧データ用に列のみ残存 */
   expulsion_reason?: string | null;
   /** Stripe Customer ID（年会費の自動引き落とし・Checkout 再利用） */
   stripe_customer_id?: string | null;

@@ -123,17 +123,6 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
 
-  if (existing?.status === "expelled") {
-    return NextResponse.json(
-      {
-        error:
-          "このメールアドレスは、会費未納による強制退会の対象となっています。再入会は事務局までお問い合わせください。",
-        code: "EXPELLED_REJOIN_CONTACT",
-      },
-      { status: 403 }
-    );
-  }
-
   if (existing) {
     return NextResponse.json(
       { error: "このメールアドレスは既に登録されています。" },

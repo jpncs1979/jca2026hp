@@ -18,7 +18,6 @@ import {
   isThreeYearConsecutiveUnpaid,
   type MemberKindDisplay,
 } from "@/lib/member-display-status";
-import { ReleaseRejoinEmailButton } from "./release-rejoin-email-button";
 import { MemberReviveButton } from "./member-revive-button";
 import { MemberWithdrawalButton } from "./member-withdrawal-button";
 
@@ -65,7 +64,6 @@ export default async function AdminMemberDetailPage({
       affiliation, status, membership_type, is_ica_member, officer_title, birth_date, created_at,
       is_css_user, payment_channel, payment_channel_note, membership_valid_until,
       stripe_customer_id, source, import_payment_kind, simultaneous_join_competition_slug,
-      expelled_at, expulsion_reason, expulsion_note, email_before_rejoin_release,
       memberships(join_date, expiry_date, payment_method)
     `;
   /** 新カラム未マイグレーション時のフォールバック（simultaneous_join_competition_slug は含めない） */
@@ -93,9 +91,6 @@ export default async function AdminMemberDetailPage({
     error?.message?.includes("source") ||
     error?.message?.includes("import_payment_kind") ||
     error?.message?.includes("simultaneous_join_competition_slug") ||
-    error?.message?.includes("expelled_at") ||
-    error?.message?.includes("expulsion_reason") ||
-    error?.message?.includes("email_before_rejoin_release") ||
     error?.message?.includes("address_prefecture") ||
     error?.message?.includes("column")
   ) {
@@ -290,25 +285,6 @@ export default async function AdminMemberDetailPage({
               </div>
             ) : null}
           </dl>
-          {profile.status === "expelled" ? (
-            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-              <p className="font-medium">旧データ: 強制退会（expelled）ステータスです。表示上は非会員として扱います。</p>
-              <p className="mt-2 text-xs leading-relaxed">
-                本人がウェブから再入会する場合は、事務局で内容確認のうえ、ログイン用メールを退避してください。
-              </p>
-              <div className="mt-3">
-                <ReleaseRejoinEmailButton profileId={profile.id} />
-              </div>
-            </div>
-          ) : null}
-          {(profile as { email_before_rejoin_release?: string | null }).email_before_rejoin_release ? (
-            <div className="mt-3 text-xs">
-              <p className="text-muted-foreground">退避前のログイン用メール</p>
-              <p className="mt-1 break-all font-mono">
-                {(profile as { email_before_rejoin_release?: string }).email_before_rejoin_release}
-              </p>
-            </div>
-          ) : null}
         </div>
 
         <div className="rounded-lg border border-border bg-white p-6">
@@ -477,7 +453,7 @@ export default async function AdminMemberDetailPage({
         {canWithdraw ? (
           <MemberWithdrawalButton profileId={profile.id} memberName={profile.name ?? "会員"} />
         ) : null}
-        {(profile.status === "expired" || profile.status === "expelled") && (
+        {profile.status === "expired" && (
           <MemberReviveButton
             profileId={profile.id}
             memberName={profile.name ?? "会員"}

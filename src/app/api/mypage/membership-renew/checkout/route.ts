@@ -9,7 +9,6 @@ import {
   type PaymentRowForFee,
 } from "@/lib/membership-fee-status";
 import { recentFiscalYears } from "@/lib/membership-fiscal-year";
-import { isCardPaymentMember } from "@/lib/payment-channel";
 
 const METADATA_TYPE = "membership_renewal";
 
@@ -67,25 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "会員情報が見つかりません。" }, { status: 404 });
     }
 
-    if (profile.status === "expelled") {
-      return NextResponse.json(
-        {
-          error:
-            "会費未納により強制退会となっているため、こちらからのお支払いはできません。事務局までお問い合わせください。",
-        },
-        { status: 403 }
-      );
-    }
-
-    if (!isCardPaymentMember(profile)) {
-      return NextResponse.json(
-        {
-          error:
-            "口座振替（CSS）対象のため、クレジット決済に切り替えてからお手続きください。",
-        },
-        { status: 400 }
-      );
-    }
+    // 未納分はチャネルに関わらずクレジットカードでの支払いを許可する
 
     const { data: memList } = await admin
       .from("memberships")

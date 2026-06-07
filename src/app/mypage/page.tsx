@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatMemberNumber } from "@/lib/member-number";
 import { isCardPaymentMember, isCssPaymentMember } from "@/lib/payment-channel";
+import { MEMBERSHIP_LABELS_CSV } from "@/lib/admin-members-csv";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -444,6 +445,16 @@ function MypageContent(): any {
     );
   }
 
+  const isMember = profile?.status === "active" || profile?.status === "pending";
+  const membershipTypeLabel =
+    MEMBERSHIP_LABELS_CSV[profile?.membership_type ?? ""] ?? "会員";
+  const rawExpiry = membership?.expiry_date ?? profile?.membership_valid_until ?? null;
+  // 有効期限は会員資格の末日（各年3月31日）として表示する
+  const expiryDisplay = rawExpiry
+    ? `${new Date(rawExpiry).getFullYear()}/3/31`
+    : "—";
+  const hasUnpaidFee = membershipFeeYears.some((r) => r.status === "未払い");
+
   return (
     <div className="font-soft">
       <div className="border-b border-border bg-muted/30 py-8 md:py-12">
@@ -527,22 +538,14 @@ function MypageContent(): any {
                 会員番号: {formatMemberNumber(profile?.member_number, "—")}
               </p>
               <p className="text-sm text-white/80">
-                会員資格の末日:{" "}
-                {membership?.expiry_date ? new Date(membership.expiry_date).toLocaleDateString("ja-JP") : "—"}
-              </p>
-              <p className="text-xs text-white/60">
-                会員資格は各年4月1日から翌年3月31日まで（表示はその期間の末日）
+                有効期限: {expiryDisplay}
               </p>
               <span
                 className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                  profile?.status === "active" || profile?.status === "pending"
-                    ? "bg-gold/30 text-gold"
-                    : "bg-white/20"
+                  isMember ? "bg-gold/30 text-gold" : "bg-white/20"
                 }`}
               >
-                {profile?.status === "active" || profile?.status === "pending"
-                  ? "会員"
-                  : "非会員"}
+                {isMember ? membershipTypeLabel : "非会員"}
               </span>
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
@@ -600,75 +603,6 @@ function MypageContent(): any {
               )}
             </CardContent>
           </Card>
-
-          {profile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CreditCard className="size-5 text-gold" />
-                  会費支払い状況（直近3年度）
-                </CardTitle>
-                <CardDescription>
-                  会費の「事業年度」は2月1日〜翌年1月31日です（表示の〇〇年度はこれに基づきます）。一方、会員資格は4月1日から翌年3月31日までです。1月までに翌事業年度分の会費が入金されると、会員資格はその次の4月1日から始まる年度に更新されます。
-                  マイページからのクレジット決済が完了すると「決済済み」に更新されます（反映まで数秒かかる場合があります）。
-                  クレジット会員は、毎年1月22日（日本時間）頃に翌事業年度会費の自動引き落としが行われます（Stripe の入金タイミングに合わせた設定です）。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
-                  {membershipFeeYears.map((row) => (
-                    <li
-                      key={row.fiscal_year}
-                      className="flex items-center justify-between gap-2 px-3 py-2.5"
-                    >
-                      <span className="font-medium">{row.label}</span>
-                      <span
-                        className={
-                          row.status === "未払い"
-                            ? "rounded bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900"
-                            : row.status === "決済済み"
-                              ? "rounded bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-800"
-                              : "rounded bg-navy/10 px-2 py-0.5 text-xs font-medium text-navy"
-                        }
-                      >
-                        {row.status}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {isCardPaymentMember(profile) &&
-                  membershipFeeYears.some((r) => r.status === "未払い") && (
-                    <Button
-                      className="bg-gold text-gold-foreground hover:bg-gold-muted"
-                      disabled={renewCheckoutLoading}
-                      onClick={async () => {
-                        setRenewCheckoutLoading(true);
-                        try {
-                          const res = await fetch("/api/mypage/membership-renew/checkout", {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({}),
-                          });
-                          const data = await res.json().catch(() => ({}));
-                          if (res.ok && data.url) {
-                            window.location.href = data.url as string;
-                          } else {
-                            alert((data as { error?: string }).error ?? "決済の開始に失敗しました");
-                          }
-                        } finally {
-                          setRenewCheckoutLoading(false);
-                        }
-                      }}
-                    >
-                      {renewCheckoutLoading
-                        ? "処理中..."
-                        : "年会費をクレジットカードで支払う（未納が複数ある場合は古い年度から）"}
-                    </Button>
-                  )}
-              </CardContent>
-            </Card>
-          )}
 
           {profile && isCssPaymentMember(profile) && (
             <Card>
@@ -828,6 +762,70 @@ function MypageContent(): any {
                       </li>
                     ))}
                   </ul>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 会費支払い状況（一番下に表示） */}
+          {profile && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CreditCard className="size-5 text-gold" />
+                  会費支払い状況（直近3年度）
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                  {membershipFeeYears.map((row) => (
+                    <li
+                      key={row.fiscal_year}
+                      className="flex items-center justify-between gap-2 px-3 py-2.5"
+                    >
+                      <span className="font-medium">{row.label}</span>
+                      <span
+                        className={
+                          row.status === "未払い"
+                            ? "rounded bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900"
+                            : row.status === "決済済み"
+                              ? "rounded bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-800"
+                              : "rounded bg-navy/10 px-2 py-0.5 text-xs font-medium text-navy"
+                        }
+                      >
+                        {row.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {hasUnpaidFee && (
+                  <Button
+                    className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                    disabled={renewCheckoutLoading}
+                    onClick={async () => {
+                      setRenewCheckoutLoading(true);
+                      try {
+                        const res = await fetch("/api/mypage/membership-renew/checkout", {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({}),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.url) {
+                          window.location.href = data.url as string;
+                        } else {
+                          alert((data as { error?: string }).error ?? "決済の開始に失敗しました");
+                        }
+                      } finally {
+                        setRenewCheckoutLoading(false);
+                      }
+                    }}
+                  >
+                    {renewCheckoutLoading
+                      ? "処理中..."
+                      : "年会費をクレジットカードで支払う（未納が複数ある場合は古い年度から）"}
+                  </Button>
                 )}
               </CardContent>
             </Card>
