@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       const { data: existing, error: fetchErr } = await admin
         .from("profiles")
         .select(
-          "id, email, name, name_kana, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, affiliation, membership_type, status, is_ica_member, officer_title, notes, gender, birth_date, is_css_user"
+          "id, email, name, name_kana, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, affiliation, membership_type, status, is_ica_member, officer_title, notes, gender, birth_date, is_css_user, stripe_customer_id"
         )
         .eq("id", profileId)
         .maybeSingle();
@@ -192,10 +192,18 @@ export async function POST(request: Request) {
         if (mn !== null) profilePatch.member_number = mn;
       }
 
+      // カード登録済み（Stripe顧客あり）の会員は、CSVの「会費支払い方法」列で
+      // 支払い経路（card/CSS）を誤って上書きしない。カード自動決済の対象から外れるのを防ぐ。
+      const exRec = existing as Record<string, string | null | undefined>;
+      const hasRegisteredCard =
+        typeof exRec.stripe_customer_id === "string" &&
+        exRec.stripe_customer_id.trim() !== "";
+
       const payFee = get("会費支払い方法");
       const payLegacy = get("支払い方法");
       const payCell = nonEmpty(payFee) ? payFee : nonEmpty(payLegacy) ? payLegacy : undefined;
-      const payParsed = nonEmpty(payCell) ? paymentPatchFromLabel(payCell!) : null;
+      const payParsed =
+        !hasRegisteredCard && nonEmpty(payCell) ? paymentPatchFromLabel(payCell!) : null;
       if (payParsed) {
         Object.assign(profilePatch, profileChannelFromFeeImport(payParsed));
         profilePatch.import_payment_kind = payParsed.import_payment_kind;

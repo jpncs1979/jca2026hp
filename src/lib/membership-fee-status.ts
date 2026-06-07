@@ -111,6 +111,24 @@ export function hasUnpaidInRecentFiscalYearsByPaymentOnly(
 }
 
 /**
+ * 直近 yearsCount 事業年度のいずれかが未納か（入金記録 ＋ 有効期限の両方を考慮）。
+ * 有効期限が当該年度をカバーしていれば（移行会員など）支払い済みとみなす。入会前年度は対象外。
+ */
+export function hasUnpaidInRecentFiscalYears(
+  payments: PaymentRowForFee[],
+  joinDateStr: string | null | undefined,
+  latestExpiryDate: string | null | undefined,
+  yearsCount = 3,
+  refDate = new Date()
+): boolean {
+  const years = recentFiscalYears(yearsCount, refDate);
+  return years.some((fy) => {
+    if (!fiscalYearAppliesToMember(joinDateStr, fy)) return false;
+    return isUnpaidForMembershipFiscalYear(payments, latestExpiryDate, fy);
+  });
+}
+
+/**
  * 会費の表示用ステータス（過去3年度分）
  */
 export function buildMembershipFeeYearRows(

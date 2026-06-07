@@ -4,7 +4,7 @@
 
 import { shouldExpelActiveMemberForThreeConsecutiveUnpaidFiscalYears } from "@/lib/membership-three-year-arrears";
 import {
-  hasUnpaidInRecentFiscalYearsByPaymentOnly,
+  hasUnpaidInRecentFiscalYears,
   type PaymentRowForFee,
 } from "@/lib/membership-fee-status";
 
@@ -55,8 +55,10 @@ export function hasAnyMembershipFeePayment(payments: PaymentRowForFee[]): boolea
 /**
  * 会員区分
  * - 非会員: 退会済み（expired）・資格期限切れ
- * - 未納あり: 有効資格があるが直近3事業年度のいずれかが未納（入金記録ベース）
- * - 会員: 有効資格があり未納なし（会費の支払い記録がある想定）
+ * - 未納あり: 有効資格があるが直近3事業年度のいずれかが未納（入金記録 ＋ 有効期限の両方を考慮）
+ * - 会員: 有効資格があり未納なし（有効期限が直近年度をカバーする移行会員を含む）
+ *
+ * 有効期限でカバーされている年度は支払い済みとみなす（マイページの会費表示と一致）。
  */
 export function computeMemberKindDisplay(
   m: MemberKindInput,
@@ -68,10 +70,10 @@ export function computeMemberKindDisplay(
   if (!hasActiveMembershipTerm(m, refDate)) return "非会員";
 
   const join = latestJoin(m);
-  if (hasUnpaidInRecentFiscalYearsByPaymentOnly(payments, join, 3, refDate)) {
+  const exp = latestExpiry(m);
+  if (hasUnpaidInRecentFiscalYears(payments, join, exp, 3, refDate)) {
     return "未納あり";
   }
-  if (!hasAnyMembershipFeePayment(payments)) return "未納あり";
   return "会員";
 }
 

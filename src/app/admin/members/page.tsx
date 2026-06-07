@@ -154,7 +154,6 @@ export default function AdminMembersPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [unpaidOnly, setUnpaidOnly] = useState(false);
   const [paymentFilter, setPaymentFilter] = useState<string>("");
-  const [officerOnly, setOfficerOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [extending, setExtending] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
@@ -254,9 +253,6 @@ export default function AdminMembersPage() {
       const pk = paymentFilter as FeePaymentFilterKey;
       list = list.filter((p) => feePaymentCategoryKey(p) === pk);
     }
-    if (officerOnly) {
-      list = list.filter((p) => (p.officer_title ?? "").trim() !== "");
-    }
     if (sortKey) {
       list = [...list].sort((a, b) => {
         let cmp = 0;
@@ -275,7 +271,7 @@ export default function AdminMembersPage() {
       });
     }
     return list;
-  }, [profiles, searchQuery, paymentFilter, officerOnly, sortKey, sortOrder]);
+  }, [profiles, searchQuery, paymentFilter, sortKey, sortOrder]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -935,7 +931,7 @@ export default function AdminMembersPage() {
           <div className="relative w-full min-w-[200px] sm:w-64">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="氏名・フリガナ・会員番号（「非会員」「未納」で絞込）"
+              placeholder="氏名・フリガナ・会員番号で検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -981,14 +977,6 @@ export default function AdminMembersPage() {
               onChange={(e) => setIcaOnly(e.target.checked)}
             />
             <Label htmlFor="ica-only" className="text-sm cursor-pointer whitespace-nowrap">ICA会員</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="officer-only"
-              checked={officerOnly}
-              onChange={(e) => setOfficerOnly(e.target.checked)}
-            />
-            <Label htmlFor="officer-only" className="text-sm cursor-pointer whitespace-nowrap">役員</Label>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -1133,8 +1121,7 @@ export default function AdminMembersPage() {
                   </button>
                 </TableHead>
                 <TableHead className="w-12 text-center">ICA会員</TableHead>
-                <TableHead className="w-12 text-center">役員</TableHead>
-                <TableHead className="min-w-[12rem] whitespace-nowrap">会費支払い方法</TableHead>
+                <TableHead className="min-w-[8rem] whitespace-nowrap">会費支払い方法</TableHead>
                 <TableHead>
                   <button
                     type="button"
@@ -1176,28 +1163,21 @@ export default function AdminMembersPage() {
                     {listMembershipTypeLabel(p)}
                   </TableCell>
                   <TableCell className="text-center">{p.is_ica_member ? "○" : "－"}</TableCell>
-                  <TableCell className="text-sm">{p.officer_title?.trim() ?? "－"}</TableCell>
                   <TableCell>
                     {(() => {
-                      const payLabel = unifiedPaymentMethodLabel(p);
                       const pk = feePaymentCategoryKey(p);
+                      if (pk === "fee_blank") {
+                        return <span className="text-muted-foreground">－</span>;
+                      }
                       const payClass =
                         pk === "fee_css"
                           ? "bg-amber-100 text-amber-900"
-                          : pk === "fee_shikuminet"
-                            ? "bg-purple-100 text-purple-950"
-                          : pk === "fee_furikomi"
-                            ? "bg-sky-100 text-sky-900"
-                          : pk === "fee_blank"
-                            ? "bg-muted text-muted-foreground"
-                          : pk === "card_registered"
-                            ? "bg-green-100 text-green-900"
-                            : "bg-orange-100 text-orange-950";
+                          : "bg-green-100 text-green-900";
                       return (
                         <span
-                          className={`inline-block max-w-[14rem] rounded px-2 py-0.5 text-xs font-medium leading-snug ${payClass}`}
+                          className={`inline-block rounded px-2 py-0.5 text-xs font-medium leading-snug ${payClass}`}
                         >
-                          {payLabel}
+                          {unifiedPaymentMethodLabel(p)}
                         </span>
                       );
                     })()}

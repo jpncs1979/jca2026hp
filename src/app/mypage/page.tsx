@@ -51,6 +51,8 @@ function MypageContent(): any {
     status?: string | null;
     affiliation?: string | null;
     is_admin?: boolean | null;
+    officer_title?: string | null;
+    is_ica_member?: boolean | null;
     is_css_user?: boolean | null;
     payment_channel?: string | null;
     payment_channel_note?: string | null;
@@ -562,6 +564,21 @@ function MypageContent(): any {
                     {isCss ? "お支払い: 口座振替（CSS）" : "お支払い: クレジットカード"}
                   </span>
                 )}
+                {profile && isMember && (profile.officer_title ?? "").trim() !== "" && (
+                  <span className="inline-block rounded bg-gold/30 px-2 py-0.5 text-xs font-medium text-gold">
+                    役員: {profile.officer_title!.trim()}
+                  </span>
+                )}
+                {profile && isMember && profile.is_ica_member === true && (
+                  <span className="inline-block rounded bg-emerald-400/25 px-2 py-0.5 text-xs font-medium text-emerald-100">
+                    ICA
+                  </span>
+                )}
+                {profile && isMember && hasUnpaidFee && (
+                  <span className="inline-block rounded bg-red-400/25 px-2 py-0.5 text-xs font-medium text-red-100">
+                    未納
+                  </span>
+                )}
               </div>
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
@@ -579,42 +596,30 @@ function MypageContent(): any {
                       クレジットカードは登録済みです（毎年1月頃の年会費の自動引き落としに利用します）。
                     </p>
                   ) : (
-                    <>
-                      <p className="mt-1 text-sm text-amber-100">
-                        {isCss
-                          ? "現在は口座振替（CSS）でのお支払いです。クレジットカードを登録すると、以後はカード払いに切り替わります。"
-                          : membership?.payment_method === "stripe"
-                            ? "サイト移行のため、新しいカードの登録が必要です（旧システムのカード情報は引き継がれません）。"
-                            : "年会費をクレジットでお支払いする場合や、自動引き落とし用にカードを登録できます。"}
-                      </p>
-                      <p className="mt-1 text-xs text-white/60">
-                        登録は決済を伴いません。Stripe の安全な画面でカード番号を入力してください。
-                      </p>
-                      <Button
-                        type="button"
-                        className="mt-2 bg-white text-navy hover:bg-white/90"
-                        disabled={registerCardLoading}
-                        onClick={async () => {
-                          setRegisterCardLoading(true);
-                          try {
-                            const res = await fetch("/api/mypage/register-card/checkout", {
-                              method: "POST",
-                              credentials: "include",
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (res.ok && data.url) {
-                              window.location.href = data.url as string;
-                            } else {
-                              alert((data as { error?: string }).error ?? "登録画面の開始に失敗しました");
-                            }
-                          } finally {
-                            setRegisterCardLoading(false);
+                    <Button
+                      type="button"
+                      className="mt-2 bg-white text-navy hover:bg-white/90"
+                      disabled={registerCardLoading}
+                      onClick={async () => {
+                        setRegisterCardLoading(true);
+                        try {
+                          const res = await fetch("/api/mypage/register-card/checkout", {
+                            method: "POST",
+                            credentials: "include",
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data.url) {
+                            window.location.href = data.url as string;
+                          } else {
+                            alert((data as { error?: string }).error ?? "登録画面の開始に失敗しました");
                           }
-                        }}
-                      >
-                        {registerCardLoading ? "処理中..." : "クレジットカードを登録する"}
-                      </Button>
-                    </>
+                        } finally {
+                          setRegisterCardLoading(false);
+                        }
+                      }}
+                    >
+                      {registerCardLoading ? "処理中..." : "会費のお支払いにカードを登録する"}
+                    </Button>
                   )}
                 </div>
               )}

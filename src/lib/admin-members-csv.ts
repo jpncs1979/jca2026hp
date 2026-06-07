@@ -2,14 +2,9 @@
 
 import { formatMemberNumber } from "@/lib/member-number";
 import { joinAddressLine } from "@/lib/japanese-address";
+import { type FeePaymentFilterKey } from "@/lib/excel-fee-payment";
 import {
-  FEE_PAYMENT_FILTER_LABELS,
-  type FeePaymentFilterKey,
-} from "@/lib/excel-fee-payment";
-import {
-  isCardPaymentMember,
   isCssPaymentMember,
-  paymentChannelLabel,
   type ProfilePaymentFields,
 } from "@/lib/payment-channel";
 
@@ -75,47 +70,29 @@ function hasStripeCustomer(p: ProfileForMemberCsv): boolean {
   return typeof p.stripe_customer_id === "string" && p.stripe_customer_id.trim() !== "";
 }
 
-/** 会員一覧の絞り込み・検索用キー（会費4区分＋クレジット登録済/未） */
+/**
+ * 会員一覧の絞り込み・検索用キー（CSS / クレジットカード登録済み / 空欄 の3種類）。
+ * - CSS（口座振替）: CSS と記録された会員。
+ * - クレジットカード: 実際にカードを登録済み（stripe_customer_id あり）の会員のみ。
+ * - 空欄: それ以外（カード未登録。しくみネット・振込・新規取り込み等）。
+ */
 export function feePaymentCategoryKey(p: ProfileForMemberCsv): FeePaymentFilterKey {
-  const k = (p.import_payment_kind ?? "").trim();
-  const pm = getLatestMembershipCsv(p)?.payment_method;
-  const hasCard = hasStripeCustomer(p);
-
-  if (k === "css") return "fee_css";
-  if (k === "shikuminet") return "fee_shikuminet";
-  if (k === "furikomi" || k === "web_transfer" || k === "other") return "fee_furikomi";
-  if (k === "blank") return "fee_blank";
-
-  const stripeKind =
-    k === "credit_card" ||
-    k === "legacy_credit" ||
-    k === "online_stripe_ok" ||
-    k === "online_stripe_pending";
-
-  if (isCardPaymentMember(p as ProfilePaymentFields)) {
-    if (hasCard || k === "online_stripe_ok") return "card_registered";
-    return "card_pending";
+  if (isCssPaymentMember(p as ProfilePaymentFields) || isCssFeeRouteForProfile(p)) {
+    return "fee_css";
   }
-  if (stripeKind || pm === "stripe") {
-    if (hasCard || k === "online_stripe_ok") return "card_registered";
-    return "card_pending";
-  }
-
-  if (isCssPaymentMember(p as ProfilePaymentFields) || isCssFeeRouteForProfile(p)) return "fee_css";
-  if (pm === "transfer") return "fee_furikomi";
-  if (pm === "css") return "fee_css";
+  if (hasStripeCustomer(p)) return "card_registered";
   return "fee_blank";
 }
 
 /**
  * 一覧・CSV 用の統一「会費支払い方法」表示。
- * CSS / シクミネット / 振込 / ー（空欄）/ クレジット（登録済・未）
+ * CSS / クレジットカード（登録済みのみ）/ 空欄。
  */
 export function unifiedPaymentMethodLabel(p: ProfileForMemberCsv): string {
-  if (p.payment_channel === "card" || p.payment_channel === "other") {
-    return paymentChannelLabel(p as ProfilePaymentFields);
-  }
-  return FEE_PAYMENT_FILTER_LABELS[feePaymentCategoryKey(p)];
+  const key = feePaymentCategoryKey(p);
+  if (key === "fee_css") return "CSS";
+  if (key === "card_registered") return "クレジットカード";
+  return "";
 }
 
 export function profileToCsvRow(

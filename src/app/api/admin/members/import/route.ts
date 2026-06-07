@@ -202,9 +202,16 @@ export async function POST(request: Request) {
 
       const { data: existing } = await admin
         .from("profiles")
-        .select("id, member_number, user_id")
+        .select("id, member_number, user_id, stripe_customer_id")
         .eq("email", email)
         .single();
+
+      // カード登録済み（Stripe顧客あり）の会員は、取り込みの「会費支払い方法」列で
+      // 支払い経路（card/CSS）を誤って上書きしない。カード自動決済の対象から外れるのを防ぐ。
+      const hasRegisteredCard =
+        typeof existing?.stripe_customer_id === "string" &&
+        existing.stripe_customer_id.trim() !== "";
+      const effectiveFee = hasRegisteredCard ? null : feePayment;
 
       const status = expiryStr && new Date(expiryStr) >= new Date() ? "active" : "expired";
       let memberNumber: number;
@@ -242,10 +249,10 @@ export async function POST(request: Request) {
           ica_requested: isIca,
           officer_title: officerTitle,
           notes,
-          ...(feePayment != null
+          ...(effectiveFee != null
             ? {
-                ...profileChannelFromFeeImport(feePayment),
-                import_payment_kind: feePayment.import_payment_kind,
+                ...profileChannelFromFeeImport(effectiveFee),
+                import_payment_kind: effectiveFee.import_payment_kind,
               }
             : {}),
         };
@@ -314,10 +321,10 @@ export async function POST(request: Request) {
           officer_title: officerTitle,
           notes,
           source: "import" as const,
-          ...(feePayment != null
+          ...(effectiveFee != null
             ? {
-                ...profileChannelFromFeeImport(feePayment),
-                import_payment_kind: feePayment.import_payment_kind,
+                ...profileChannelFromFeeImport(effectiveFee),
+                import_payment_kind: effectiveFee.import_payment_kind,
               }
             : {}),
         };
@@ -394,8 +401,8 @@ export async function POST(request: Request) {
             expiry_date: expiryStr,
             updated_at: new Date().toISOString(),
           };
-          if (feePayment != null) {
-            memPatch.payment_method = feePayment.payment_method;
+          if (effectiveFee != null) {
+            memPatch.payment_method = effectiveFee.payment_method;
           }
           await admin.from("memberships").update(memPatch).eq("id", mem.id);
         } else {
@@ -403,7 +410,7 @@ export async function POST(request: Request) {
             profile_id: profileId,
             join_date: joinDate.toISOString().slice(0, 10),
             expiry_date: expiryStr,
-            payment_method: feePayment?.payment_method ?? "transfer",
+            payment_method: effectiveFee?.payment_method ?? "transfer",
           });
         }
       }

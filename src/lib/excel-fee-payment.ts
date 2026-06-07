@@ -138,32 +138,27 @@ export function parseFeePaymentLabel(raw: unknown): FeePaymentDb {
   };
 }
 
-/** 管理画面の絞り込み用 query 値 */
+/**
+ * 管理画面の絞り込み用 query 値。
+ * 支払い方法は「CSS」「クレジットカード（登録済み）」「空欄（未登録）」の3種類のみ。
+ * しくみネット・振込は廃止し、カード登録があるまでは空欄として扱う。
+ */
 export const FEE_PAYMENT_FILTER_KEYS = [
   "fee_css",
-  "fee_shikuminet",
-  "fee_furikomi",
-  "fee_blank",
   "card_registered",
-  "card_pending",
+  "fee_blank",
 ] as const;
 
 export type FeePaymentFilterKey = (typeof FEE_PAYMENT_FILTER_KEYS)[number];
 
-/** import_payment_kind から絞り込みキー（Stripe の有無は別途判定が必要） */
+/** import_payment_kind から絞り込みキー（CSS 以外はカード登録があるまで空欄） */
 export function feePaymentFilterKeyFromKind(kind: ImportPaymentKind): FeePaymentFilterKey {
   if (kind === "css") return "fee_css";
-  if (kind === "shikuminet") return "fee_shikuminet";
-  if (kind === "furikomi" || kind === "web_transfer" || kind === "other") return "fee_furikomi";
-  if (kind === "blank") return "fee_blank";
-  return "card_pending";
+  return "fee_blank";
 }
 
 export const FEE_PAYMENT_FILTER_LABELS: Record<FeePaymentFilterKey, string> = {
   fee_css: "CSS",
-  fee_shikuminet: "シクミネット",
-  fee_furikomi: "振込",
-  fee_blank: "ー（空欄）",
-  card_registered: "クレジットカード（登録済み）",
-  card_pending: "クレジットカード（未登録・マイページから登録可）",
+  card_registered: "クレジットカード",
+  fee_blank: "空欄",
 };

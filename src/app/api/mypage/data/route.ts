@@ -20,9 +20,9 @@ export async function GET() {
 
     const admin = createAdminClient();
     const selectCols =
-      "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, is_css_user, payment_channel, payment_channel_note, membership_valid_until, membership_type, stripe_customer_id, source";
+      "id, member_number, name, name_kana, email, status, affiliation, is_admin, officer_title, is_ica_member, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, is_css_user, payment_channel, payment_channel_note, membership_valid_until, membership_type, stripe_customer_id, source";
     const selectColsLegacy =
-      "id, member_number, name, name_kana, email, status, affiliation, is_admin, zip_code, address, phone, is_css_user, payment_channel, payment_channel_note, membership_valid_until, membership_type, stripe_customer_id, source";
+      "id, member_number, name, name_kana, email, status, affiliation, is_admin, officer_title, is_ica_member, zip_code, address, phone, is_css_user, payment_channel, payment_channel_note, membership_valid_until, membership_type, stripe_customer_id, source";
 
     // 1. user_id で検索
     let { data: profile, error: errByUser } = await admin
