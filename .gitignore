@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# OneDrive の同期で生成される競合コピー
+*-DESKTOP-*
+
 # debug
 npm-debug.log*
 yarn-debug.log*
