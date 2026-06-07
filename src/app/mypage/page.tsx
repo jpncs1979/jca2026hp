@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatMemberNumber } from "@/lib/member-number";
-import { isCardPaymentMember, isCssPaymentMember } from "@/lib/payment-channel";
+import { isCssPaymentMember } from "@/lib/payment-channel";
 import { MEMBERSHIP_LABELS_CSV } from "@/lib/admin-members-csv";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,7 +91,6 @@ function MypageContent(): any {
   const [recoveryNewPasswordConfirm, setRecoveryNewPasswordConfirm] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [switchToCardLoading, setSwitchToCardLoading] = useState(false);
   const [renewCheckoutLoading, setRenewCheckoutLoading] = useState(false);
   const [registerCardLoading, setRegisterCardLoading] = useState(false);
 
@@ -454,6 +453,10 @@ function MypageContent(): any {
     ? `${new Date(rawExpiry).getFullYear()}/3/31`
     : "—";
   const hasUnpaidFee = membershipFeeYears.some((r) => r.status === "未払い");
+  const isCss = profile ? isCssPaymentMember(profile) : false;
+  const hasRegisteredCard =
+    typeof profile?.stripe_customer_id === "string" &&
+    profile.stripe_customer_id.trim() !== "";
 
   return (
     <div className="font-soft">
@@ -540,13 +543,26 @@ function MypageContent(): any {
               <p className="text-sm text-white/80">
                 有効期限: {expiryDisplay}
               </p>
-              <span
-                className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                  isMember ? "bg-gold/30 text-gold" : "bg-white/20"
-                }`}
-              >
-                {isMember ? membershipTypeLabel : "非会員"}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                    isMember ? "bg-gold/30 text-gold" : "bg-white/20"
+                  }`}
+                >
+                  {isMember ? membershipTypeLabel : "非会員"}
+                </span>
+                {profile && isMember && (
+                  <span
+                    className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                      isCss
+                        ? "bg-sky-400/25 text-sky-100"
+                        : "bg-white/15 text-white/80"
+                    }`}
+                  >
+                    {isCss ? "お支払い: 口座振替（CSS）" : "お支払い: クレジットカード"}
+                  </span>
+                )}
+              </div>
               {!profile && (
                 <p className="text-xs text-white/60">会員情報を取得できませんでした。お手数ですが事務局へご連絡ください。</p>
               )}
@@ -555,20 +571,21 @@ function MypageContent(): any {
                   会員番号がまだ表示されない場合は、表示を更新するか事務局へお問い合わせください。
                 </p>
               )}
-              {profile && isCardPaymentMember(profile) && (
+              {profile && isMember && (
                 <div className="mt-3 border-t border-white/15 pt-3">
                   <p className="text-xs text-white/70">年会費の自動決済（Stripe）</p>
-                  {typeof profile.stripe_customer_id === "string" &&
-                  profile.stripe_customer_id.trim() !== "" ? (
+                  {hasRegisteredCard ? (
                     <p className="mt-1 text-sm text-emerald-200">
                       クレジットカードは登録済みです（毎年1月頃の年会費の自動引き落としに利用します）。
                     </p>
                   ) : (
                     <>
                       <p className="mt-1 text-sm text-amber-100">
-                        {membership?.payment_method === "stripe"
-                          ? "サイト移行のため、新しいカードの登録が必要です（旧システムのカード情報は引き継がれません）。"
-                          : "年会費をクレジットでお支払いする場合や、自動引き落とし用にカードを登録できます。"}
+                        {isCss
+                          ? "現在は口座振替（CSS）でのお支払いです。クレジットカードを登録すると、以後はカード払いに切り替わります。"
+                          : membership?.payment_method === "stripe"
+                            ? "サイト移行のため、新しいカードの登録が必要です（旧システムのカード情報は引き継がれません）。"
+                            : "年会費をクレジットでお支払いする場合や、自動引き落とし用にカードを登録できます。"}
                       </p>
                       <p className="mt-1 text-xs text-white/60">
                         登録は決済を伴いません。Stripe の安全な画面でカード番号を入力してください。
@@ -603,51 +620,6 @@ function MypageContent(): any {
               )}
             </CardContent>
           </Card>
-
-          {profile && isCssPaymentMember(profile) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CreditCard className="size-5 text-gold" />
-                  支払方法
-                </CardTitle>
-                <CardDescription>
-                  会費のお支払いはクレジットカードのみとなっています。下のボタンでクレジットカード払いに切り替えたうえ、カード登録・年会費の決済を行ってください。
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="bg-gold text-gold-foreground hover:bg-gold-muted"
-                  disabled={switchToCardLoading}
-                  onClick={async () => {
-                    setSwitchToCardLoading(true);
-                    try {
-                      const res = await fetch("/api/mypage/switch-to-card", { method: "POST", credentials: "include" });
-                      const data = await res.json().catch(() => ({}));
-                      if (res.ok) {
-                        setProfile((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                is_css_user: false,
-                                payment_channel: "card",
-                                payment_channel_note: null,
-                              }
-                            : null
-                        );
-                      } else {
-                        alert(data.error ?? "切り替えに失敗しました");
-                      }
-                    } finally {
-                      setSwitchToCardLoading(false);
-                    }
-                  }}
-                >
-                  {switchToCardLoading ? "処理中..." : "クレジットカード支払いに切り替える"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {/* プロフィール編集 */}
           <Card>

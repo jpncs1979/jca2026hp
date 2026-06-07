@@ -3,7 +3,6 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { normalizeBaseUrl } from "@/lib/utils";
-import { isCardPaymentMember } from "@/lib/payment-channel";
 
 const METADATA_TYPE = "mypage_card_setup";
 
@@ -55,15 +54,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "会員情報が見つかりません。" }, { status: 404 });
     }
 
-    if (!isCardPaymentMember(profile)) {
-      return NextResponse.json(
-        {
-          error:
-            "口座振替（CSS）対象のため、先にマイページの「クレジットカード支払いに切り替える」から切り替えてください。",
-        },
-        { status: 400 }
-      );
-    }
+    // 支払いはカードか CSS の2種類のみ。CSS 会員を含め全員がカードを登録できる
+    // （登録完了の Webhook でカード経路へ統一する）。
 
     const existingCustomer =
       typeof profile.stripe_customer_id === "string" && profile.stripe_customer_id.trim();

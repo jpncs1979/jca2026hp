@@ -466,9 +466,16 @@ async function handleMembershipRenewalCompleted(
         ? (session.customer as { id: string }).id
         : null;
   if (customerId) {
+    // カードで決済した時点でカード経路に統一する（次年度以降の自動決済対象になる）。
     await supabase
       .from("profiles")
-      .update({ stripe_customer_id: customerId, updated_at: new Date().toISOString() })
+      .update({
+        stripe_customer_id: customerId,
+        payment_channel: "card",
+        payment_channel_note: null,
+        is_css_user: false,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", profileId);
     const stripeRenew = getStripe();
     if (stripeRenew) {
@@ -550,10 +557,14 @@ async function handleMypageCardSetupCompleted(
     }
   }
 
+  // カード登録時点でカード経路に統一する（CSS 会員もカード登録すればカード決済対象になる）。
   const { error } = await supabase
     .from("profiles")
     .update({
       stripe_customer_id: customerId,
+      payment_channel: "card",
+      payment_channel_note: null,
+      is_css_user: false,
       updated_at: new Date().toISOString(),
     })
     .eq("id", profileId);

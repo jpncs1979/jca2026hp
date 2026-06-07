@@ -22,15 +22,22 @@ export function resolvePaymentChannel(p: ProfilePaymentFields): PaymentChannel {
   return "other";
 }
 
-export function isCardPaymentMember(p: ProfilePaymentFields): boolean {
-  return resolvePaymentChannel(p) === "card";
-}
-
+/**
+ * CSS（口座振替）会員かどうか。
+ * 支払い方法は「カード」か「CSS」の2種類のみ。CSS は明示的に CSS と記録された会員だけが該当する。
+ */
 export function isCssPaymentMember(p: ProfilePaymentFields): boolean {
   return (
-    resolvePaymentChannel(p) === "other" &&
-    (p.payment_channel_note?.trim() === CSS_PAYMENT_CHANNEL_NOTE || p.is_css_user === true)
+    p.payment_channel_note?.trim() === CSS_PAYMENT_CHANNEL_NOTE || p.is_css_user === true
   );
+}
+
+/**
+ * カード会員かどうか。
+ * CSS 以外は全員カード扱い（しくみネット・振込などの旧経路はカードへ統一し、廃止する）。
+ */
+export function isCardPaymentMember(p: ProfilePaymentFields): boolean {
+  return !isCssPaymentMember(p);
 }
 
 export function paymentChannelLabel(p: ProfilePaymentFields): string {
