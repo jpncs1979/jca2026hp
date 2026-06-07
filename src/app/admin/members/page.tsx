@@ -1120,7 +1120,7 @@ export default function AdminMembersPage() {
                     <SortIcon col="type" />
                   </button>
                 </TableHead>
-                <TableHead className="w-12 text-center">ICA会員</TableHead>
+                <TableHead className="w-12 text-center">ICA</TableHead>
                 <TableHead className="min-w-[8rem] whitespace-nowrap">会費支払い方法</TableHead>
                 <TableHead>
                   <button
@@ -1160,9 +1160,24 @@ export default function AdminMembersPage() {
                     {listMemberNameText(p.name_kana, p.membership_type) || "－"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">
-                    {listMembershipTypeLabel(p)}
+                    <span className="inline-flex items-center gap-1">
+                      {listMembershipTypeLabel(p)}
+                      {p.member_kind === "未納あり" && (
+                        <span className="inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
+                          未納
+                        </span>
+                      )}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-center">{p.is_ica_member ? "○" : "－"}</TableCell>
+                  <TableCell className="text-center">
+                    {p.is_ica_member ? (
+                      <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                        ICA
+                      </span>
+                    ) : (
+                      "－"
+                    )}
+                  </TableCell>
                   <TableCell>
                     {(() => {
                       const pk = feePaymentCategoryKey(p);

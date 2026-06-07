@@ -553,20 +553,14 @@ function MypageContent(): any {
                 >
                   {isMember ? membershipTypeLabel : "非会員"}
                 </span>
-                {profile && isMember && (
-                  <span
-                    className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                      isCss
-                        ? "bg-sky-400/25 text-sky-100"
-                        : "bg-white/15 text-white/80"
-                    }`}
-                  >
-                    {isCss ? "お支払い: 口座振替（CSS）" : "お支払い: クレジットカード"}
+                {profile && isMember && isCss && (
+                  <span className="inline-block rounded bg-sky-400/25 px-2 py-0.5 text-xs font-medium text-sky-100">
+                    お支払い: 口座振替（CSS）
                   </span>
                 )}
                 {profile && isMember && (profile.officer_title ?? "").trim() !== "" && (
                   <span className="inline-block rounded bg-gold/30 px-2 py-0.5 text-xs font-medium text-gold">
-                    役員: {profile.officer_title!.trim()}
+                    {profile.officer_title!.trim()}
                   </span>
                 )}
                 {profile && isMember && profile.is_ica_member === true && (
@@ -590,7 +584,6 @@ function MypageContent(): any {
               )}
               {profile && isMember && (
                 <div className="mt-3 border-t border-white/15 pt-3">
-                  <p className="text-xs text-white/70">年会費の自動決済（Stripe）</p>
                   {hasRegisteredCard ? (
                     <p className="mt-1 text-sm text-emerald-200">
                       クレジットカードは登録済みです（毎年1月頃の年会費の自動引き落としに利用します）。
@@ -618,7 +611,7 @@ function MypageContent(): any {
                         }
                       }}
                     >
-                      {registerCardLoading ? "処理中..." : "会費のお支払いにカードを登録する"}
+                      {registerCardLoading ? "処理中..." : "会費お支払いカードの登録"}
                     </Button>
                   )}
                 </div>

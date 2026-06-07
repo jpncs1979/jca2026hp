@@ -11,8 +11,6 @@ import {
 import { formatMemberNumber } from "@/lib/member-number";
 import { unifiedPaymentMethodLabel, type ProfileForMemberCsv } from "@/lib/admin-members-csv";
 import { YOUNG_2026 } from "@/lib/young-2026";
-import { joinAddressLine } from "@/lib/japanese-address";
-import { paymentChannelLabel } from "@/lib/payment-channel";
 import {
   computeMemberKindDisplay,
   isThreeYearConsecutiveUnpaid,
@@ -169,6 +167,11 @@ export default async function AdminMemberDetailPage({
     (profile as { membership_valid_until?: string | null }).membership_valid_until ??
     latestMembership?.expiry_date;
 
+  // 有効期限は会員資格の末日の年の 3/31 として表記する（例: 2027-03-31）
+  const membershipExpiryDisplay = membershipValidUntil
+    ? `${new Date(membershipValidUntil).getFullYear()}-03-31`
+    : "-";
+
   const feePayments = (feePayRows ?? []) as PaymentRowForFee[];
   const memberKind: MemberKindDisplay = computeMemberKindDisplay(
     {
@@ -192,6 +195,29 @@ export default async function AdminMemberDetailPage({
     非会員: "bg-muted text-muted-foreground",
     未納あり: "bg-amber-100 text-amber-800",
   };
+  // 会員区分の表示: 「会員」は「有効会員」と表記する
+  const memberKindLabel = memberKind === "会員" ? "有効会員" : memberKind;
+
+  // 会費支払い方法（経路＋一覧区分を統合）。CSS / クレジットカード / 「-（メモ）」の3パターン。
+  const feeMethodBase = unifiedPaymentMethodLabel(profileForPaymentLabel); // "CSS" | "クレジットカード" | ""
+  const feeMethodMemo = (() => {
+    const k = (profileExt.import_payment_kind ?? "").trim();
+    if (k === "shikuminet") return "旧シクミネット";
+    if (k === "furikomi" || k === "web_transfer" || k === "other") return "振込";
+    if (
+      k === "credit_card" ||
+      k === "legacy_credit" ||
+      k === "online_stripe_ok" ||
+      k === "online_stripe_pending"
+    ) {
+      return "旧クレジット・カード未登録";
+    }
+    if (k === "blank") return "新規";
+    const note = (profileExt.payment_channel_note ?? "").trim();
+    if (note && note !== "CSS") return note;
+    return "新規";
+  })();
+  const feeMethodDisplay = feeMethodBase !== "" ? feeMethodBase : `-（${feeMethodMemo}）`;
 
   const canWithdraw =
     (profile.status === "active" || profile.status === "pending") &&
@@ -274,7 +300,7 @@ export default async function AdminMemberDetailPage({
                 <span
                   className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${memberKindClass[memberKind]}`}
                 >
-                  {memberKind}
+                  {memberKindLabel}
                 </span>
               </dd>
             </div>
@@ -351,25 +377,6 @@ export default async function AdminMemberDetailPage({
                     <dd>{(profile as { address_building?: string }).address_building}</dd>
                   </div>
                 ) : null}
-                {(joinAddressLine({
-                  prefecture: (profile as { address_prefecture?: string | null }).address_prefecture,
-                  city: (profile as { address_city?: string | null }).address_city,
-                  street: (profile as { address_street?: string | null }).address_street,
-                  building: (profile as { address_building?: string | null }).address_building,
-                }) ||
-                  profile.address) && (
-                  <div>
-                    <dt className="text-muted-foreground">住所（連結）</dt>
-                    <dd>
-                      {joinAddressLine({
-                        prefecture: (profile as { address_prefecture?: string | null }).address_prefecture,
-                        city: (profile as { address_city?: string | null }).address_city,
-                        street: (profile as { address_street?: string | null }).address_street,
-                        building: (profile as { address_building?: string | null }).address_building,
-                      }) || profile.address}
-                    </dd>
-                  </div>
-                )}
               </>
             )}
             {profile.affiliation && (
@@ -390,16 +397,12 @@ export default async function AdminMemberDetailPage({
         {latestMembership ? (
           <dl className="space-y-3 text-sm">
             <div>
-              <dt className="text-muted-foreground">会員資格の末日（4/1〜翌3/31）</dt>
-              <dd className="font-medium">{membershipValidUntil ?? "-"}</dd>
+              <dt className="text-muted-foreground">有効期限</dt>
+              <dd className="font-medium">{membershipExpiryDisplay}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">会費支払い経路</dt>
-              <dd className="font-medium">{paymentChannelLabel(profileExt)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">一覧区分（互換）</dt>
-              <dd className="text-muted-foreground">{unifiedPaymentMethodLabel(profileForPaymentLabel)}</dd>
+              <dt className="text-muted-foreground">会費支払い方法</dt>
+              <dd className="font-medium">{feeMethodDisplay}</dd>
             </div>
           </dl>
         ) : (
