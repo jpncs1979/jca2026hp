@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { YOUNG_2026 } from "@/lib/young-2026";
+import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
 import { supabase } from "@/lib/supabase";
 import {
   isRestorableYoung2026ApplyPayload,
@@ -219,6 +219,7 @@ export default function ApplyPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const applicationOpen = isYoung2026ApplicationOpen();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -314,6 +315,22 @@ export default function ApplyPage() {
         <div className="mt-4 text-center">
           <Link href="/events/young-2026">
             <Button variant="outline">詳細ページに戻る</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!applicationOpen) {
+    return (
+      <div className="font-soft">
+        <div className="container mx-auto max-w-2xl px-4 py-16">
+          <h1 className="text-2xl font-bold text-navy">申込受付期間外です</h1>
+          <p className="mt-4 text-muted-foreground">
+            申込受付期間は {YOUNG_2026.applicationPeriod} です。
+          </p>
+          <Link href="/events/young-2026" className="mt-8 inline-block">
+            <Button variant="outline">コンクール詳細に戻る</Button>
           </Link>
         </div>
       </div>

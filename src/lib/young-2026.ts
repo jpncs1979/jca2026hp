@@ -209,3 +209,13 @@ export const YOUNG_2026 = {
 } as const;
 
 export type YoungCategory = (typeof YOUNG_2026.eligibility.categories)[number]["id"];
+
+function ymdInJst(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+}
+
+/** 申込受付（JST）：2026-07-05 ～ 2026-07-19 */
+export function isYoung2026ApplicationOpen(now = new Date()): boolean {
+  const ymd = ymdInJst(now);
+  return ymd >= "2026-07-05" && ymd <= "2026-07-19";
+}

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { YOUNG_2026 } from "@/lib/young-2026";
+import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
 import { normalizeMemberNumberInput } from "@/lib/member-number";
 import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
 
@@ -99,6 +99,14 @@ export async function createYoung2026Application(
     }
   | { ok: false; message: string; status?: number }
 > {
+  if (!isYoung2026ApplicationOpen()) {
+    return {
+      ok: false,
+      message: `申込受付期間は${YOUNG_2026.applicationPeriod}です。`,
+      status: 400,
+    };
+  }
+
   const parsed = parseYoung2026ApplicationBody(body);
   if (!parsed) {
     return { ok: false, message: "必須項目が入力されていません。", status: 400 };
