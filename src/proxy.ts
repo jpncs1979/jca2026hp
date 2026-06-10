@@ -3,36 +3,44 @@ import { NextResponse, type NextRequest } from "next/server";
 import { siteAccessGateResponse } from "@/lib/site-access-gate";
 
 export async function proxy(request: NextRequest) {
-  const gated = siteAccessGateResponse(request);
-  if (gated) return gated;
+  try {
+    const gated = siteAccessGateResponse(request);
+    if (gated) return gated;
 
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+    let response = NextResponse.next({
+      request: { headers: request.headers },
+    });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return response;
+    }
+
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            response.cookies.set(name, value)
+          );
+        },
+      },
+    });
+
+    await supabase.auth.getSession();
+
     return response;
+  } catch (err) {
+    console.error("[proxy]", err);
+    return NextResponse.json(
+      { error: "サーバーエラーが発生しました。" },
+      { status: 500 }
+    );
   }
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          response.cookies.set(name, value)
-        );
-      },
-    },
-  });
-
-  await supabase.auth.getSession();
-
-  return response;
 }
 
 export const config = {

@@ -1,11 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const REALM = "日本クラリネット協会（準備中）";
+// realm は HTTP ヘッダー用のため ASCII のみ（日本語だと Edge で 500 になる）
+const REALM = "JCA Site";
 
 function unauthorized(message: string) {
   return new NextResponse(message, {
     status: 401,
-    headers: { "WWW-Authenticate": `Basic realm="${REALM}"` },
+    headers: {
+      "WWW-Authenticate": `Basic realm="${REALM}"`,
+      "Content-Type": "text/plain; charset=utf-8",
+    },
   });
 }
 
