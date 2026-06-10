@@ -1,7 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { siteAccessGateResponse } from "@/lib/site-access-gate";
 
 export async function proxy(request: NextRequest) {
+  const gated = siteAccessGateResponse(request);
+  if (gated) return gated;
+
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
