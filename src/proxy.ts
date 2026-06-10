@@ -45,6 +45,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images|api).*)",
+    // _next 全体を除外（RSC / data リクエストで Basic 認証ポップアップが連発するのを防ぐ）
+    "/((?!_next|api|favicon.ico|images).*)",
   ],
 };

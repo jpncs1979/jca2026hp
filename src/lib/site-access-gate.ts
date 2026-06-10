@@ -9,14 +9,39 @@ const BUILTIN_PUBLIC_PATH_PREFIXES = [
   "/events/young-2026",
 ] as const;
 
-function unauthorized(message: string) {
-  return new NextResponse(message, {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": `Basic realm="${REALM}"`,
-      "Content-Type": "text/plain; charset=utf-8",
-    },
-  });
+function unauthorized(message: string, challenge: boolean) {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+  };
+  if (challenge) {
+    headers["WWW-Authenticate"] = `Basic realm="${REALM}"`;
+  }
+  return new NextResponse(message, { status: 401, headers });
+}
+
+/** プリフェッチ・RSC など。401 でも WWW-Authenticate を付けない（ブラウザの認証ポップアップを出さない） */
+function isSubresourceRequest(request: NextRequest): boolean {
+  if (request.headers.get("next-router-prefetch") === "1") return true;
+  if (request.headers.get("rsc") === "1") return true;
+
+  const purpose =
+    request.headers.get("purpose") ?? request.headers.get("sec-purpose") ?? "";
+  if (purpose.toLowerCase().includes("prefetch")) return true;
+
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("text/x-component")) return true;
+
+  const secFetchDest = request.headers.get("sec-fetch-dest") ?? "";
+  if (secFetchDest && secFetchDest !== "document") return true;
+
+  const secFetchMode = request.headers.get("sec-fetch-mode") ?? "";
+  if (secFetchMode === "cors" || secFetchMode === "no-cors") return true;
+
+  return false;
+}
+
+function denyAccess(request: NextRequest, message: string) {
+  return unauthorized(message, !isSubresourceRequest(request));
 }
 
 /** パス比較用（末尾スラッシュを除く。ルートは `/` のまま） */
@@ -100,7 +125,8 @@ export function siteAccessGateResponse(
   const auth = request.headers.get("authorization");
 
   if (!auth?.startsWith("Basic ")) {
-    return unauthorized(
+    return denyAccess(
+      request,
       "このサイトは準備中です。ブラウザの認証ダイアログでパスワードを入力してください。"
     );
   }
@@ -115,5 +141,8 @@ export function siteAccessGateResponse(
     // invalid encoding
   }
 
-  return unauthorized("ユーザー名またはパスワードが正しくありません。");
+  return denyAccess(
+    request,
+    "ユーザー名またはパスワードが正しくありません。"
+  );
 }
