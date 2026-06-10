@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveCompetitionId } from "@/lib/competition-application-gate";
 import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
 import { normalizeMemberNumberInput } from "@/lib/member-number";
 import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
@@ -149,13 +150,12 @@ export async function createYoung2026Application(
     }
   }
 
-  const { data: comp, error: compErr } = await db
-    .from("competitions")
-    .select("id")
-    .eq("slug", YOUNG_2026.slug)
-    .single();
-
-  if (compErr || !comp?.id) {
+  const competitionId = await resolveCompetitionId(
+    db,
+    YOUNG_2026.slug,
+    options?.adminPeriodBypass === true
+  );
+  if (!competitionId) {
     return { ok: false, message: "申込の準備ができていません。", status: 500 };
   }
 
@@ -163,7 +163,7 @@ export async function createYoung2026Application(
   const amount = getAmount(parsed.category, parsed.member_type, isActiveMember);
 
   const insertRow: Record<string, unknown> = {
-    competition_id: comp.id,
+    competition_id: competitionId,
     name: parsed.name,
     furigana: parsed.furigana,
     email: parsed.email,

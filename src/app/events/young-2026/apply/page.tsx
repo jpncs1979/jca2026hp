@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
+import { YOUNG_2026 } from "@/lib/young-2026";
 import { supabase } from "@/lib/supabase";
 import {
   isRestorableYoung2026ApplyPayload,
@@ -216,12 +216,11 @@ export default function ApplyPage() {
   const router = useRouter();
   const draftHydratedRef = useRef(false);
   const [competitionId, setCompetitionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [gateLoading, setGateLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminChecked, setAdminChecked] = useState(false);
-  const periodOpen = isYoung2026ApplicationOpen();
+  const [periodOpen, setPeriodOpen] = useState(false);
   const applicationOpen = periodOpen || isAdmin;
   const adminTestMode = isAdmin && !periodOpen;
 
@@ -258,44 +257,44 @@ export default function ApplyPage() {
   }, [category, form]);
 
   useEffect(() => {
-    fetch("/api/mypage/admin-check")
+    fetch(`/api/events/competition-gate?slug=${YOUNG_2026.slug}`, {
+      credentials: "include",
+    })
       .then((res) => res.json())
-      .then((data: { isAdmin?: boolean }) => setIsAdmin(data.isAdmin === true))
-      .catch(() => setIsAdmin(false))
-      .finally(() => setAdminChecked(true));
-  }, []);
-
-  useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("competitions")
-        .select("id")
-        .eq("slug", YOUNG_2026.slug)
-        .single();
-      setCompetitionId(data?.id ?? null);
-      setLoading(false);
-    })();
+      .then(
+        (data: {
+          competitionId?: string | null;
+          isAdmin?: boolean;
+          periodOpen?: boolean;
+        }) => {
+          setCompetitionId(data.competitionId ?? null);
+          setIsAdmin(data.isAdmin === true);
+          setPeriodOpen(data.periodOpen === true);
+        }
+      )
+      .catch(() => {
+        setCompetitionId(null);
+        setIsAdmin(false);
+        setPeriodOpen(false);
+      })
+      .finally(() => setGateLoading(false));
   }, []);
 
   /** 確認ページから「修正する」で戻ったとき、sessionStorage の下書きをフォームに流し込む（マウント後1回のみ） */
   useEffect(() => {
-    if (loading || !competitionId || draftHydratedRef.current) return;
+    if (gateLoading || !competitionId || draftHydratedRef.current) return;
     const raw = loadYoung2026ApplyConfirmPayload();
     if (!raw || raw.competitionId !== competitionId || !isRestorableYoung2026ApplyPayload(raw)) {
       return;
     }
     form.reset(draftToFormValues(raw));
     draftHydratedRef.current = true;
-  }, [loading, competitionId, form]);
+  }, [gateLoading, competitionId, form]);
 
   const feeRaw =
     category && memberType ? young2026ApplyFeeYen(category, memberType) : null;
 
-  if (loading || !adminChecked) {
+  if (gateLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
         <p className="text-center text-muted-foreground">読み込み中...</p>
@@ -340,9 +339,6 @@ export default function ApplyPage() {
           <h1 className="text-2xl font-bold text-navy">申込受付期間外です</h1>
           <p className="mt-4 text-muted-foreground">
             申込受付期間は {YOUNG_2026.applicationPeriod} です。
-          </p>
-          <p className="mt-4 text-sm text-muted-foreground">
-            事務局のテスト申込は、管理アカウントでログインしたうえで再度このページを開いてください。
           </p>
           <Link href="/events/young-2026" className="mt-8 inline-block">
             <Button variant="outline">コンクール詳細に戻る</Button>

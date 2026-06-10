@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveCompetitionId } from "@/lib/competition-application-gate";
 import { ENSEMBLE_2027, type Ensemble2027CategoryId } from "@/lib/ensemble-2027";
+import { isEnsemble2027ApplicationOpen } from "@/lib/ensemble-2027";
 import { normalizeMemberNumberInput } from "@/lib/member-number";
 import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
-import { isEnsemble2027ApplicationOpen } from "@/lib/ensemble-2027";
 
 const CATEGORY_IDS = ENSEMBLE_2027.categories.map((c) => c.id);
 
@@ -142,13 +143,12 @@ export async function createEnsemble2027Application(
     }
   }
 
-  const { data: comp, error: compErr } = await db
-    .from("competitions")
-    .select("id")
-    .eq("slug", ENSEMBLE_2027.slug)
-    .single();
-
-  if (compErr || !comp?.id) {
+  const competitionId = await resolveCompetitionId(
+    db,
+    ENSEMBLE_2027.slug,
+    options?.adminPeriodBypass === true
+  );
+  if (!competitionId) {
     return { ok: false, message: "申込の準備ができていません。", status: 500 };
   }
 
@@ -162,7 +162,7 @@ export async function createEnsemble2027Application(
   ].join("\n");
 
   const insertRow: Record<string, unknown> = {
-    competition_id: comp.id,
+    competition_id: competitionId,
     name: parsed.name,
     furigana: parsed.furigana,
     email: parsed.email,

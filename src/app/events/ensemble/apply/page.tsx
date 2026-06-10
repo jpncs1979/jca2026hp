@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ENSEMBLE_2027, isEnsemble2027ApplicationOpen } from "@/lib/ensemble-2027";
+import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
 import { supabase } from "@/lib/supabase";
 import {
   ensemble2027ApplyFeeYen,
@@ -152,13 +152,12 @@ function BirthDateInput({
 export default function EnsembleApplyPage() {
   const router = useRouter();
   const draftHydratedRef = useRef(false);
-  const [loading, setLoading] = useState(true);
+  const [gateLoading, setGateLoading] = useState(true);
   const [competitionId, setCompetitionId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminChecked, setAdminChecked] = useState(false);
-  const periodOpen = isEnsemble2027ApplicationOpen();
+  const [periodOpen, setPeriodOpen] = useState(false);
   const applicationOpen = periodOpen || isAdmin;
   const adminTestMode = isAdmin && !periodOpen;
 
@@ -185,31 +184,31 @@ export default function EnsembleApplyPage() {
   const feeRaw = ensemble2027ApplyFeeYen(category, memberType);
 
   useEffect(() => {
-    fetch("/api/mypage/admin-check")
+    fetch(`/api/events/competition-gate?slug=${ENSEMBLE_2027.slug}`, {
+      credentials: "include",
+    })
       .then((res) => res.json())
-      .then((data: { isAdmin?: boolean }) => setIsAdmin(data.isAdmin === true))
-      .catch(() => setIsAdmin(false))
-      .finally(() => setAdminChecked(true));
+      .then(
+        (data: {
+          competitionId?: string | null;
+          isAdmin?: boolean;
+          periodOpen?: boolean;
+        }) => {
+          setCompetitionId(data.competitionId ?? null);
+          setIsAdmin(data.isAdmin === true);
+          setPeriodOpen(data.periodOpen === true);
+        }
+      )
+      .catch(() => {
+        setCompetitionId(null);
+        setIsAdmin(false);
+        setPeriodOpen(false);
+      })
+      .finally(() => setGateLoading(false));
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("competitions")
-        .select("id")
-        .eq("slug", ENSEMBLE_2027.slug)
-        .single();
-      setCompetitionId(data?.id ?? null);
-      setLoading(false);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (loading || !competitionId || draftHydratedRef.current) return;
+    if (gateLoading || !competitionId || draftHydratedRef.current) return;
     const raw = loadEnsemble2027ApplyConfirmPayload();
     if (!raw || raw.competitionId !== competitionId || !isRestorableEnsemble2027ApplyPayload(raw)) {
       return;
@@ -229,9 +228,9 @@ export default function EnsembleApplyPage() {
       video_url: raw.video_url ?? "",
     });
     draftHydratedRef.current = true;
-  }, [loading, competitionId, form]);
+  }, [gateLoading, competitionId, form]);
 
-  if (loading || !adminChecked) {
+  if (gateLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
         <p className="text-center text-muted-foreground">読み込み中...</p>
@@ -279,9 +278,6 @@ export default function EnsembleApplyPage() {
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             予選動画の提出期限は {ENSEMBLE_2027.videoSubmissionDeadline} まで（申込完了後に提出可能）です。
-          </p>
-          <p className="mt-4 text-sm text-muted-foreground">
-            事務局のテスト申込は、管理アカウントでログインしたうえで再度このページを開いてください。
           </p>
           <Link href="/events/ensemble" className="mt-8 inline-block">
             <Button variant="outline">コンクール詳細に戻る</Button>
