@@ -1,53 +1,149 @@
 # 一般非公開（テスト運用）の設定
 
-**一般の人にサイトを見せない**ときは、Vercel にパスワード用の環境変数を1つ設定するだけです。
+**目的**
+
+- **サイト全体** … パスワードがないと見られない  
+- **アンサンブル・ヤングだけ** … パスワードなしで見られる（申込ページ含む）
 
 ---
 
-## 手順（3ステップ）
+## いま全部見えてしまうとき（リセット手順）
 
-### 1. コードを本番に反映する
+次のどちらかが起きていると、**誰でもサイト全体が見えます**。
 
-`main` ブランチに push し、Vercel のデプロイが成功するまで待ちます。
+| 原因 | 対処 |
+|------|------|
+| `SITE_ACCESS_PASSWORD` が **未設定** または **削除** されている | 下記のとおり **必ず設定し直す** |
+| 設定後に **Redeploy していない** | 環境変数保存後、必ず Redeploy |
+| Vercel の **Deployment Protection** だけ外した | 問題なし（このサイトは下記の環境変数で制御） |
 
-### 2. Vercel でパスワードを設定する
+**やること（この順で）**
 
-1. [vercel.com](https://vercel.com) → プロジェクトを開く  
-2. **Settings** → **Environment Variables**  
-3. 次を追加（**Production** にチェック）
-
-| 名前 | 値 | 説明 |
-|------|-----|------|
-| `SITE_ACCESS_PASSWORD` | 任意の強固なパスワード | 例: `JcaTest2026!`（事務局だけ共有） |
-| `SITE_ACCESS_USER` | （任意）`jca` | 省略時はユーザー名 `jca` |
-
-4. **Save** 後、**Deployments** → 最新の **Production** → **Redeploy**（環境変数を反映）
-
-### 3. 確認する
-
-- シークレットウィンドウで `https://japan-clarinet-association.jp/` を開く  
-- **ユーザー名** `jca`（または設定した値）と **パスワード** を入力  
-- 入力しないとサイトは見えない → **一般非公開 OK**
+1. Vercel → **Settings** → **Environment Variables** を開く  
+2. **Production** 用に、下記 **2つ** が入っているか確認（無ければ追加、値を修正）  
+3. **Deployments** → 一番上（Production / main）→ **⋯** → **Redeploy**  
+4. デプロイが **Ready** になってから、下の「確認チェックリスト」でテスト  
 
 ---
 
-## ログイン情報（事務局・テスト担当者に共有）
+## Vercel で設定する環境変数（Production のみ）
+
+[vercel.com](https://vercel.com) → プロジェクト → **Settings** → **Environment Variables**
+
+**Environment** のチェックは **Production だけ** にしてください（Preview / Development は今回は触らなくてよいです）。
+
+### 必ず設定する 2 つ
+
+| Key（名前） | Value（値）の例 | 説明 |
+|-------------|-----------------|------|
+| `SITE_ACCESS_PASSWORD` | `JcaPreview2026!` など | **サイトの鍵**。これが空だと**全体が一般公開**になります |
+| `SITE_ACCESS_PUBLIC_PATHS` | 下記をコピペ | パスワード**不要**で開けるページ |
+
+**`SITE_ACCESS_PUBLIC_PATHS` に貼り付ける値（アンコン＋ヤング）:**
 
 ```
-URL:      https://japan-clarinet-association.jp/
-ユーザー: jca  （SITE_ACCESS_USER を変えた場合はその値）
-パスワード: （Vercel に設定した SITE_ACCESS_PASSWORD）
+/events/ensemble,/events/young-2026
 ```
 
-※ 会員マイページ（`/mypage`）は、このあと **別途** 会員用のメール・パスワードでログインします。
+※ カンマの前後にスペースは**入れない**  
+※ `/events` だけは書かない（イベント一覧まで公開されるため）
+
+### 設定しないもの
+
+| 変数 | 理由 |
+|------|------|
+| `SITE_ACCESS_USER` | **不要**。ユーザー名は常に `jca`（コード側の既定値） |
+
+### 入力画面での操作
+
+1. **Add New** をクリック  
+2. **Key** に `SITE_ACCESS_PASSWORD`  
+3. **Value** にパスワード（事務局だけが知る文字列）  
+4. **Environments** で **Production** にだけチェック → Save  
+5. もう一度 **Add New**  
+6. **Key** に `SITE_ACCESS_PUBLIC_PATHS`  
+7. **Value** に `/events/ensemble,/events/young-2026`  
+8. **Production** にだけチェック → Save  
+9. **Deployments** → 最新 Production → **Redeploy**
 
 ---
 
-## 一般公開するとき
+## パスワードなしで開く URL（一般公開の範囲）
 
-1. Vercel → **Environment Variables** で `SITE_ACCESS_PASSWORD` を **削除**  
-2. Production を **Redeploy**  
-3. シークレットウィンドウで、パスワードなしでサイトが見えることを確認  
+`SITE_ACCESS_PUBLIC_PATHS` に書いたパス **とその下の階層** だけ公開されます。
+
+### アンサンブル（`/events/ensemble`）
+
+| URL | 内容 |
+|-----|------|
+| `/events/ensemble` | 案内 |
+| `/events/ensemble/apply` | 申込 |
+| `/events/ensemble/apply/confirm` | 確認 |
+| `/events/ensemble/apply/complete` | 完了 |
+
+### ヤング（`/events/young-2026`）
+
+| URL | 内容 |
+|-----|------|
+| `/events/young-2026` | 案内 |
+| `/events/young-2026/apply` | 申込 |
+| `/events/young-2026/apply/confirm` | 確認 |
+| `/events/young-2026/apply/complete` | 完了 |
+| `/events/young-2026/apply/bank-transfer` | 振込証明アップロード |
+
+---
+
+## パスワードが必要な URL（非公開のまま）
+
+| URL | 内容 |
+|-----|------|
+| `/`（トップ） | 協会トップ |
+| `/membership` | 入会案内 |
+| `/mypage` | 会員マイページ |
+| `/admin` | 事務局管理 |
+| `/events` | イベント一覧（アンコン・ヤング以外への入口） |
+| 上記以外のほぼすべて | 協会案内・問い合わせなど |
+
+---
+
+## 確認チェックリスト（シークレットウィンドウで）
+
+ブラウザの**シークレット（プライベート）**で、ログイン状態をリセットして確認してください。
+
+| 開く URL | 期待する動作 |
+|----------|----------------|
+| `https://japan-clarinet-association.jp/` | **認証ダイアログ**が出る（見えない） |
+| `https://japan-clarinet-association.jp/membership` | **認証ダイアログ**が出る |
+| `https://japan-clarinet-association.jp/events/ensemble` | **そのまま**ページが表示される |
+| `https://japan-clarinet-association.jp/events/young-2026` | **そのまま**ページが表示される |
+
+認証ダイアログが出たとき:
+
+- **ユーザー名:** `jca`（固定）  
+- **パスワード:** Vercel の `SITE_ACCESS_PASSWORD` の値  
+
+---
+
+## 事務局・テスト担当への共有文（コピー用）
+
+```
+【サイト閲覧用・準備中】
+URL: https://japan-clarinet-association.jp/
+ユーザー名: jca
+パスワード: （SITE_ACCESS_PASSWORD に設定した値）
+
+※ 次のページはパスワード不要で一般の方も閲覧できます。
+・ https://japan-clarinet-association.jp/events/ensemble
+・ https://japan-clarinet-association.jp/events/young-2026
+```
+
+---
+
+## サイト全体を一般公開に戻すとき
+
+1. `SITE_ACCESS_PASSWORD` を **削除**  
+2. `SITE_ACCESS_PUBLIC_PATHS` を **削除**  
+3. Production を **Redeploy**  
 
 ---
 
@@ -55,12 +151,6 @@ URL:      https://japan-clarinet-association.jp/
 
 | 項目 | 内容 |
 |------|------|
-| Stripe・Cron | `/api/*` はこの認証の対象外（決済 Webhook 等は動きます） |
-| Preview URL | Preview 環境にも同じ変数を設定すると、Preview も鍵付きになります |
-| ローカル開発 | `.env.local` に `SITE_ACCESS_PASSWORD` を書くとローカルも鍵付きになります |
-
----
-
-## （参考）Vercel の Deployment Protection / Preview URL
-
-上記の環境変数方式で足ります。Vercel 標準の Deployment Protection や Preview ブランチ運用は、必要になったら [本番公開とドメイン設定.md](./本番公開とドメイン設定.md) と合わせて検討してください。
+| 申込 API | `/api/events/...` はもともと Basic 認証の対象外 |
+| Stripe Webhook / Cron | 同上（`/api/*`） |
+| ローカル開発 | `.env.local` に同じ 2 変数を書くと同じ動作になります |
