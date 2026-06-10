@@ -92,7 +92,7 @@ export const ENSEMBLE_2027 = {
   ],
 
   judges: [
-    { name: "三界達義" },
+    { name: "三界達義", affiliation: "元広島交響楽団首席" },
     { name: "吉本拓", affiliation: "読売日本交響楽団" },
     { name: "和川聖也", affiliation: "The Narmen Clarinet Ensemble" },
   ],
