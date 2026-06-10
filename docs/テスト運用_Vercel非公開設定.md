@@ -32,20 +32,21 @@
 
 **Environment** のチェックは **Production だけ** にしてください（Preview / Development は今回は触らなくてよいです）。
 
-### 必ず設定する 2 つ
+### 必ず設定するもの（1つだけでよい）
 
 | Key（名前） | Value（値）の例 | 説明 |
 |-------------|-----------------|------|
 | `SITE_ACCESS_PASSWORD` | `JcaPreview2026!` など | **サイトの鍵**。これが空だと**全体が一般公開**になります |
-| `SITE_ACCESS_PUBLIC_PATHS` | 下記をコピペ | パスワード**不要**で開けるページ |
 
-**`SITE_ACCESS_PUBLIC_PATHS` に貼り付ける値（アンコン＋ヤング）:**
+**アンコン・ヤングはコード側で常に公開**（`/events/ensemble` と `/events/young-2026`）。  
+`SITE_ACCESS_PUBLIC_PATHS` は**追加**で公開したいパスがあるときだけ設定（省略可）。
 
 ```
 /events/ensemble,/events/young-2026
 ```
 
-※ カンマの前後にスペースは**入れない**  
+（上記を書いても書かなくても、アンコン・ヤングは公開されます）
+
 ※ `/events` だけは書かない（イベント一覧まで公開されるため）
 
 ### 設定しないもの
@@ -60,11 +61,9 @@
 2. **Key** に `SITE_ACCESS_PASSWORD`  
 3. **Value** にパスワード（事務局だけが知る文字列）  
 4. **Environments** で **Production** にだけチェック → Save  
-5. もう一度 **Add New**  
-6. **Key** に `SITE_ACCESS_PUBLIC_PATHS`  
-7. **Value** に `/events/ensemble,/events/young-2026`  
-8. **Production** にだけチェック → Save  
-9. **Deployments** → 最新 Production → **Redeploy**
+5. **Deployments** → 最新 Production → **Redeploy**
+
+（`SITE_ACCESS_PUBLIC_PATHS` は任意。設定しなくてもアンコン・ヤングは公開されます）
 
 ---
 
@@ -147,10 +146,21 @@ URL: https://japan-clarinet-association.jp/
 
 ---
 
+## アンコン・ヤングでもパスワードが出るとき
+
+| 確認 | 対処 |
+|------|------|
+| Vercel の **Deployment Protection** が ON | **Settings → Deployment Protection** で **Production の保護を OFF**（このサイトは `SITE_ACCESS_PASSWORD` で制御） |
+| `SITE_ACCESS_PASSWORD` が未設定 | 上記のとおり設定して **Redeploy** |
+| 古いデプロイのまま | 最新コミットで **Redeploy** |
+| ブラウザが以前の認証を覚えている | **シークレットウィンドウ**で `/events/ensemble` を直接開く |
+
+---
+
 ## 補足
 
 | 項目 | 内容 |
 |------|------|
 | 申込 API | `/api/events/...` はもともと Basic 認証の対象外 |
 | Stripe Webhook / Cron | 同上（`/api/*`） |
-| ローカル開発 | `.env.local` に同じ 2 変数を書くと同じ動作になります |
+| ローカル開発 | `.env.local` に `SITE_ACCESS_PASSWORD` を書くと同じ動作になります |
