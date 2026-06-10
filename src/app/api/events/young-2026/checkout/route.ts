@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { isCurrentUserAdmin } from "@/lib/is-current-user-admin";
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { createYoung2026Application } from "@/lib/young-2026-create-application";
 
@@ -22,8 +23,11 @@ export async function POST(request: Request) {
     }
 
     const db = createClient(supabaseUrl, serviceRoleKey);
+    const adminPeriodBypass = await isCurrentUserAdmin();
 
-    const created = await createYoung2026Application(db, body, "stripe_card");
+    const created = await createYoung2026Application(db, body, "stripe_card", {
+      adminPeriodBypass,
+    });
     if (!created.ok) {
       return NextResponse.json(
         { error: created.message },

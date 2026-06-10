@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
 import { createEnsemble2027Application } from "@/lib/ensemble-2027-create-application";
+import { isCurrentUserAdmin } from "@/lib/is-current-user-admin";
 
 export async function POST(request: Request) {
   try {
@@ -22,8 +23,11 @@ export async function POST(request: Request) {
     }
 
     const db = createClient(supabaseUrl, serviceRoleKey);
+    const adminPeriodBypass = await isCurrentUserAdmin();
 
-    const created = await createEnsemble2027Application(db, body, "stripe_card");
+    const created = await createEnsemble2027Application(db, body, "stripe_card", {
+      adminPeriodBypass,
+    });
     if (!created.ok) {
       return NextResponse.json(
         { error: created.message },

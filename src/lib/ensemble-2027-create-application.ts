@@ -92,7 +92,8 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
 export async function createEnsemble2027Application(
   db: SupabaseClient,
   body: unknown,
-  payment_route: Ensemble2027ApplicationPaymentRoute
+  payment_route: Ensemble2027ApplicationPaymentRoute,
+  options?: { adminPeriodBypass?: boolean }
 ): Promise<
   | {
       ok: true;
@@ -102,7 +103,7 @@ export async function createEnsemble2027Application(
     }
   | { ok: false; message: string; status?: number }
 > {
-  if (!isEnsemble2027ApplicationOpen()) {
+  if (!isEnsemble2027ApplicationOpen() && !options?.adminPeriodBypass) {
     return {
       ok: false,
       message: `申込受付期間は${ENSEMBLE_2027.applicationPeriod}です。`,

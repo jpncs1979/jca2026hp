@@ -156,7 +156,11 @@ export default function EnsembleApplyPage() {
   const [competitionId, setCompetitionId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const applicationOpen = isEnsemble2027ApplicationOpen();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
+  const periodOpen = isEnsemble2027ApplicationOpen();
+  const applicationOpen = periodOpen || isAdmin;
+  const adminTestMode = isAdmin && !periodOpen;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -179,6 +183,14 @@ export default function EnsembleApplyPage() {
   const memberType = form.watch("member_type");
   const category = form.watch("category");
   const feeRaw = ensemble2027ApplyFeeYen(category, memberType);
+
+  useEffect(() => {
+    fetch("/api/mypage/admin-check")
+      .then((res) => res.json())
+      .then((data: { isAdmin?: boolean }) => setIsAdmin(data.isAdmin === true))
+      .catch(() => setIsAdmin(false))
+      .finally(() => setAdminChecked(true));
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -219,7 +231,7 @@ export default function EnsembleApplyPage() {
     draftHydratedRef.current = true;
   }, [loading, competitionId, form]);
 
-  if (loading) {
+  if (loading || !adminChecked) {
     return (
       <div className="container mx-auto px-4 py-12">
         <p className="text-center text-muted-foreground">読み込み中...</p>
@@ -268,6 +280,9 @@ export default function EnsembleApplyPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             予選動画の提出期限は {ENSEMBLE_2027.videoSubmissionDeadline} まで（申込完了後に提出可能）です。
           </p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            事務局のテスト申込は、管理アカウントでログインしたうえで再度このページを開いてください。
+          </p>
           <Link href="/events/ensemble" className="mt-8 inline-block">
             <Button variant="outline">コンクール詳細に戻る</Button>
           </Link>
@@ -293,6 +308,11 @@ export default function EnsembleApplyPage() {
       </div>
 
       <div className="container mx-auto max-w-2xl px-4 py-12">
+        {adminTestMode && (
+          <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            事務局テストモード：受付期間外ですが、申込フォームと決済のテストができます。
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
             <section className="space-y-4">

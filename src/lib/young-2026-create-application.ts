@@ -89,7 +89,8 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
 export async function createYoung2026Application(
   db: SupabaseClient,
   body: unknown,
-  payment_route: Young2026ApplicationPaymentRoute
+  payment_route: Young2026ApplicationPaymentRoute,
+  options?: { adminPeriodBypass?: boolean }
 ): Promise<
   | {
       ok: true;
@@ -99,7 +100,7 @@ export async function createYoung2026Application(
     }
   | { ok: false; message: string; status?: number }
 > {
-  if (!isYoung2026ApplicationOpen()) {
+  if (!isYoung2026ApplicationOpen() && !options?.adminPeriodBypass) {
     return {
       ok: false,
       message: `申込受付期間は${YOUNG_2026.applicationPeriod}です。`,

@@ -219,7 +219,11 @@ export default function ApplyPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const applicationOpen = isYoung2026ApplicationOpen();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
+  const periodOpen = isYoung2026ApplicationOpen();
+  const applicationOpen = periodOpen || isAdmin;
+  const adminTestMode = isAdmin && !periodOpen;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -254,6 +258,14 @@ export default function ApplyPage() {
   }, [category, form]);
 
   useEffect(() => {
+    fetch("/api/mypage/admin-check")
+      .then((res) => res.json())
+      .then((data: { isAdmin?: boolean }) => setIsAdmin(data.isAdmin === true))
+      .catch(() => setIsAdmin(false))
+      .finally(() => setAdminChecked(true));
+  }, []);
+
+  useEffect(() => {
     if (!supabase) {
       setLoading(false);
       return;
@@ -283,7 +295,7 @@ export default function ApplyPage() {
   const feeRaw =
     category && memberType ? young2026ApplyFeeYen(category, memberType) : null;
 
-  if (loading) {
+  if (loading || !adminChecked) {
     return (
       <div className="container mx-auto px-4 py-12">
         <p className="text-center text-muted-foreground">読み込み中...</p>
@@ -329,6 +341,9 @@ export default function ApplyPage() {
           <p className="mt-4 text-muted-foreground">
             申込受付期間は {YOUNG_2026.applicationPeriod} です。
           </p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            事務局のテスト申込は、管理アカウントでログインしたうえで再度このページを開いてください。
+          </p>
           <Link href="/events/young-2026" className="mt-8 inline-block">
             <Button variant="outline">コンクール詳細に戻る</Button>
           </Link>
@@ -351,6 +366,11 @@ export default function ApplyPage() {
       </div>
 
       <div className="container mx-auto max-w-2xl px-4 py-12">
+        {adminTestMode && (
+          <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            事務局テストモード：受付期間外ですが、申込フォームと決済のテストができます。
+          </div>
+        )}
         <Form {...form}>
           <form
             onSubmit={(e) => {
