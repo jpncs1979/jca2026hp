@@ -60,7 +60,6 @@ export default function Young2026ApplyConfirmPage() {
     email: p.email,
     birth_date: p.birth_date,
     member_type: p.member_type,
-    member_number: p.member_number ?? "",
     category: p.category,
     selected_piece_preliminary: p.selected_piece_preliminary,
     selected_piece_final: p.selected_piece_final,
@@ -68,32 +67,9 @@ export default function Young2026ApplyConfirmPage() {
     accompanist_info: p.accompanist_info,
   });
 
-  const verifyMemberIfNeeded = async (): Promise<boolean> => {
-    if (data.member_type !== "会員") return true;
-    const vRes = await fetch("/api/events/young-2026/verify-member", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        member_number: data.member_number ?? "",
-        email: data.email,
-        birth_date: data.birth_date,
-      }),
-    });
-    const vJson = await vRes.json().catch(() => ({}));
-    if (!vRes.ok) {
-      setError((vJson as { error?: string }).error ?? "会員情報の確認に失敗しました。");
-      return false;
-    }
-    return true;
-  };
-
   const handlePayCard = async () => {
     setLoading(true);
     setError(null);
-    if (!(await verifyMemberIfNeeded())) {
-      setLoading(false);
-      return;
-    }
     const res = await fetch("/api/events/young-2026/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -123,7 +99,7 @@ export default function Young2026ApplyConfirmPage() {
             でお支払いください。決済完了時点でお申し込み受付が完了します。
             {data.member_type === "会員" ? (
               <span className="mt-2 block text-sm">
-                正会員の場合は、会員番号・メール・生年月日を会員データと照合します。
+                会員価格でのお申し込みは、申し込み時点で協会に入会している必要があります。
               </span>
             ) : null}
           </p>
@@ -160,10 +136,20 @@ export default function Young2026ApplyConfirmPage() {
               <dt className="text-muted-foreground">会員種別</dt>
               <dd>{data.member_type}</dd>
             </div>
-            {data.member_type === "会員" && data.member_number?.trim() ? (
+            {data.member_type === "会員" ? (
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">会員番号</dt>
-                <dd className="font-mono">{data.member_number.trim()}</dd>
+                <dt className="text-muted-foreground">会員について</dt>
+                <dd className="text-sm text-muted-foreground">
+                  申し込み時点で入会している必要があります。{" "}
+                  <a
+                    href="https://jp-clarinet.org/join/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-navy underline underline-offset-2 hover:text-gold"
+                  >
+                    入会はこちらから
+                  </a>
+                </dd>
               </div>
             ) : null}
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">

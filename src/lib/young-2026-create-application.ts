@@ -1,8 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCompetitionId } from "@/lib/competition-application-gate";
 import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
-import { normalizeMemberNumberInput } from "@/lib/member-number";
-import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
 
 const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
 
@@ -129,27 +127,6 @@ export async function createYoung2026Application(
     };
   }
 
-  const memberNumberNorm =
-    parsed.member_type === "会員" ? normalizeMemberNumberInput(parsed.member_number) : null;
-  if (parsed.member_type === "会員" && !memberNumberNorm) {
-    return {
-      ok: false,
-      message: "会員の場合は有効な会員番号を入力してください（例: 0001）。",
-      status: 400,
-    };
-  }
-
-  if (parsed.member_type === "会員" && memberNumberNorm) {
-    const verifyResult = await verifyYoung2026MemberCredentials(db, {
-      memberNumberRaw: memberNumberNorm,
-      email: parsed.email,
-      birthDateRaw: parsed.birth_date,
-    });
-    if (!verifyResult.ok) {
-      return { ok: false, message: verifyResult.message, status: 400 };
-    }
-  }
-
   const competitionId = await resolveCompetitionId(
     db,
     YOUNG_2026.slug,
@@ -159,7 +136,7 @@ export async function createYoung2026Application(
     return { ok: false, message: "申込の準備ができていません。", status: 500 };
   }
 
-  const isActiveMember = parsed.member_type === "会員" && !!memberNumberNorm;
+  const isActiveMember = parsed.member_type === "会員";
   const amount = getAmount(parsed.category, parsed.member_type, isActiveMember);
 
   const insertRow: Record<string, unknown> = {
@@ -170,7 +147,7 @@ export async function createYoung2026Application(
     birth_date: parsed.birth_date,
     age_at_reference: age,
     member_type: parsed.member_type,
-    member_number: memberNumberNorm,
+    member_number: null,
     category: parsed.category,
     selected_piece_preliminary: parsed.selected_piece_preliminary,
     selected_piece_final:

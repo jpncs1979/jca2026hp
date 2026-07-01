@@ -44,7 +44,6 @@ const formSchema = z.object({
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
   member_type: z.enum(["会員", "非会員"]),
-  member_number: z.string().optional(),
   category: z.enum(["ジュニアA", "ジュニアB", "ヤング"]),
   selected_piece_preliminary: z.string().optional(),
   selected_piece_final: z.string().optional(),
@@ -67,12 +66,6 @@ const formSchema = z.object({
 }, {
   message: "課題曲を選択してください",
   path: ["selected_piece_preliminary"],
-}).refine((data) => {
-  if (data.member_type === "会員" && !data.member_number?.trim()) return false;
-  return true;
-}, {
-  message: "会員の場合は会員番号を入力してください",
-  path: ["member_number"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -83,7 +76,6 @@ function draftToFormValues(d: {
   email: string;
   birth_date: string;
   member_type: FormValues["member_type"];
-  member_number?: string;
   category: FormValues["category"];
   selected_piece_preliminary?: string | null;
   selected_piece_final?: string | null;
@@ -96,7 +88,6 @@ function draftToFormValues(d: {
     email: d.email,
     birth_date: d.birth_date,
     member_type: d.member_type,
-    member_number: d.member_number?.trim() ?? "",
     category: d.category,
     selected_piece_preliminary: d.selected_piece_preliminary ?? "",
     selected_piece_final: d.selected_piece_final ?? "",
@@ -232,7 +223,6 @@ export default function ApplyPage() {
       email: "",
       birth_date: "",
       member_type: "非会員",
-      member_number: "",
       category: "ジュニアA",
       selected_piece_preliminary: "",
       selected_piece_final: "",
@@ -465,22 +455,19 @@ export default function ApplyPage() {
                 )}
               />
               {memberType === "会員" && (
-                <FormField
-                  control={form.control}
-                  name="member_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>会員番号（4桁・例: 0001）*</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value ?? ""} placeholder="例: 0001" />
-                      </FormControl>
-                      <FormDescription>
-                        会員番号・メールアドレス・生年月日は、協会の会員データと一致している必要があります。いずれかが異なる場合は「確認する」のときにエラーが表示されます。
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                  <p>申し込み時点で入会している必要があります。</p>
+                  <p className="mt-2">
+                    <a
+                      href="https://jp-clarinet.org/join/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-navy underline underline-offset-2 hover:text-gold"
+                    >
+                      入会はこちらから
+                    </a>
+                  </p>
+                </div>
               )}
             </section>
 
@@ -695,25 +682,6 @@ export default function ApplyPage() {
                   setSubmitting(true);
                   setError(null);
                   try {
-                    if (values.member_type === "会員") {
-                      const vRes = await fetch("/api/events/young-2026/verify-member", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          member_number: values.member_number,
-                          email: values.email,
-                          birth_date: values.birth_date,
-                        }),
-                      });
-                      const vJson = await vRes.json().catch(() => ({}));
-                      if (!vRes.ok) {
-                        setError(
-                          (vJson as { error?: string }).error ??
-                            "会員情報の確認に失敗しました。"
-                        );
-                        return;
-                      }
-                    }
                     saveYoung2026ApplyConfirmPayload({
                       competitionId,
                       name: values.name,
@@ -721,7 +689,6 @@ export default function ApplyPage() {
                       email: values.email,
                       birth_date: values.birth_date,
                       member_type: values.member_type,
-                      member_number: values.member_number?.trim() || undefined,
                       category: values.category,
                       selected_piece_preliminary: values.selected_piece_preliminary || null,
                       selected_piece_final:
