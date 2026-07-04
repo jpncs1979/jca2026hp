@@ -35,7 +35,7 @@ export type Young2026ApplicationParsed = {
   selected_piece_preliminary: string | null;
   selected_piece_final: string | null;
   video_url: string | null;
-  accompanist_info: string | null;
+  accompanist_info: string;
 };
 
 export function parseYoung2026ApplicationBody(body: unknown): Young2026ApplicationParsed | null {
@@ -63,9 +63,8 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
   const video_url =
     typeof o.video_url === "string" && o.video_url.trim() ? o.video_url.trim() : null;
   const accompanist_info =
-    typeof o.accompanist_info === "string" && o.accompanist_info.trim()
-      ? o.accompanist_info.trim()
-      : null;
+    typeof o.accompanist_info === "string" ? o.accompanist_info.trim() : "";
+  if (!accompanist_info) return null;
 
   return {
     name,

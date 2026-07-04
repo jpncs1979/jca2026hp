@@ -186,7 +186,7 @@ export function buildYoung2026ApplicationDetailsSection(
   }
   if (app.accompanist_info) {
     const acc = escapeHtml(app.accompanist_info).replace(/\r\n|\n|\r/g, "<br />");
-    parts.push(`<li>${isEnsemble ? "団体情報・備考" : "伴奏・備考"}：${acc}</li>`);
+    parts.push(`<li>${isEnsemble ? "団体情報・備考" : "伴奏者氏名"}：${acc}</li>`);
   }
 
   parts.push(`</ul>`);

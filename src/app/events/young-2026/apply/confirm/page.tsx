@@ -178,12 +178,10 @@ export default function Young2026ApplyConfirmPage() {
                 <dd className="break-all">{data.video_url.trim()}</dd>
               </div>
             ) : null}
-            {data.accompanist_info?.trim() ? (
-              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">伴奏・備考</dt>
-                <dd className="whitespace-pre-wrap text-pretty">{data.accompanist_info.trim()}</dd>
-              </div>
-            ) : null}
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">伴奏者氏名</dt>
+              <dd className="text-pretty">{data.accompanist_info?.trim() || "—"}</dd>
+            </div>
             <div className="border-t border-border pt-4">
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
                 <dt className="text-muted-foreground">参加費（お支払い予定額）</dt>

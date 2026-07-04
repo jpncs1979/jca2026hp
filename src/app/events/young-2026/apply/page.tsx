@@ -9,7 +9,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -48,7 +47,7 @@ const formSchema = z.object({
   selected_piece_preliminary: z.string().optional(),
   selected_piece_final: z.string().optional(),
   video_url: z.string().optional(),
-  accompanist_info: z.string().optional(),
+  accompanist_info: z.string().min(1, "伴奏者氏名を入力してください"),
 }).refine((data) => {
   const birth = new Date(data.birth_date);
   if (isNaN(birth.getTime())) return false;
@@ -643,18 +642,19 @@ export default function ApplyPage() {
               name="accompanist_info"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>伴奏者情報・備考</FormLabel>
+                  <FormLabel>伴奏者氏名*</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <Input
                       {...field}
                       value={field.value ?? ""}
-                      rows={3}
-                      placeholder="伴奏者名、連絡先。ジュニア A 部門でピアニスト委嘱希望の場合は「ピアニスト希望」と記入"
+                      placeholder="伴奏者氏名"
                     />
                   </FormControl>
-                  <FormDescription>
-                    ジュニア B 部門、ヤング・アーティスト部門は伴奏者を参加者自身が委嘱同伴。ジュニア A 部門は希望者にピアニストを協会で用意可（備考欄に「ピアニスト希望」と記入）
-                  </FormDescription>
+                  {category === "ジュニアA" ? (
+                    <FormDescription>
+                      ジュニアA部門に限り、ピアニストを委嘱することができます。委嘱をお願いする場合は、「ピアニスト希望」と書いてください。
+                    </FormDescription>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}
@@ -700,7 +700,7 @@ export default function ApplyPage() {
                       )
                         ? values.video_url || null
                         : null,
-                      accompanist_info: values.accompanist_info || null,
+                      accompanist_info: values.accompanist_info.trim(),
                     });
                     router.push("/events/young-2026/apply/confirm");
                   } finally {
