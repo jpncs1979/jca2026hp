@@ -60,7 +60,7 @@ async function fetchApplicants() {
   let { data: applications, error } = await admin
     .from("applications")
     .select(
-      "id, name, furigana, category, selected_piece_preliminary, selected_piece_final, video_url, payment_status, payment_route, transfer_receipt_path, created_at"
+      "id, name, furigana, category, selected_piece_preliminary, selected_piece_final, video_url, payment_status, payment_route, transfer_receipt_path, portrait_path, created_at"
     )
     .eq("competition_id", competition.id)
     .order("created_at", { ascending: false });
@@ -69,6 +69,7 @@ async function fetchApplicants() {
     error &&
     (error.message?.includes("payment_route") ||
       error.message?.includes("transfer_receipt_path") ||
+      error.message?.includes("portrait_path") ||
       error.message?.includes("column"))
   ) {
     const retry = await admin
@@ -84,6 +85,7 @@ async function fetchApplicants() {
         ...r,
         payment_route: null,
         transfer_receipt_path: null,
+        portrait_path: null,
       };
     });
     error = retry.error;

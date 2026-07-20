@@ -9,6 +9,14 @@ export type Young2026ApplyConfirmPayload = {
   furigana: string;
   email: string;
   birth_date: string;
+  zip_code: string;
+  address_prefecture: string;
+  address_city: string;
+  address_street: string;
+  address_building?: string;
+  phone: string;
+  /** JPEG data URL（確認表示・決済時アップロード用） */
+  portrait_data_url: string;
   member_type: "会員" | "非会員";
   member_number?: string;
   category: string;
@@ -79,6 +87,11 @@ export function isRestorableYoung2026ApplyPayload(
     VALID_CATEGORIES.includes(p.category as (typeof VALID_CATEGORIES)[number]) &&
     typeof p.birth_date === "string" &&
     p.birth_date.length > 0 &&
-    typeof p.furigana === "string"
+    typeof p.furigana === "string" &&
+    typeof p.zip_code === "string" &&
+    typeof p.address_prefecture === "string" &&
+    typeof p.address_city === "string" &&
+    typeof p.address_street === "string" &&
+    typeof p.phone === "string"
   );
 }

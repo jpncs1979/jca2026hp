@@ -78,6 +78,17 @@ export interface ApplicationRow {
   selected_piece_final: string | null;
   video_url: string | null;
   accompanist_info: string | null;
+  /** 郵便番号（マイグレーション 026） */
+  zip_code?: string | null;
+  address?: string | null;
+  address_prefecture?: string | null;
+  address_city?: string | null;
+  address_street?: string | null;
+  address_building?: string | null;
+  /** 携帯電話番号（マイグレーション 026） */
+  phone?: string | null;
+  /** 顔写真（Storage パス / competition_portraits） */
+  portrait_path?: string | null;
   payment_status: string;
   /** stripe_card | bank_transfer（マイグレーション 018） */
   payment_route?: string | null;

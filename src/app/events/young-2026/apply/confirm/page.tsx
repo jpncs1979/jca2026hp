@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { joinAddressLine } from "@/lib/japanese-address";
 import {
   clearYoung2026ApplyConfirmPayload,
   loadYoung2026ApplyConfirmPayload,
@@ -37,6 +38,10 @@ export default function Young2026ApplyConfirmPage() {
       router.replace("/events/young-2026/apply");
       return;
     }
+    if (!loaded.portrait_data_url?.startsWith("data:image/") || !loaded.phone?.trim()) {
+      router.replace("/events/young-2026/apply");
+      return;
+    }
     setData(loaded);
   }, [router]);
 
@@ -52,6 +57,12 @@ export default function Young2026ApplyConfirmPage() {
   }
 
   const feeYen = young2026ApplyFeeYen(data.category, data.member_type);
+  const addressLine = joinAddressLine({
+    prefecture: data.address_prefecture,
+    city: data.address_city,
+    street: data.address_street,
+    building: data.address_building,
+  });
 
   const buildSubmitPayload = (p: Young2026ApplyConfirmPayload) => ({
     competition_id: p.competitionId,
@@ -59,6 +70,13 @@ export default function Young2026ApplyConfirmPage() {
     furigana: p.furigana,
     email: p.email,
     birth_date: p.birth_date,
+    zip_code: p.zip_code,
+    address_prefecture: p.address_prefecture,
+    address_city: p.address_city,
+    address_street: p.address_street,
+    address_building: p.address_building ?? "",
+    phone: p.phone,
+    portrait_data_url: p.portrait_data_url,
     member_type: p.member_type,
     category: p.category,
     selected_piece_preliminary: p.selected_piece_preliminary,
@@ -129,8 +147,31 @@ export default function Young2026ApplyConfirmPage() {
               <dd className="break-all">{data.email}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">携帯電話</dt>
+              <dd>{data.phone}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">生年月日</dt>
               <dd>{formatBirthDisplay(data.birth_date)}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">郵便番号</dt>
+              <dd>{data.zip_code}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">住所</dt>
+              <dd className="text-pretty">{addressLine}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">顔写真</dt>
+              <dd>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.portrait_data_url}
+                  alt="提出する顔写真"
+                  className="h-40 w-40 rounded-md border border-border object-cover"
+                />
+              </dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">会員種別</dt>

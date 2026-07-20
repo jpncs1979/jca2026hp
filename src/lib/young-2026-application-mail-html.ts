@@ -15,6 +15,10 @@ export type Young2026ApplicationMailFields = {
   birth_date: string;
   /** コンクール規定の基準日時点の満年齢（DBの age_at_reference と一致） */
   age_at_reference: number | null;
+  zip_code: string;
+  address: string;
+  phone: string;
+  has_portrait: boolean;
   member_type: string;
   member_number: string;
   category: string;
@@ -55,6 +59,10 @@ export function parsedToMailFields(p: Young2026ApplicationParsed): Young2026Appl
     email: p.email,
     birth_date: p.birth_date,
     age_at_reference: ageAtYoungReferenceFromBirth(p.birth_date),
+    zip_code: p.zip_code,
+    address: p.address,
+    phone: p.phone,
+    has_portrait: Boolean(p.portrait_data_url),
     member_type: p.member_type,
     member_number: p.member_number ?? "",
     category: p.category,
@@ -93,6 +101,10 @@ export function applicationRowToMailFields(row: Record<string, unknown>): Young2
     email: str("email").trim(),
     birth_date: birthRaw,
     age_at_reference: ageAtReference,
+    zip_code: str("zip_code").trim(),
+    address: str("address").trim(),
+    phone: str("phone").trim(),
+    has_portrait: Boolean(nullStr("portrait_path")),
     member_type: str("member_type").trim(),
     member_number: str("member_number").trim(),
     category: str("category").trim(),
@@ -143,6 +155,19 @@ export function buildYoung2026ApplicationDetailsSection(
     `<li>メールアドレス：${escapeHtml(app.email)}</li>`,
     `<li>${isEnsemble ? "代表者生年月日" : "生年月日"}：${escapeHtml(formatBirthDisplay(app.birth_date))}</li>`
   );
+
+  if (!isEnsemble) {
+    if (app.phone) {
+      parts.push(`<li>携帯電話番号：${escapeHtml(app.phone)}</li>`);
+    }
+    if (app.zip_code) {
+      parts.push(`<li>郵便番号：${escapeHtml(app.zip_code)}</li>`);
+    }
+    if (app.address) {
+      parts.push(`<li>住所：${escapeHtml(app.address)}</li>`);
+    }
+    parts.push(`<li>顔写真：${app.has_portrait ? "提出済み" : "未提出"}</li>`);
+  }
 
   if (
     !isEnsemble &&

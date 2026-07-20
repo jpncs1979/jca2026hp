@@ -18,8 +18,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { YOUNG_2026 } from "@/lib/young-2026";
 import { supabase } from "@/lib/supabase";
+import { JAPAN_PREFECTURES } from "@/lib/japanese-address";
+import {
+  fileToPortraitDataUrl,
+  PORTRAIT_ACCEPT,
+  PORTRAIT_MAX_BYTES,
+} from "@/lib/portrait-image";
 import {
   isRestorableYoung2026ApplyPayload,
   loadYoung2026ApplyConfirmPayload,
@@ -42,6 +55,17 @@ const formSchema = z.object({
   furigana: z.string().min(1, "ふりがなを入力してください"),
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
+  zip_code: z.string().min(1, "郵便番号を入力してください"),
+  address_prefecture: z.string().min(1, "都道府県を選択してください"),
+  address_city: z.string().min(1, "市区町村を入力してください"),
+  address_street: z.string().min(1, "番地を入力してください"),
+  address_building: z.string().optional(),
+  phone: z
+    .string()
+    .min(1, "携帯電話番号を入力してください")
+    .refine((v) => v.replace(/\D/g, "").length >= 10, {
+      message: "有効な携帯電話番号を入力してください",
+    }),
   member_type: z.enum(["会員", "非会員"]),
   category: z.enum(["ジュニアA", "ジュニアB", "ヤング"]),
   selected_piece_preliminary: z.string().optional(),
@@ -74,6 +98,12 @@ function draftToFormValues(d: {
   furigana: string;
   email: string;
   birth_date: string;
+  zip_code?: string;
+  address_prefecture?: string;
+  address_city?: string;
+  address_street?: string;
+  address_building?: string;
+  phone?: string;
   member_type: FormValues["member_type"];
   category: FormValues["category"];
   selected_piece_preliminary?: string | null;
@@ -86,6 +116,12 @@ function draftToFormValues(d: {
     furigana: d.furigana,
     email: d.email,
     birth_date: d.birth_date,
+    zip_code: d.zip_code ?? "",
+    address_prefecture: d.address_prefecture ?? "",
+    address_city: d.address_city ?? "",
+    address_street: d.address_street ?? "",
+    address_building: d.address_building ?? "",
+    phone: d.phone ?? "",
     member_type: d.member_type,
     category: d.category,
     selected_piece_preliminary: d.selected_piece_preliminary ?? "",
@@ -211,6 +247,11 @@ export default function ApplyPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [portraitFileName, setPortraitFileName] = useState<string | null>(null);
+  const [portraitPreviewUrl, setPortraitPreviewUrl] = useState<string | null>(null);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+  const portraitFileRef = useRef<File | null>(null);
+  const portraitDataUrlRef = useRef<string | null>(null);
   const applicationOpen = periodOpen || isAdmin;
   const adminTestMode = isAdmin && !periodOpen;
 
@@ -221,6 +262,12 @@ export default function ApplyPage() {
       furigana: "",
       email: "",
       birth_date: "",
+      zip_code: "",
+      address_prefecture: "",
+      address_city: "",
+      address_street: "",
+      address_building: "",
+      phone: "",
       member_type: "非会員",
       category: "ジュニアA",
       selected_piece_preliminary: "",
@@ -277,6 +324,11 @@ export default function ApplyPage() {
       return;
     }
     form.reset(draftToFormValues(raw));
+    if (typeof raw.portrait_data_url === "string" && raw.portrait_data_url.startsWith("data:image/")) {
+      portraitDataUrlRef.current = raw.portrait_data_url;
+      setPortraitPreviewUrl(raw.portrait_data_url);
+      setPortraitFileName("提出済みの顔写真");
+    }
     draftHydratedRef.current = true;
   }, [gateLoading, competitionId, form]);
 
@@ -429,6 +481,151 @@ export default function ApplyPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>携帯電話番号 *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="090-1234-5678"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="zip_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>郵便番号 *</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} placeholder="100-0001" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address_prefecture"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>都道府県 *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選択してください" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {JAPAN_PREFECTURES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address_city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>市区町村 *</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} placeholder="千代田区千代田" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address_street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>番地 *</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} placeholder="1-1" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address_building"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>建物名・部屋番号</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} placeholder="○○マンション 101" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-2">
+                <Label htmlFor="portrait">顔写真 *</Label>
+                <Input
+                  id="portrait"
+                  type="file"
+                  accept={PORTRAIT_ACCEPT}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setPortraitError(null);
+                    portraitFileRef.current = file;
+                    portraitDataUrlRef.current = null;
+                    if (portraitPreviewUrl && portraitPreviewUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(portraitPreviewUrl);
+                    }
+                    if (!file) {
+                      setPortraitFileName(null);
+                      setPortraitPreviewUrl(null);
+                      return;
+                    }
+                    if (file.size > PORTRAIT_MAX_BYTES) {
+                      setPortraitError("顔写真は 5MB 以下にしてください。");
+                      setPortraitFileName(null);
+                      setPortraitPreviewUrl(null);
+                      portraitFileRef.current = null;
+                      return;
+                    }
+                    setPortraitFileName(file.name);
+                    setPortraitPreviewUrl(URL.createObjectURL(file));
+                  }}
+                />
+                <p className="text-sm text-muted-foreground">
+                  正面を向いた顔写真（JPEG / PNG / WebP、5MB以下）を提出してください。
+                </p>
+                {portraitFileName ? (
+                  <p className="text-sm text-foreground">選択中: {portraitFileName}</p>
+                ) : null}
+                {portraitPreviewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={portraitPreviewUrl}
+                    alt="顔写真プレビュー"
+                    className="mt-2 h-40 w-40 rounded-md border border-border object-cover"
+                  />
+                ) : null}
+                {portraitError ? (
+                  <p className="text-sm text-destructive">{portraitError}</p>
+                ) : null}
+              </div>
             </section>
 
             <section className="space-y-4">
@@ -678,16 +875,33 @@ export default function ApplyPage() {
                 onClick={async () => {
                   const valid = await form.trigger();
                   if (!valid || !competitionId) return;
-                  const values = form.getValues();
+                  setPortraitError(null);
                   setSubmitting(true);
                   setError(null);
                   try {
+                    let portraitDataUrl = portraitDataUrlRef.current;
+                    if (portraitFileRef.current) {
+                      portraitDataUrl = await fileToPortraitDataUrl(portraitFileRef.current);
+                      portraitDataUrlRef.current = portraitDataUrl;
+                    }
+                    if (!portraitDataUrl) {
+                      setPortraitError("顔写真を選択してください。");
+                      return;
+                    }
+                    const values = form.getValues();
                     saveYoung2026ApplyConfirmPayload({
                       competitionId,
                       name: values.name,
                       furigana: values.furigana,
                       email: values.email,
                       birth_date: values.birth_date,
+                      zip_code: values.zip_code.trim(),
+                      address_prefecture: values.address_prefecture,
+                      address_city: values.address_city.trim(),
+                      address_street: values.address_street.trim(),
+                      address_building: values.address_building?.trim() || "",
+                      phone: values.phone.trim(),
+                      portrait_data_url: portraitDataUrl,
                       member_type: values.member_type,
                       category: values.category,
                       selected_piece_preliminary: values.selected_piece_preliminary || null,
@@ -703,6 +917,10 @@ export default function ApplyPage() {
                       accompanist_info: values.accompanist_info.trim(),
                     });
                     router.push("/events/young-2026/apply/confirm");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "顔写真の処理に失敗しました。";
+                    setPortraitError(msg);
                   } finally {
                     setSubmitting(false);
                   }

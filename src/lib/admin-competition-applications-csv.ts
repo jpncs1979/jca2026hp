@@ -16,6 +16,14 @@ const HEADERS = [
   "氏名",
   "ふりがな",
   "メール",
+  "携帯電話",
+  "郵便番号",
+  "住所",
+  "都道府県",
+  "市区町村",
+  "番地",
+  "建物名",
+  "顔写真",
   "生年月日",
   "基準日時点の満年齢",
   "会員種別",
@@ -63,7 +71,7 @@ function paymentStatusLabel(v: unknown): string {
   return s || "—";
 }
 
-function hasReceipt(v: unknown): string {
+function hasFile(v: unknown): string {
   const s = str(v).trim();
   return s ? "あり" : "なし";
 }
@@ -100,6 +108,14 @@ export function applicationRecordToCsvRow(
     氏名: str(row.name),
     ふりがな: str(row.furigana),
     メール: str(row.email),
+    携帯電話: str(row.phone),
+    郵便番号: str(row.zip_code),
+    住所: str(row.address),
+    都道府県: str(row.address_prefecture),
+    市区町村: str(row.address_city),
+    番地: str(row.address_street),
+    建物名: str(row.address_building),
+    顔写真: hasFile(row.portrait_path),
     生年月日: str(row.birth_date).slice(0, 10),
     基準日時点の満年齢: ageStr,
     会員種別: str(row.member_type),
@@ -113,7 +129,7 @@ export function applicationRecordToCsvRow(
     決済状況: paymentStatusLabel(row.payment_status),
     支払経路: paymentRouteLabel(row.payment_route),
     入金日時: row.payment_date ? formatIsoJa(str(row.payment_date)) : "",
-    振込証明画像: hasReceipt(row.transfer_receipt_path),
+    振込証明画像: hasFile(row.transfer_receipt_path),
     紐付け会員profile_id: str(row.profile_id),
   };
 }

@@ -3,7 +3,8 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
-const BUCKET = "competition_transfer_receipts";
+const RECEIPT_BUCKET = "competition_transfer_receipts";
+const PORTRAIT_BUCKET = "competition_portraits";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,7 +13,7 @@ type Body = { application_ids?: unknown };
 
 /**
  * 指定コンクールの申込を一括削除（管理者のみ）。
- * 振込証明画像がある場合は Storage からも削除する。
+ * 振込証明画像・顔写真がある場合は Storage からも削除する。
  */
 export async function POST(request: Request, context: RouteContext) {
   try {
@@ -79,11 +80,24 @@ export async function POST(request: Request, context: RouteContext) {
 
     const compId = competition.id as string;
 
-    const { data: rows, error: fetchErr } = await admin
+    let { data: rows, error: fetchErr } = await admin
       .from("applications")
-      .select("id, transfer_receipt_path")
+      .select("id, transfer_receipt_path, portrait_path")
       .eq("competition_id", compId)
       .in("id", ids);
+
+    if (fetchErr && fetchErr.message?.includes("portrait_path")) {
+      const retry = await admin
+        .from("applications")
+        .select("id, transfer_receipt_path")
+        .eq("competition_id", compId)
+        .in("id", ids);
+      rows = (retry.data ?? []).map((r: { id: string; transfer_receipt_path?: string | null }) => ({
+        ...r,
+        portrait_path: null as string | null,
+      }));
+      fetchErr = retry.error;
+    }
 
     if (fetchErr) {
       console.error("[applications-delete] fetch", fetchErr);
@@ -103,18 +117,35 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    const paths = found
+    const receiptPaths = found
       .map((r: { transfer_receipt_path?: string | null }) =>
         typeof r.transfer_receipt_path === "string" ? r.transfer_receipt_path.trim() : ""
       )
       .filter(Boolean);
 
-    if (paths.length > 0) {
-      const { error: stErr } = await admin.storage.from(BUCKET).remove(paths);
+    if (receiptPaths.length > 0) {
+      const { error: stErr } = await admin.storage.from(RECEIPT_BUCKET).remove(receiptPaths);
       if (stErr) {
-        console.error("[applications-delete] storage", stErr);
+        console.error("[applications-delete] storage receipt", stErr);
         return NextResponse.json(
           { error: "振込証明画像の削除に失敗しました。ストレージを確認してください。" },
+          { status: 500 }
+        );
+      }
+    }
+
+    const portraitPaths = found
+      .map((r: { portrait_path?: string | null }) =>
+        typeof r.portrait_path === "string" ? r.portrait_path.trim() : ""
+      )
+      .filter(Boolean);
+
+    if (portraitPaths.length > 0) {
+      const { error: stErr } = await admin.storage.from(PORTRAIT_BUCKET).remove(portraitPaths);
+      if (stErr) {
+        console.error("[applications-delete] storage portrait", stErr);
+        return NextResponse.json(
+          { error: "顔写真の削除に失敗しました。ストレージを確認してください。" },
           { status: 500 }
         );
       }
@@ -137,3 +168,4 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "処理中にエラーが発生しました。" }, { status: 500 });
   }
 }
+

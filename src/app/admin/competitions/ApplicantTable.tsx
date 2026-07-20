@@ -30,6 +30,7 @@ export interface Applicant {
   payment_status: string;
   payment_route?: string | null;
   transfer_receipt_path?: string | null;
+  portrait_path?: string | null;
   created_at: string;
 }
 
@@ -196,6 +197,7 @@ export function ApplicantTable({ applicants, competitionSlug }: Props) {
               {young2026PieceFinalColumnHeader()}
             </TableHead>
             <TableHead>動画URL</TableHead>
+            <TableHead>顔写真</TableHead>
             <TableHead>決済</TableHead>
             <TableHead>支払い経路</TableHead>
             <TableHead>振込証明</TableHead>
@@ -249,6 +251,20 @@ export function ApplicantTable({ applicants, competitionSlug }: Props) {
                   </div>
                 ) : (
                   <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-sm">
+                {a.portrait_path ? (
+                  <a
+                    href={`/api/admin/applications/${a.id}/portrait`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold hover:underline"
+                  >
+                    表示
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
               <TableCell>

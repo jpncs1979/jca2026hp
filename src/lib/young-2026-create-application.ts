@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCompetitionId } from "@/lib/competition-application-gate";
+import { joinAddressLine } from "@/lib/japanese-address";
+import { portraitDataUrlToBuffer } from "@/lib/portrait-image";
 import { YOUNG_2026, isYoung2026ApplicationOpen } from "@/lib/young-2026";
+
+const PORTRAIT_BUCKET = "competition_portraits";
 
 const REFERENCE_DATE = new Date(YOUNG_2026.referenceDate);
 
@@ -29,6 +33,14 @@ export type Young2026ApplicationParsed = {
   furigana: string;
   email: string;
   birth_date: string;
+  zip_code: string;
+  address_prefecture: string;
+  address_city: string;
+  address_street: string;
+  address_building: string;
+  address: string;
+  phone: string;
+  portrait_data_url: string;
   member_type: "会員" | "非会員";
   member_number: string;
   category: "ジュニアA" | "ジュニアB" | "ヤング";
@@ -45,12 +57,45 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
   const furigana = typeof o.furigana === "string" ? o.furigana.trim() : "";
   const email = typeof o.email === "string" ? o.email.trim() : "";
   const birth_date = typeof o.birth_date === "string" ? o.birth_date.trim() : "";
+  const zip_code = typeof o.zip_code === "string" ? o.zip_code.trim() : "";
+  const address_prefecture =
+    typeof o.address_prefecture === "string" ? o.address_prefecture.trim() : "";
+  const address_city = typeof o.address_city === "string" ? o.address_city.trim() : "";
+  const address_street = typeof o.address_street === "string" ? o.address_street.trim() : "";
+  const address_building =
+    typeof o.address_building === "string" ? o.address_building.trim() : "";
+  const phone = typeof o.phone === "string" ? o.phone.trim() : "";
+  const portrait_data_url =
+    typeof o.portrait_data_url === "string" ? o.portrait_data_url.trim() : "";
   const member_type = typeof o.member_type === "string" ? o.member_type.trim() : "";
   const category = typeof o.category === "string" ? o.category.trim() : "";
   const member_number = typeof o.member_number === "string" ? o.member_number : "";
-  if (!name || !furigana || !email || !birth_date || !member_type || !category) return null;
+  if (
+    !name ||
+    !furigana ||
+    !email ||
+    !birth_date ||
+    !zip_code ||
+    !address_prefecture ||
+    !address_city ||
+    !address_street ||
+    !phone ||
+    !portrait_data_url ||
+    !member_type ||
+    !category
+  ) {
+    return null;
+  }
   if (member_type !== "会員" && member_type !== "非会員") return null;
   if (category !== "ジュニアA" && category !== "ジュニアB" && category !== "ヤング") return null;
+  if (!portraitDataUrlToBuffer(portrait_data_url)) return null;
+
+  const address = joinAddressLine({
+    prefecture: address_prefecture,
+    city: address_city,
+    street: address_street,
+    building: address_building,
+  });
 
   const selected_piece_preliminary =
     typeof o.selected_piece_preliminary === "string" && o.selected_piece_preliminary.trim()
@@ -71,6 +116,14 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
     furigana,
     email,
     birth_date,
+    zip_code,
+    address_prefecture,
+    address_city,
+    address_street,
+    address_building,
+    address,
+    phone,
+    portrait_data_url,
     member_type,
     member_number,
     category,
@@ -79,6 +132,25 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
     video_url,
     accompanist_info,
   };
+}
+
+async function uploadPortrait(
+  db: SupabaseClient,
+  applicationId: string,
+  dataUrl: string
+): Promise<string | null> {
+  const decoded = portraitDataUrlToBuffer(dataUrl);
+  if (!decoded) return null;
+  const path = `young-2026/${applicationId}.${decoded.ext}`;
+  const { error } = await db.storage.from(PORTRAIT_BUCKET).upload(path, decoded.buffer, {
+    contentType: decoded.contentType,
+    upsert: true,
+  });
+  if (error) {
+    console.error("[young-2026] portrait upload", error);
+    return null;
+  }
+  return path;
 }
 
 /**
@@ -145,6 +217,13 @@ export async function createYoung2026Application(
     email: parsed.email,
     birth_date: parsed.birth_date,
     age_at_reference: age,
+    zip_code: parsed.zip_code,
+    address: parsed.address,
+    address_prefecture: parsed.address_prefecture,
+    address_city: parsed.address_city,
+    address_street: parsed.address_street,
+    address_building: parsed.address_building || null,
+    phone: parsed.phone,
     member_type: parsed.member_type,
     member_number: null,
     category: parsed.category,
@@ -172,8 +251,26 @@ export async function createYoung2026Application(
 
   if (
     insertError &&
-    (insertError.message?.includes("payment_route") || insertError.message?.includes("column"))
+    (insertError.message?.includes("payment_route") ||
+      insertError.message?.includes("zip_code") ||
+      insertError.message?.includes("address_prefecture") ||
+      insertError.message?.includes("phone") ||
+      insertError.message?.includes("column"))
   ) {
+    // payment_route のみ古い環境向けに落とす。連絡先列が無い場合はマイグレーション必須
+    if (
+      insertError.message?.includes("zip_code") ||
+      insertError.message?.includes("address_prefecture") ||
+      insertError.message?.includes("phone") ||
+      insertError.message?.includes("address_city")
+    ) {
+      return {
+        ok: false,
+        message:
+          "申込フォームの更新に必要なデータベース設定が未完了です。事務局へお問い合わせください。",
+        status: 500,
+      };
+    }
     delete insertRow.payment_route;
     const retry = await db.from("applications").insert(insertRow).select("id").single();
     app = retry.data;
@@ -188,5 +285,19 @@ export async function createYoung2026Application(
     };
   }
 
-  return { ok: true, applicationId: app.id as string, amount, parsed };
+  const applicationId = app.id as string;
+  const portraitPath = await uploadPortrait(db, applicationId, parsed.portrait_data_url);
+  if (portraitPath) {
+    const { error: pathErr } = await db
+      .from("applications")
+      .update({ portrait_path: portraitPath })
+      .eq("id", applicationId);
+    if (pathErr) {
+      console.error("[young-2026] portrait_path update", pathErr);
+    }
+  } else {
+    console.error("[young-2026] portrait upload failed for", applicationId);
+  }
+
+  return { ok: true, applicationId, amount, parsed };
 }
