@@ -38,7 +38,7 @@ export default function Young2026ApplyConfirmPage() {
       router.replace("/events/young-2026/apply");
       return;
     }
-    if (!loaded.portrait_data_url?.startsWith("data:image/") || !loaded.phone?.trim()) {
+    if (!loaded.portrait_data_url?.startsWith("data:image/") || !loaded.phone?.trim() || !loaded.affiliation?.trim()) {
       router.replace("/events/young-2026/apply");
       return;
     }
@@ -70,6 +70,7 @@ export default function Young2026ApplyConfirmPage() {
     furigana: p.furigana,
     email: p.email,
     birth_date: p.birth_date,
+    affiliation: p.affiliation,
     zip_code: p.zip_code,
     address_prefecture: p.address_prefecture,
     address_city: p.address_city,
@@ -141,6 +142,10 @@ export default function Young2026ApplyConfirmPage() {
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">ふりがな</dt>
               <dd>{data.furigana}</dd>
+            </div>
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">所属（出身校等）</dt>
+              <dd className="text-pretty">{data.affiliation}</dd>
             </div>
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">メール</dt>

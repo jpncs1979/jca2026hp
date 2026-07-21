@@ -15,6 +15,7 @@ export type Young2026ApplicationMailFields = {
   birth_date: string;
   /** コンクール規定の基準日時点の満年齢（DBの age_at_reference と一致） */
   age_at_reference: number | null;
+  affiliation: string;
   zip_code: string;
   address: string;
   phone: string;
@@ -59,6 +60,7 @@ export function parsedToMailFields(p: Young2026ApplicationParsed): Young2026Appl
     email: p.email,
     birth_date: p.birth_date,
     age_at_reference: ageAtYoungReferenceFromBirth(p.birth_date),
+    affiliation: p.affiliation,
     zip_code: p.zip_code,
     address: p.address,
     phone: p.phone,
@@ -101,6 +103,7 @@ export function applicationRowToMailFields(row: Record<string, unknown>): Young2
     email: str("email").trim(),
     birth_date: birthRaw,
     age_at_reference: ageAtReference,
+    affiliation: str("affiliation").trim(),
     zip_code: str("zip_code").trim(),
     address: str("address").trim(),
     phone: str("phone").trim(),
@@ -157,6 +160,9 @@ export function buildYoung2026ApplicationDetailsSection(
   );
 
   if (!isEnsemble) {
+    if (app.affiliation) {
+      parts.push(`<li>所属（出身校等）：${escapeHtml(app.affiliation)}</li>`);
+    }
     if (app.phone) {
       parts.push(`<li>携帯電話番号：${escapeHtml(app.phone)}</li>`);
     }

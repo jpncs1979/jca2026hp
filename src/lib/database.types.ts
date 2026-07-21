@@ -71,6 +71,8 @@ export interface ApplicationRow {
   email: string | null;
   birth_date: string | null;
   age_at_reference: number | null;
+  /** 所属（出身校等）（マイグレーション 027） */
+  affiliation?: string | null;
   member_type: string;
   member_number: string | null;
   category: string;

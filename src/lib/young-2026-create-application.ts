@@ -33,6 +33,7 @@ export type Young2026ApplicationParsed = {
   furigana: string;
   email: string;
   birth_date: string;
+  affiliation: string;
   zip_code: string;
   address_prefecture: string;
   address_city: string;
@@ -57,6 +58,7 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
   const furigana = typeof o.furigana === "string" ? o.furigana.trim() : "";
   const email = typeof o.email === "string" ? o.email.trim() : "";
   const birth_date = typeof o.birth_date === "string" ? o.birth_date.trim() : "";
+  const affiliation = typeof o.affiliation === "string" ? o.affiliation.trim() : "";
   const zip_code = typeof o.zip_code === "string" ? o.zip_code.trim() : "";
   const address_prefecture =
     typeof o.address_prefecture === "string" ? o.address_prefecture.trim() : "";
@@ -75,6 +77,7 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
     !furigana ||
     !email ||
     !birth_date ||
+    !affiliation ||
     !zip_code ||
     !address_prefecture ||
     !address_city ||
@@ -116,6 +119,7 @@ export function parseYoung2026ApplicationBody(body: unknown): Young2026Applicati
     furigana,
     email,
     birth_date,
+    affiliation,
     zip_code,
     address_prefecture,
     address_city,
@@ -217,6 +221,7 @@ export async function createYoung2026Application(
     email: parsed.email,
     birth_date: parsed.birth_date,
     age_at_reference: age,
+    affiliation: parsed.affiliation,
     zip_code: parsed.zip_code,
     address: parsed.address,
     address_prefecture: parsed.address_prefecture,
@@ -255,6 +260,7 @@ export async function createYoung2026Application(
       insertError.message?.includes("zip_code") ||
       insertError.message?.includes("address_prefecture") ||
       insertError.message?.includes("phone") ||
+      insertError.message?.includes("affiliation") ||
       insertError.message?.includes("column"))
   ) {
     // payment_route のみ古い環境向けに落とす。連絡先列が無い場合はマイグレーション必須
@@ -262,7 +268,8 @@ export async function createYoung2026Application(
       insertError.message?.includes("zip_code") ||
       insertError.message?.includes("address_prefecture") ||
       insertError.message?.includes("phone") ||
-      insertError.message?.includes("address_city")
+      insertError.message?.includes("address_city") ||
+      insertError.message?.includes("affiliation")
     ) {
       return {
         ok: false,

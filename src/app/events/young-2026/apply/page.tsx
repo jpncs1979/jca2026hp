@@ -55,6 +55,7 @@ const formSchema = z.object({
   furigana: z.string().min(1, "ふりがなを入力してください"),
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   birth_date: z.string().min(1, "生年月日を入力してください"),
+  affiliation: z.string().min(1, "所属（出身校等）を入力してください"),
   zip_code: z.string().min(1, "郵便番号を入力してください"),
   address_prefecture: z.string().min(1, "都道府県を選択してください"),
   address_city: z.string().min(1, "市区町村を入力してください"),
@@ -98,6 +99,7 @@ function draftToFormValues(d: {
   furigana: string;
   email: string;
   birth_date: string;
+  affiliation?: string;
   zip_code?: string;
   address_prefecture?: string;
   address_city?: string;
@@ -116,6 +118,7 @@ function draftToFormValues(d: {
     furigana: d.furigana,
     email: d.email,
     birth_date: d.birth_date,
+    affiliation: d.affiliation ?? "",
     zip_code: d.zip_code ?? "",
     address_prefecture: d.address_prefecture ?? "",
     address_city: d.address_city ?? "",
@@ -262,6 +265,7 @@ export default function ApplyPage() {
       furigana: "",
       email: "",
       birth_date: "",
+      affiliation: "",
       zip_code: "",
       address_prefecture: "",
       address_city: "",
@@ -439,6 +443,26 @@ export default function ApplyPage() {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} placeholder="やまだ たろう" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="affiliation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>所属（出身校等） *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="○○高等学校 / ○○音楽大学 など"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      学校名・団体名・勤務先など、わかる範囲でご記入ください。
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -895,6 +919,7 @@ export default function ApplyPage() {
                       furigana: values.furigana,
                       email: values.email,
                       birth_date: values.birth_date,
+                      affiliation: values.affiliation.trim(),
                       zip_code: values.zip_code.trim(),
                       address_prefecture: values.address_prefecture,
                       address_city: values.address_city.trim(),

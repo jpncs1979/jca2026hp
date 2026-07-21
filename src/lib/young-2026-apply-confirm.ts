@@ -9,6 +9,8 @@ export type Young2026ApplyConfirmPayload = {
   furigana: string;
   email: string;
   birth_date: string;
+  /** 所属（出身校等） */
+  affiliation: string;
   zip_code: string;
   address_prefecture: string;
   address_city: string;
@@ -88,6 +90,7 @@ export function isRestorableYoung2026ApplyPayload(
     typeof p.birth_date === "string" &&
     p.birth_date.length > 0 &&
     typeof p.furigana === "string" &&
+    typeof p.affiliation === "string" &&
     typeof p.zip_code === "string" &&
     typeof p.address_prefecture === "string" &&
     typeof p.address_city === "string" &&

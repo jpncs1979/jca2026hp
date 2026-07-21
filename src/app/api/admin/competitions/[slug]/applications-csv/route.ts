@@ -5,7 +5,7 @@ import { buildCompetitionApplicationsCsvContent } from "@/lib/admin-competition-
 type RouteContext = { params: Promise<{ slug: string }> };
 
 const SELECT_FULL =
-  "id, profile_id, name, furigana, email, birth_date, age_at_reference, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, portrait_path, member_type, member_number, category, selected_piece_preliminary, selected_piece_final, video_url, accompanist_info, amount, payment_status, payment_date, payment_route, transfer_receipt_path, created_at";
+  "id, profile_id, name, furigana, email, birth_date, age_at_reference, affiliation, zip_code, address, address_prefecture, address_city, address_street, address_building, phone, portrait_path, member_type, member_number, category, selected_piece_preliminary, selected_piece_final, video_url, accompanist_info, amount, payment_status, payment_date, payment_route, transfer_receipt_path, created_at";
 
 const SELECT_FALLBACK =
   "id, profile_id, name, furigana, email, birth_date, age_at_reference, member_type, member_number, category, selected_piece_preliminary, selected_piece_final, video_url, accompanist_info, amount, payment_status, payment_date, created_at";
