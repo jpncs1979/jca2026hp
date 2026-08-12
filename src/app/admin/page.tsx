@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Trophy, ArrowRight } from "lucide-react";
+import { Users, Trophy, ArrowRight, Megaphone } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   let totalMembers = 0;
@@ -64,6 +64,13 @@ export default async function AdminDashboardPage() {
         <Link href="/admin/competitions">
           <Button variant="outline">
             コンクール申込一覧へ
+            <ArrowRight className="ml-2 size-4" />
+          </Button>
+        </Link>
+        <Link href="/admin/news">
+          <Button variant="outline">
+            <Megaphone className="mr-1 size-4" />
+            お知らせ管理へ
             <ArrowRight className="ml-2 size-4" />
           </Button>
         </Link>

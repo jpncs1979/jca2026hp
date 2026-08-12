@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 // スクロール表示用アニメーション
 function AnimatedSection({
@@ -260,18 +261,30 @@ function HeroSlider() {
   );
 }
 
-// ニュース（モックデータ - Supabase接続時に差し替え）
-const MOCK_NEWS = [
-  {
-    id: "1",
-    title: "第15回ヤング・クラリネッティストコンクール要項公開",
-    date: "2026-02-01",
-    isImportant: true,
-    href: "/events/young-2026",
-  },
-];
+type NewsItem = {
+  id: string;
+  title: string;
+  publish_date: string;
+  is_important: boolean;
+};
 
 export default function Home() {
+  const [newsList, setNewsList] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    if (!supabase) return;
+    supabase
+      .from("news")
+      .select("id, title, publish_date, is_important")
+      .lte("publish_date", new Date().toISOString().slice(0, 10))
+      .order("publish_date", { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        if (data) setNewsList(data);
+      });
+  }, []);
+
   return (
     <div className="overflow-hidden">
       {/* メインビジュアル：スライド */}
@@ -336,26 +349,29 @@ export default function Home() {
           </Card>
 
           <h3 className="mb-4 font-soft text-lg font-semibold text-navy">お知らせ</h3>
-          <ul className="space-y-4 font-soft">
-            {MOCK_NEWS.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  className="flex flex-col gap-1 rounded-lg border border-transparent p-4 transition-colors hover:bg-white hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="font-medium text-foreground">{item.title}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {item.date.replace(/-/g, "/")}
-                    {item.isImportant ? (
-                      <span className="ml-2 rounded bg-gold/20 px-2 py-0.5 text-xs font-medium text-gold-foreground">
-                        重要
-                      </span>
-                    ) : null}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {newsList.length > 0 ? (
+            <ul className="space-y-4 font-soft">
+              {newsList.map((item) => (
+                <li key={item.id}>
+                  <div className="flex flex-col gap-1 rounded-lg border border-transparent p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="font-medium text-foreground">{item.title}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {item.publish_date.replace(/-/g, "/")}
+                      {item.is_important ? (
+                        <span className="ml-2 rounded bg-gold/20 px-2 py-0.5 text-xs font-medium text-gold-foreground">
+                          重要
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="font-soft text-sm text-muted-foreground">
+              現在、お知らせはありません。
+            </p>
+          )}
         </div>
       </AnimatedSection>
 
