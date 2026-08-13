@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Link2 } from "lucide-react";
 
 type NewsItem = {
   id: string;
@@ -50,6 +50,32 @@ export default function AdminNewsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertLink = () => {
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? form.content.length;
+    const end = textarea?.selectionEnd ?? form.content.length;
+    const selected = form.content.slice(start, end);
+
+    const label = window.prompt("リンクの表示文言を入力してください", selected || "こちら");
+    if (label === null) return;
+    const url = window.prompt(
+      "リンク先のURLを入力してください（https://... または /events/... のような内部パス）",
+      "https://"
+    );
+    if (url === null || !url.trim()) return;
+
+    const linkText = `[${label.trim() || "こちら"}](${url.trim()})`;
+    const nextContent = form.content.slice(0, start) + linkText + form.content.slice(end);
+    setForm((f) => ({ ...f, content: nextContent }));
+
+    const cursorPos = start + linkText.length;
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(cursorPos, cursorPos);
+    });
+  };
 
   const fetchNews = async () => {
     setLoading(true);
@@ -239,14 +265,25 @@ export default function AdminNewsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="news-content">本文</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="news-content">本文</Label>
+                <Button type="button" variant="outline" size="sm" onClick={insertLink}>
+                  <Link2 className="size-4" />
+                  リンクを挿入
+                </Button>
+              </div>
               <Textarea
                 id="news-content"
+                ref={contentRef}
                 rows={6}
                 value={form.content}
                 onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                 placeholder="お知らせの本文（改行はそのまま表示されます）"
               />
+              <p className="text-xs text-muted-foreground">
+                本文中に <code className="rounded bg-muted px-1">[表示文言](URL)</code>{" "}
+                の形式で書くとリンクになります（「リンクを挿入」ボタンでカーソル位置に追加できます）。
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

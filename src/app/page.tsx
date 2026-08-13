@@ -353,7 +353,10 @@ export default function Home() {
             <ul className="space-y-4 font-soft">
               {newsList.map((item) => (
                 <li key={item.id}>
-                  <div className="flex flex-col gap-1 rounded-lg border border-transparent p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <Link
+                    href={`/news/${item.id}`}
+                    className="flex flex-col gap-1 rounded-lg border border-transparent p-4 transition-colors hover:bg-white hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
                     <span className="font-medium text-foreground">{item.title}</span>
                     <span className="text-sm text-muted-foreground">
                       {item.publish_date.replace(/-/g, "/")}
@@ -363,7 +366,7 @@ export default function Home() {
                         </span>
                       ) : null}
                     </span>
-                  </div>
+                  </Link>
                 </li>
               ))}
             </ul>

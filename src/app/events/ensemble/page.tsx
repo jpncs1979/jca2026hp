@@ -65,6 +65,37 @@ export default function EnsemblePage() {
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-3xl space-y-12">
           <section>
+            <Card className="border-gold/40 bg-gold/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg text-navy">
+                  <Megaphone className="size-5 text-gold" />
+                  {ENSEMBLE_2027.festivalNotice.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm leading-relaxed text-foreground">
+                {ENSEMBLE_2027.festivalNotice.paragraphs.map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+                <p>
+                  <a
+                    href={FESTIVAL_39_HIROSHIMA_OFFICIAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-gold hover:underline"
+                  >
+                    第39回日本クラリネットフェスティバル in 東広島 特設ページ
+                  </a>
+                </p>
+                <ul className="space-y-1 text-muted-foreground">
+                  {ENSEMBLE_2027.festivalNotice.notes.map((note, i) => (
+                    <li key={i}>{note}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section>
             <h2 className="mb-4 text-xl font-medium text-navy">目的</h2>
             <p className="text-muted-foreground">{ENSEMBLE_2027.purpose}</p>
           </section>
