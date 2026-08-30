@@ -3,6 +3,7 @@
  */
 
 import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
+import { LANCELOT_2027 } from "@/lib/lancelot-2027";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 export interface CompetitionSummary {
@@ -46,6 +47,17 @@ export const competitions: CompetitionSummary[] = [
     applyHref: "/events/young-2026/apply",
     status: "申込受付中",
     archiveHref: "/archive?competition=young",
+  },
+  {
+    slug: "lancelot-2027",
+    title: LANCELOT_2027.name,
+    description:
+      "2年に一度、日本とフランスで交互に開催。ジャック・ランスロ氏の音楽精神を継承し、近代フランス音楽文化の評価に重きを置く国際コンクール。2027年、国立音楽大学・立川RISULUホールにて開催。",
+    period: "2027年8月29日（日）～9月5日（日）",
+    applicationPeriod: LANCELOT_2027.applicationPeriod,
+    venue: `${LANCELOT_2027.venue.university}／${LANCELOT_2027.venue.hall}`,
+    href: "/events/lancelot",
+    status: "準備中",
   },
   {
     slug: "ensemble",
