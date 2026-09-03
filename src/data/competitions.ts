@@ -18,6 +18,8 @@ export interface CompetitionSummary {
   href: string;
   /** 参加申込フォーム（申込受付中のみ表示） */
   applyHref?: string;
+  /** 結果発表ページ（終了後） */
+  resultsHref?: string;
   status: "申込受付中" | "準備中" | "終了";
   archiveHref?: string;
 }
@@ -43,8 +45,8 @@ export const competitions: CompetitionSummary[] = [
     applicationPeriod: YOUNG_2026.applicationPeriod,
     venue: "パルテノン多摩 小ホール（東京都多摩市）",
     href: "/events/young-2026",
-    applyHref: "/events/young-2026/apply",
-    status: "申込受付中",
+    resultsHref: YOUNG_2026.resultsHref,
+    status: "終了",
     archiveHref: "/archive?competition=young",
   },
   {

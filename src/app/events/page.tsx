@@ -94,6 +94,14 @@ export default function EventsPage() {
                           </Button>
                         </Link>
                       ) : null}
+                      {event.resultsHref ? (
+                        <Link href={event.resultsHref}>
+                          <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                            結果発表
+                            <ArrowRight className="ml-2 size-4" />
+                          </Button>
+                        </Link>
+                      ) : null}
                       <Link href={event.href}>
                         <Button variant="outline">
                           詳細を見る

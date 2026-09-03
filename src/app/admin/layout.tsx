@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Users, Trophy, LayoutDashboard, LogOut, Megaphone } from "lucide-react";
+import { Users, Trophy, LayoutDashboard, LogOut, Megaphone, BookOpen } from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -69,6 +69,13 @@ export default async function AdminLayout({
             >
               <Megaphone className="size-4" />
               お知らせ
+            </Link>
+            <Link
+              href="/admin/member-contents"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-navy"
+            >
+              <BookOpen className="size-4" />
+              会員コンテンツ
             </Link>
             <Link href="/" className="text-sm text-muted-foreground hover:text-navy">
               サイトへ

@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "**/*-DESKTOP-*",
+    "**/*-大和田智彦のMacBook Pro*",
+    "**/*-大和田note2*",
+    "**/*-*MacBook*",
+    "**/* 2.ts",
+    "**/* 2.tsx"
+  ]
 }

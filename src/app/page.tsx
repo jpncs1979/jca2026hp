@@ -21,7 +21,6 @@ import {
   Globe,
 } from "lucide-react";
 import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
-import { YOUNG_2026 } from "@/lib/young-2026";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 // スクロール表示用アニメーション
@@ -66,11 +65,11 @@ type HeroSlide = {
 
 const HERO_SLIDES: HeroSlide[] = [
   {
-    title: `第15回 ヤング・クラリネッティストコンクール（申込開始：${YOUNG_2026.applicationStartDisplay}）`,
-    copy: "次代を担う、若き才能たちへ。",
+    title: "第15回 ヤング・クラリネッティストコンクール 結果発表",
+    copy: "次代を担う、若き才能たちの集い。",
     buttons: [
-      { label: "詳細", href: "/events/young-2026" },
-      { label: "参加申込", href: "/events/young-2026/apply" },
+      { label: "結果を見る", href: "/events/young-2026/results" },
+      { label: "参加要項", href: "/events/young-2026" },
     ],
     bg: "from-navy/90",
   },
@@ -418,7 +417,7 @@ export default function Home() {
           </h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
-          <Link href="/events/young-2026" className="group">
+          <Link href="/events/young-2026/results" className="group">
             <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
               <CardHeader className="pb-2">
                 <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-gold/20 text-gold-foreground">
@@ -426,12 +425,12 @@ export default function Home() {
                 </div>
                 <CardTitle className="text-lg font-medium">ヤングコンクール</CardTitle>
                 <CardDescription className="font-normal">
-                  申込は{YOUNG_2026.applicationStartDisplay}開始。若き才能の発掘と育成
+                  第15回（2026）本選結果を掲載。若き才能の発掘と育成
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <span className="inline-flex items-center text-sm font-normal text-gold group-hover:underline">
-                  詳細を見る
+                  結果を見る
                   <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </CardContent>

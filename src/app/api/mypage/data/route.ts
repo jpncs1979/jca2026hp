@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { resolveMemberProfile } from "@/lib/member-access";
 import {
   buildMembershipFeeYearRows,
   type PaymentRowForFee,
@@ -24,49 +25,12 @@ export async function GET() {
     const selectColsLegacy =
       "id, member_number, name, name_kana, email, status, affiliation, is_admin, officer_title, is_ica_member, zip_code, address, phone, is_css_user, payment_channel, payment_channel_note, membership_valid_until, membership_type, stripe_customer_id, source";
 
-    // 1. user_id で検索
-    let { data: profile, error: errByUser } = await admin
-      .from("profiles")
-      .select(selectCols)
-      .eq("user_id", u.id)
-      .maybeSingle();
-
-    if (
-      errByUser &&
-      (errByUser.message?.includes("address_prefecture") ||
-        errByUser.message?.includes("column"))
-    ) {
-      const r = await admin
-        .from("profiles")
-        .select(selectColsLegacy)
-        .eq("user_id", u.id)
-        .maybeSingle();
-      profile = r.data;
-    }
-
-    // 2. 見つからなければメールで検索（インポート会員対応）
-    if (!profile && u.email) {
-      let { data: profByEmail, error: errByEmail } = await admin
-        .from("profiles")
-        .select(selectCols)
-        .is("user_id", null)
-        .ilike("email", u.email.trim())
-        .maybeSingle();
-      if (
-        errByEmail &&
-        (errByEmail.message?.includes("address_prefecture") ||
-          errByEmail.message?.includes("column"))
-      ) {
-        const r2 = await admin
-          .from("profiles")
-          .select(selectColsLegacy)
-          .is("user_id", null)
-          .ilike("email", u.email.trim())
-          .maybeSingle();
-        profByEmail = r2.data;
-      }
-      profile = profByEmail;
-    }
+    const profile = await resolveMemberProfile<{ id: string; status: string } & Record<string, unknown>>(
+      admin,
+      u.id,
+      u.email,
+      { select: selectCols, selectLegacy: selectColsLegacy }
+    );
 
     if (!profile) {
       return NextResponse.json({

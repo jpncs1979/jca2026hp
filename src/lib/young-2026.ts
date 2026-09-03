@@ -206,6 +206,8 @@ export const YOUNG_2026 = {
   ],
 
   requiresVideo: ["ジュニアA", "ジュニアB"] as const,
+
+  resultsHref: "/events/young-2026/results",
 } as const;
 
 export type YoungCategory = (typeof YOUNG_2026.eligibility.categories)[number]["id"];

@@ -44,12 +44,12 @@ export default function Young2026DetailPage() {
             【協 賛】{YOUNG_2026.sponsors.join("／")}
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <Link href="/events/young-2026/apply">
+            <Link href={YOUNG_2026.resultsHref}>
               <Button
                 size="lg"
                 className="bg-gold text-gold-foreground hover:bg-gold-muted"
               >
-                参加申込
+                本選結果
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
@@ -318,6 +318,15 @@ export default function Young2026DetailPage() {
                 <li key={i}>{item}</li>
               ))}
             </ul>
+            <p className="mt-4">
+              <Link
+                href={YOUNG_2026.resultsHref}
+                className="inline-flex items-center gap-1 font-medium text-gold hover:underline"
+              >
+                本選結果はこちら
+                <ArrowRight className="size-4" />
+              </Link>
+            </p>
           </section>
 
           {/* 参加上の注意 */}

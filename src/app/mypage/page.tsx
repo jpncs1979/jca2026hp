@@ -77,9 +77,6 @@ function MypageContent(): any {
       competition?: { name: string };
     }>
   >([]);
-  const [contents, setContents] = useState<
-    Array<{ id: string; title: string; file_path: string }>
-  >([]);
   const [showLogin, setShowLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -153,14 +150,12 @@ function MypageContent(): any {
           setMembership(null);
           setMembershipFeeYears([]);
           setApplications([]);
-          setContents([]);
         } else {
           const prof = data.profile ?? null;
           setProfile(prof);
           setMembership(data.membership ?? null);
           setMembershipFeeYears(data.membership_fee_years ?? []);
           setApplications(data.applications ?? []);
-          setContents(data.contents ?? []);
 
           // 管理者はマイページ不要 → 管理者画面へ直接リダイレクト
           if (prof?.is_admin === true) {
@@ -173,7 +168,6 @@ function MypageContent(): any {
         setMembership(null);
         setMembershipFeeYears([]);
         setApplications([]);
-        setContents([]);
       }
 
       // 管理者チェック（API 経由で RLS を回避・事務局管理ボタン表示用）
@@ -202,7 +196,6 @@ function MypageContent(): any {
           setMembership(data.membership ?? null);
           setMembershipFeeYears(data.membership_fee_years ?? []);
           setApplications(data.applications ?? []);
-          setContents(data.contents ?? []);
         }
       } finally {
         if (!cancelled) {
@@ -227,7 +220,6 @@ function MypageContent(): any {
           setMembership(data.membership ?? null);
           setMembershipFeeYears(data.membership_fee_years ?? []);
           setApplications(data.applications ?? []);
-          setContents(data.contents ?? []);
         }
       } finally {
         if (!cancelled) {
@@ -703,36 +695,24 @@ function MypageContent(): any {
             </CardContent>
           </Card>
 
-          {/* 会員限定コンテンツ */}
+          {/* 会員専用ページ */}
           {profile?.status === "active" && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Video className="size-5 text-gold" />
-                  会員限定コンテンツ
+                  会員専用ページ
                 </CardTitle>
-                <CardDescription>会報PDF・限定動画など</CardDescription>
+                <CardDescription>会報バックナンバーなど、会員限定のコンテンツ</CardDescription>
               </CardHeader>
               <CardContent>
-                {contents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">現在、限定コンテンツはありません。</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {contents.map((c) => (
-                      <li key={c.id}>
-                        <a
-                          href={`/api/member-content/${c.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-gold hover:underline"
-                        >
-                          {c.title}
-                          <ArrowRight className="size-4" />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <Link
+                  href="/members/bulletins"
+                  className={buttonVariants({ variant: "outline" }) + " gap-2"}
+                >
+                  会報バックナンバーを見る
+                  <ArrowRight className="size-4" />
+                </Link>
               </CardContent>
             </Card>
           )}

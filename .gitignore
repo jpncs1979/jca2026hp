@@ -26,6 +26,11 @@
 
 # OneDrive の同期で生成される競合コピー
 *-DESKTOP-*
+*-大和田智彦のMacBook Pro*
+*-大和田note2*
+*-*MacBook*
+* 2
+* 2.*
 
 # 会員データのバックアップ（個人情報。Git には含めない）
 /backups/
@@ -49,3 +54,15 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# 顔検出モデル（スクリプトが必要時に取得）
+scripts/*.onnx
+
+# ヤング結果の元写真は大容量のため Git に含めない（掲載用 portraits のみ）
+/public/images/young-2026/results/*.JPG
+/public/images/young-2026/results/*.jpg
+/public/images/young-2026/results/*.jpeg
+/public/images/young-2026/results/*.JPEG
+
+# Cursor / Claude ローカル設定
+.claude/

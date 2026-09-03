@@ -7,11 +7,12 @@
   },
   "scripts": {
     "setup": "node scripts/setup.js",
-    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev -H 0.0.0.0 --webpack",
+    "predev": "node scripts/ensure-dev-port.js",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev -H 0.0.0.0 -p 3000 --webpack",
     "build": "next build",
     "build:fresh": "npm run clean && next build",
     "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('.next')){ try { fs.rmSync('.next', { recursive: true }); console.log('.next を削除しました'); } catch(e) { console.error('EPERM: .next がロックされています。npm run dev を止めてから再度お試しください。'); process.exit(1); } }\"",
-    "start": "next start",
+    "start": "next start -p 3000",
     "lint": "eslint"
   },
   "dependencies": {
