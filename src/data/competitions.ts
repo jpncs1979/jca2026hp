@@ -3,6 +3,7 @@
  */
 
 import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
+import { LANCELOT_COMPETITION } from "@/lib/lancelot-2027";
 import { YOUNG_2026 } from "@/lib/young-2026";
 
 export interface CompetitionSummary {
@@ -20,11 +21,21 @@ export interface CompetitionSummary {
   applyHref?: string;
   /** 結果発表ページ（終了後） */
   resultsHref?: string;
-  status: "申込受付中" | "準備中" | "終了";
+  status: "申込受付中" | "準備中" | "終了" | "概要公開";
   archiveHref?: string;
 }
 
 export const competitions: CompetitionSummary[] = [
+  {
+    slug: LANCELOT_COMPETITION.slug,
+    title: LANCELOT_COMPETITION.name,
+    description:
+      "日仏交互開催の国際コンクール。日本開催は4年に一度。一般社団法人日本クラリネット協会が主催します。開催概要を公開しました。",
+    period: `${LANCELOT_COMPETITION.period}／${LANCELOT_COMPETITION.cycleNote}`,
+    venue: LANCELOT_COMPETITION.venue,
+    href: LANCELOT_COMPETITION.href,
+    status: "概要公開",
+  },
   {
     slug: "japan-clarinet",
     title: "日本クラリネットコンクール",

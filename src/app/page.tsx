@@ -21,6 +21,7 @@ import {
   Globe,
 } from "lucide-react";
 import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
+import { LANCELOT_COMPETITION } from "@/lib/lancelot-2027";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 // スクロール表示用アニメーション
@@ -64,6 +65,19 @@ type HeroSlide = {
 };
 
 const HERO_SLIDES: HeroSlide[] = [
+  {
+    title: "ジャック・ランスロ国際クラリネットコンクール",
+    copy: "日本開催は4年に一度。当協会が主催します。開催概要を公開しました。",
+    buttons: [
+      { label: "概要を見る", href: LANCELOT_COMPETITION.href },
+      {
+        label: "公式サイト",
+        href: LANCELOT_COMPETITION.officialUrl,
+        external: true,
+      },
+    ],
+    bg: "from-navy/92",
+  },
   {
     title: "第15回 ヤング・クラリネッティストコンクール 結果発表",
     copy: "次代を担う、若き才能たちの集い。",
@@ -304,6 +318,36 @@ export default function Home() {
             </p>
           </div>
 
+          <Link href={LANCELOT_COMPETITION.href} className="group mb-6 block">
+            <Card className="overflow-hidden border-0 bg-navy font-soft shadow-lg transition-shadow group-hover:shadow-xl">
+              <CardContent className="relative pt-6">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_100%_0%,rgba(201,162,39,0.22),transparent)]" />
+                <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gold/20">
+                      <Trophy className="size-6 text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium tracking-[0.2em] text-gold">
+                        4年に一度　・　概要公開
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white md:text-xl">
+                        ジャック・ランスロコンクールを当協会が主催します
+                      </p>
+                      <p className="mt-1 text-sm text-white/80">
+                        日仏交互開催の国際コンクール。日本開催は4年に一度の大きな祭典です。開催概要を公開しました。
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center self-start rounded-md bg-gold px-4 py-2 text-sm font-medium text-gold-foreground transition-transform group-hover:scale-105 sm:self-center">
+                    概要を見る
+                    <ArrowRight className="ml-1 size-4" />
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Card className="mb-10 overflow-hidden border-2 border-gold/40 bg-gradient-to-br from-gold/10 to-transparent font-soft">
             <CardContent className="pt-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -416,7 +460,26 @@ export default function Home() {
             協会の取り組み
           </h2>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Link href={LANCELOT_COMPETITION.href} className="group">
+            <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
+              <CardHeader className="pb-2">
+                <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-navy text-gold">
+                  <Trophy className="size-6" />
+                </div>
+                <CardTitle className="text-lg font-medium">ランスロコンクール</CardTitle>
+                <CardDescription className="font-normal">
+                  4年に一度の国際コンクール。当協会主催、概要公開
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <span className="inline-flex items-center text-sm font-normal text-gold group-hover:underline">
+                  概要を見る
+                  <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </CardContent>
+            </Card>
+          </Link>
           <Link href="/events/young-2026/results" className="group">
             <Card className="h-full border-0 bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group-hover:border-gold/30">
               <CardHeader className="pb-2">

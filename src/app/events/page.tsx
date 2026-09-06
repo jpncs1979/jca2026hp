@@ -59,9 +59,11 @@ export default function EventsPage() {
                         className={`rounded px-2 py-1 text-xs font-medium ${
                           event.status === "申込受付中"
                             ? "bg-gold/20 text-gold"
-                            : event.status === "準備中"
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-navy/10 text-navy"
+                            : event.status === "概要公開"
+                              ? "bg-gold/20 text-gold"
+                              : event.status === "準備中"
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-navy/10 text-navy"
                         }`}
                       >
                         {event.status}
