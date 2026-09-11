@@ -163,6 +163,24 @@ export default function EventsPage() {
                 </CardContent>
               </Card>
 
+              {/* 第31回マスタークラス（シュタイナー） */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">第31回クラリネットマスタークラス</CardTitle>
+                  <CardDescription>
+                    講師：フェルディナント・シュタイナー（ザルツブルク・モーツァルテウム管弦楽団 首席）。2026年10月13日（火）18:00〜21:00、石森管楽器 地下イベントスペース（JR大久保駅）。受講申込は締め切りました。聴講は当日まで受け付けます（会員無料／一般1,000円）。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/contact">
+                    <Button variant="outline">
+                      聴講のお問い合わせ
+                      <ArrowRight className="ml-2 size-4" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
               {/* 国際フェスティバル2029 */}
               <Card>
                 <CardHeader>

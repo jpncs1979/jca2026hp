@@ -18,6 +18,7 @@ import {
   Sparkles,
   ExternalLink,
 } from "lucide-react";
+import { SHIKUMINET_JOIN_URL } from "@/lib/shikuminet";
 
 export const metadata = {
   title: "ICA（国際クラリネット協会）入会プログラム | 日本クラリネット協会",
@@ -268,12 +269,16 @@ export default function ICAMembershipPage() {
                 入会案内に戻る
               </Button>
             </Link>
-            <Link href="/membership/join">
+            <a
+              href={SHIKUMINET_JOIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
                 JCAに入会してICA特典を得る
                 <ExternalLink className="ml-2 size-4" />
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </div>

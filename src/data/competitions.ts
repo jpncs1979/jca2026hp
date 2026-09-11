@@ -71,7 +71,7 @@ export const competitions: CompetitionSummary[] = [
     venue: "東広島芸術文化ホール くららホール（本選）",
     href: "/events/ensemble",
     applyHref: "/events/ensemble/apply",
-    status: "申込受付中",
+    status: "概要公開",
     archiveHref: "/archive?competition=ensemble",
   },
 ];

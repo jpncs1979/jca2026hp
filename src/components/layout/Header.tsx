@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ChevronDown, Menu } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { ChevronDown, ExternalLink, Menu } from "lucide-react";
+import { SHIKUMINET_LOGIN_URL } from "@/lib/shikuminet";
 import {
   Sheet,
   SheetContent,
@@ -16,33 +16,12 @@ import {
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Sheet (Base UI) の動的 ID による hydration エラー回避のため、クライアントマウント後のみ描画する
     const t = setTimeout(() => setMounted(true), 0);
     return () => clearTimeout(t);
   }, []);
-
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-      try {
-        const res = await fetch("/api/mypage/admin-check");
-        const { isAdmin: admin } = await res.json();
-        setIsAdmin(admin === true);
-      } catch {
-        setIsAdmin(false);
-      }
-    });
-  }, []);
-
-  const mypageHref = isAdmin === true ? "/admin" : "/mypage";
 
   const associationMenu = [
     { href: "/membership", label: "入会案内" },
@@ -134,12 +113,15 @@ export function Header() {
             </ul>
           </div>
 
-          <Link
-            href={mypageHref}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-navy"
+          <a
+            href={SHIKUMINET_LOGIN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-navy"
           >
-            会員マイページ
-          </Link>
+            会員ログイン
+            <ExternalLink className="size-3.5 opacity-60" aria-hidden />
+          </a>
         </nav>
 
         {/* Mobile menu trigger - Sheet はクライアントマウント後のみ描画（Base UI の動的 ID による hydration エラー回避） */}
@@ -190,13 +172,16 @@ export function Header() {
                     ))}
                   </div>
                 </div>
-                <Link
-                  href={mypageHref}
+                <a
+                  href={SHIKUMINET_LOGIN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2.5 font-medium text-foreground transition-colors hover:bg-muted"
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-2.5 font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  会員マイページ
-                </Link>
+                  会員ログイン
+                  <ExternalLink className="size-3.5 opacity-60" aria-hidden />
+                </a>
               </nav>
             </SheetContent>
           </Sheet>

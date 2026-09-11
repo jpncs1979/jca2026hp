@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Check, UserPlus, ArrowRight, Gift, Users, Globe } from "lucide-react";
+import { SHIKUMINET_JOIN_URL } from "@/lib/shikuminet";
 
 export const metadata = {
   title: "入会案内 | 日本クラリネット協会",
@@ -27,7 +28,11 @@ export default function MembershipPage() {
             日本クラリネット協会の会員になりませんか
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <Link href="/membership/join">
+            <a
+              href={SHIKUMINET_JOIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button
                 size="lg"
                 className="bg-gold text-gold-foreground hover:bg-gold-muted"
@@ -35,7 +40,7 @@ export default function MembershipPage() {
                 入会申込
                 <ArrowRight className="ml-2 size-4" />
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </div>
@@ -109,7 +114,7 @@ export default function MembershipPage() {
                 <p className="text-muted-foreground">
                   協会の事業年度（会費の計上）は毎年2月1日から翌年1月31日までです。入会時のお支払いは原則「入会金＋当該事業年度の会費」ですが、11月・12月・1月にご入会の場合は「入会金＋翌事業年度の会費」となります。
                   会員資格としての期間は、各年4月1日から翌年3月31日までです。1月までに翌事業年度分の会費がお支払い済みの場合、会員資格はその次の4月1日から始まる年度に及びます。
-                  会費のお支払いはクレジットカードのみです（入会時・マイページからの決済、および毎年1月22日頃の翌事業年度分の自動引き落とし）。
+                  会費のお支払いは、入会申込ページ（シクミネット）のご案内に従ってください。
                 </p>
               </CardContent>
             </Card>
@@ -146,18 +151,21 @@ export default function MembershipPage() {
               <CardHeader>
                 <CardTitle className="text-base">お申し込み</CardTitle>
                 <CardDescription>
-                  ウェブから入会申し込みができます。クレジットカードでお支払いいただくと即時入会となります。
+                  ウェブ（シクミネット）から入会申し込みができます。
                   口座振替をご希望の方は、事務局までお問い合わせください。
-                  会費が事業年度ベースで3年連続未納となった場合は強制退会となり、ウェブからの再入会には事務局での対応が必要です。
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href="/membership/join">
+                <a
+                  href={SHIKUMINET_JOIN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
                     ウェブで入会申し込み
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
-                </Link>
+                </a>
               </CardContent>
             </Card>
           </section>

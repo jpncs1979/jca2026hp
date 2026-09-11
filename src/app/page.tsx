@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 import { LANCELOT_COMPETITION } from "@/lib/lancelot-2027";
+import { SHIKUMINET_JOIN_URL } from "@/lib/shikuminet";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 // スクロール表示用アニメーション
@@ -98,7 +99,7 @@ const HERO_SLIDES: HeroSlide[] = [
     copy: "会員特典・年会費・入会の流れをご確認いただけます。",
     buttons: [
       { label: "入会案内", href: "/membership" },
-      { label: "入会申込", href: "/membership/join" },
+      { label: "入会申込", href: SHIKUMINET_JOIN_URL, external: true },
     ],
     bg: "from-navy/88",
   },
@@ -115,7 +116,6 @@ const HERO_SLIDES: HeroSlide[] = [
     copy: "2027年2月27日（土）本選。第19回。アンサンブルの調和と表現力を競います。",
     buttons: [
       { label: "参加要項", href: "/events/ensemble" },
-      { label: "参加申込", href: "/events/ensemble/apply" },
       { label: "過去の受賞者", href: "/archive?competition=ensemble" },
     ],
     bg: "from-navy/93",
@@ -377,7 +377,11 @@ export default function Home() {
                       詳細を見る
                     </Button>
                   </Link>
-                  <Link href="/membership/join">
+                  <a
+                    href={SHIKUMINET_JOIN_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button
                       size="sm"
                       className="bg-gold text-gold-foreground hover:bg-gold-muted"
@@ -385,7 +389,7 @@ export default function Home() {
                       入会する
                       <ArrowRight className="ml-1 size-4" />
                     </Button>
-                  </Link>
+                  </a>
                 </div>
               </div>
             </CardContent>
