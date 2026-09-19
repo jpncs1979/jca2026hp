@@ -7,8 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Calendar, ArrowRight, Trophy, Music, ExternalLink } from "lucide-react";
+import { Calendar, ArrowRight, Trophy, Music, ExternalLink, GraduationCap } from "lucide-react";
 import { competitions } from "@/data/competitions";
+import { masterclasses } from "@/data/masterclasses";
 import { FESTIVAL_39_HIROSHIMA_OFFICIAL_URL } from "@/lib/festival-2027-hiroshima";
 
 export const metadata = {
@@ -40,6 +41,9 @@ export default function EventsPage() {
             </a>
             <a href="#events" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
               フェスティバル
+            </a>
+            <a href="#masterclass" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-navy">
+              マスタークラス
             </a>
           </nav>
 
@@ -163,24 +167,6 @@ export default function EventsPage() {
                 </CardContent>
               </Card>
 
-              {/* 第31回マスタークラス（シュタイナー） */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">第31回クラリネットマスタークラス</CardTitle>
-                  <CardDescription>
-                    講師：フェルディナント・シュタイナー（ザルツブルク・モーツァルテウム管弦楽団 首席）。2026年10月13日（火）18:00〜21:00、石森管楽器 地下イベントスペース（JR大久保駅）。受講申込は締め切りました。聴講は当日まで受け付けます（会員無料／一般1,000円）。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/contact">
-                    <Button variant="outline">
-                      聴講のお問い合わせ
-                      <ArrowRight className="ml-2 size-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
               {/* 国際フェスティバル2029 */}
               <Card>
                 <CardHeader>
@@ -198,6 +184,50 @@ export default function EventsPage() {
                   </Link>
                 </CardContent>
               </Card>
+            </div>
+          </section>
+
+          {/* マスタークラス */}
+          <section id="masterclass" className="scroll-mt-24">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-medium text-navy">
+              <GraduationCap className="size-5 text-gold" />
+              マスタークラス
+            </h2>
+            <div className="space-y-6">
+              {masterclasses.map((event) => (
+                <Card key={event.slug}>
+                  <CardHeader>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="text-xl">{event.title}</CardTitle>
+                      <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                          event.status === "申込受付中" || event.status === "聴講受付中"
+                            ? "bg-gold/20 text-gold"
+                            : event.status === "準備中"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-navy/10 text-navy"
+                        }`}
+                      >
+                        {event.status}
+                      </span>
+                    </div>
+                    <CardDescription>
+                      {event.period}　{event.venue}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-6 text-muted-foreground">{event.description}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <Link href={event.href}>
+                        <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
+                          詳細・お申し込み
+                          <ArrowRight className="ml-2 size-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </section>
         </div>

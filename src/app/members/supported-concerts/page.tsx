@@ -10,6 +10,8 @@ export const metadata = {
 };
 
 export default function SupportedConcertsPage() {
+  const hasConcerts = supportedConcerts.length > 0;
+
   return (
     <div className="font-soft">
       <div className="border-b border-border bg-muted/30 py-12 md:py-16">
@@ -26,19 +28,27 @@ export default function SupportedConcertsPage() {
 
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-4xl space-y-12">
-          <section>
-            <h2 className="mb-4 text-xl font-semibold text-navy">チラシ一覧（スクロール）</h2>
-            <SupportedConcertsMarquee concerts={supportedConcerts} />
-            <div className="mt-8">
-              <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
-              <div className="max-w-md">
-                <SupportedConcertsCalendar concerts={supportedConcerts} />
+          {hasConcerts ? (
+            <section>
+              <h2 className="mb-4 text-xl font-semibold text-navy">チラシ一覧（スクロール）</h2>
+              <SupportedConcertsMarquee concerts={supportedConcerts} />
+              <div className="mt-8">
+                <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
+                <div className="max-w-md">
+                  <SupportedConcertsCalendar concerts={supportedConcerts} />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。
+                </p>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。
+            </section>
+          ) : (
+            <section className="rounded-lg border border-border bg-white px-6 py-12 text-center md:px-10">
+              <p className="text-base text-navy md:text-lg">
+                随時更新してまいります。
               </p>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
 
         <p className="mx-auto mt-12 max-w-4xl text-center text-sm text-muted-foreground">
