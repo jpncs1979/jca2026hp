@@ -1,22 +1,20 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
-import { FileImage } from "lucide-react";
+import { FileImage, FileText } from "lucide-react";
 
 /**
- * 後援演奏会チラシ画像。存在しない場合はプレースホルダーを表示。
- * 画像は public/images/supported-concerts/{slug}.jpg または .png に配置
+ * 後援演奏会チラシ。申請時に添付された画像 / PDF を表示する。
  */
-export function ConcertFlyer({ slug, alt }: { slug: string; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  const [triedPng, setTriedPng] = useState(false);
-
-  const src = triedPng
-    ? `/images/supported-concerts/${slug}.png`
-    : `/images/supported-concerts/${slug}.jpg`;
-
-  if (failed) {
+export function ConcertFlyer({
+  flyerUrl,
+  flyerIsPdf,
+  alt,
+}: {
+  flyerUrl: string | null;
+  flyerIsPdf?: boolean;
+  alt: string;
+}) {
+  if (!flyerUrl) {
     return (
       <div
         className="flex aspect-[3/4] w-full items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/50"
@@ -30,21 +28,27 @@ export function ConcertFlyer({ slug, alt }: { slug: string; alt: string }) {
     );
   }
 
+  if (flyerIsPdf) {
+    return (
+      <a
+        href={flyerUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/40 text-navy shadow-lg transition-colors hover:bg-muted"
+        aria-label={`${alt}のチラシ（PDF）`}
+      >
+        <FileText className="size-12 text-gold" />
+        <span className="text-sm font-medium">チラシ（PDF）を開く</span>
+      </a>
+    );
+  }
+
   return (
-    <Image
-      src={src}
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={flyerUrl}
       alt={alt}
-      width={400}
-      height={533}
       className="size-full rounded-xl object-cover object-top shadow-lg"
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 400px"
-      onError={() => {
-        if (!triedPng) {
-          setTriedPng(true);
-        } else {
-          setFailed(true);
-        }
-      }}
     />
   );
 }

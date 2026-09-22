@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { FileImage } from "lucide-react";
+import { FileImage, FileText } from "lucide-react";
 import {
   type SupportedConcert,
   supportedConcertDetailHref,
@@ -14,34 +13,30 @@ const NORMAL_SPEED = 0.6;
 /** チラシサムネイル（日付順の concerts を前提） */
 function FlyerThumb({ concert }: { concert: SupportedConcert }) {
   const [failed, setFailed] = useState(false);
-  const [triedPng, setTriedPng] = useState(false);
-  const src = triedPng
-    ? `/images/supported-concerts/${concert.slug}.png`
-    : `/images/supported-concerts/${concert.slug}.jpg`;
 
   return (
     <Link
       href={supportedConcertDetailHref(concert.slug)}
       className="group flex shrink-0 flex-col items-center gap-1 transition-transform hover:scale-[1.02]"
-      title={`${concert.dateLabel} ${concert.venue}`}
+      title={`${concert.dateLabel} ${concert.title}`}
     >
       <div className="relative aspect-[3/4] w-[120px] overflow-hidden rounded-lg border border-border bg-muted/50 shadow-md sm:w-[140px]">
-        {failed ? (
+        {!concert.flyerUrl || failed ? (
           <div className="flex size-full items-center justify-center text-muted-foreground">
             <FileImage className="size-8" />
           </div>
+        ) : concert.flyerIsPdf ? (
+          <div className="flex size-full flex-col items-center justify-center gap-1 bg-muted/40 text-navy">
+            <FileText className="size-8 text-gold" />
+            <span className="text-[10px] font-medium">PDF</span>
+          </div>
         ) : (
-          <Image
-            src={src}
-            alt={`${concert.dateLabel} ${concert.venue} チラシ`}
-            width={140}
-            height={187}
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={concert.flyerUrl}
+            alt={`${concert.title} チラシ`}
             className="size-full object-cover object-top"
-            sizes="140px"
-            onError={() => {
-              if (!triedPng) setTriedPng(true);
-              else setFailed(true);
-            }}
+            onError={() => setFailed(true)}
           />
         )}
       </div>

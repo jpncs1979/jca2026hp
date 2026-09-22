@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Ticket } from "lucide-react";
+import { Calendar, Clock, MapPin, Ticket, Users, Music, Building2, Phone } from "lucide-react";
 import type { SupportedConcert } from "@/data/supported-concerts";
 import { ConcertFlyer } from "./ConcertFlyer";
 
@@ -12,12 +12,14 @@ export function SupportedConcertPanel({ concert }: { concert: SupportedConcert }
           <div className="relative w-full shrink-0 md:w-[min(42%,320px)]">
             <div className="relative aspect-[3/4] w-full md:aspect-auto md:h-full md:min-h-[280px]">
               <ConcertFlyer
-                slug={concert.slug}
-                alt={`${concert.dateLabel} ${concert.venue}`}
+                flyerUrl={concert.flyerUrl}
+                flyerIsPdf={concert.flyerIsPdf}
+                alt={`${concert.title} チラシ`}
               />
             </div>
           </div>
           <div className="flex flex-1 flex-col justify-center gap-4 p-6 md:py-6 md:pl-6">
+            <h2 className="text-lg font-semibold text-navy md:text-xl">{concert.title}</h2>
             <div className="space-y-3 text-sm">
               <p className="flex items-center gap-2 font-semibold text-navy">
                 <Calendar className="size-4 shrink-0 text-gold" />
@@ -29,17 +31,31 @@ export function SupportedConcertPanel({ concert }: { concert: SupportedConcert }
               </p>
               <p className="flex items-start gap-2 text-muted-foreground">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-gold" />
-                <span>
-                  {concert.venue}
-                  {concert.address != null && (
-                    <span className="mt-1 block text-xs">{concert.address}</span>
-                  )}
-                </span>
+                <span>{concert.venue}</span>
               </p>
               <p className="flex items-start gap-2 text-muted-foreground">
                 <Ticket className="mt-0.5 size-4 shrink-0 text-gold" />
-                <span>{concert.price}</span>
+                <span className="whitespace-pre-wrap">{concert.price}</span>
               </p>
+              <p className="flex items-start gap-2 text-muted-foreground">
+                <Users className="mt-0.5 size-4 shrink-0 text-gold" />
+                <span className="whitespace-pre-wrap">{concert.performers}</span>
+              </p>
+              <p className="flex items-start gap-2 text-muted-foreground">
+                <Music className="mt-0.5 size-4 shrink-0 text-gold" />
+                <span className="whitespace-pre-wrap">{concert.program}</span>
+              </p>
+              <p className="flex items-start gap-2 text-muted-foreground">
+                <Building2 className="mt-0.5 size-4 shrink-0 text-gold" />
+                <span>主催：{concert.organizer}</span>
+              </p>
+              <p className="flex items-start gap-2 text-muted-foreground">
+                <Phone className="mt-0.5 size-4 shrink-0 text-gold" />
+                <span className="whitespace-pre-wrap">問い合わせ：{concert.contact}</span>
+              </p>
+              {concert.notes ? (
+                <p className="whitespace-pre-wrap text-muted-foreground">{concert.notes}</p>
+              ) : null}
             </div>
             <p className="text-xs text-muted-foreground">掲載日：{concert.addedDate}</p>
           </div>

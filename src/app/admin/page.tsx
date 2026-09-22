@@ -2,11 +2,12 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Trophy, ArrowRight, Megaphone } from "lucide-react";
+import { Users, Trophy, ArrowRight, Megaphone, Music2 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   let totalMembers = 0;
   let young2026Count = 0;
+  let pendingPatronage = 0;
 
   try {
     const admin = createAdminClient();
@@ -17,6 +18,11 @@ export default async function AdminDashboardPage() {
       const { count } = await admin.from("applications").select("id", { count: "exact", head: true }).eq("competition_id", compId);
       young2026Count = count ?? 0;
     }
+    const patronageRes = await admin
+      .from("patronage_concerts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    pendingPatronage = patronageRes.count ?? 0;
   } catch {
     // テーブル未作成時
   }
@@ -71,6 +77,13 @@ export default async function AdminDashboardPage() {
           <Button variant="outline">
             <Megaphone className="mr-1 size-4" />
             お知らせ管理へ
+            <ArrowRight className="ml-2 size-4" />
+          </Button>
+        </Link>
+        <Link href="/admin/patronage-concerts">
+          <Button variant="outline">
+            <Music2 className="mr-1 size-4" />
+            後援演奏会{pendingPatronage > 0 ? `（未承認 ${pendingPatronage}）` : ""}
             <ArrowRight className="ml-2 size-4" />
           </Button>
         </Link>

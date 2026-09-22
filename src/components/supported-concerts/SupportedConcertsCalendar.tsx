@@ -11,7 +11,7 @@ import {
 /** 公演がある月の範囲を取得 */
 function getConcertMonthRange(concerts: SupportedConcert[]) {
   if (concerts.length === 0) return { minYear: 2026, minMonth: 1, maxYear: 2026, maxMonth: 12 };
-  const dates = concerts.map((c) => c.date);
+  const dates = concerts.map((c) => c.date).sort();
   const min = dates[0]!;
   const max = dates[dates.length - 1]!;
   const [minYear, minMonth] = min.split("-").map(Number);
@@ -33,10 +33,15 @@ export function SupportedConcertsCalendar({
   const [currentYear, setCurrentYear] = useState(minYear);
   const [currentMonth, setCurrentMonth] = useState(minMonth);
 
-  const concertByDate = useMemo(
-    () => new Map(concerts.map((c) => [c.date, c])),
-    [concerts]
-  );
+  const concertsByDate = useMemo(() => {
+    const map = new Map<string, SupportedConcert[]>();
+    for (const c of concerts) {
+      const list = map.get(c.date) ?? [];
+      list.push(c);
+      map.set(c.date, list);
+    }
+    return map;
+  }, [concerts]);
 
   const goPrev = () => {
     if (currentMonth === 1) {
@@ -101,15 +106,16 @@ export function SupportedConcertsCalendar({
         ))}
         {days.map((day) => {
           const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const concert = concertByDate.get(dateStr);
-          const isConcert = !!concert;
+          const dayConcerts = concertsByDate.get(dateStr) ?? [];
+          const concert = dayConcerts[0];
+          const isConcert = dayConcerts.length > 0;
           return (
             <span key={day} className="min-h-[1.75rem]">
-              {isConcert ? (
+              {isConcert && concert ? (
                 <Link
-                  href={supportedConcertDetailHref(concert!.slug)}
+                  href={supportedConcertDetailHref(concert.slug)}
                   className="flex size-7 items-center justify-center rounded-full bg-gold/20 font-medium text-gold transition-colors hover:bg-gold/30 hover:text-gold"
-                  title={`${concert!.dateLabel} ${concert!.venue}`}
+                  title={dayConcerts.map((c) => `${c.dateLabel} ${c.title}`).join(" / ")}
                 >
                   {day}
                 </Link>

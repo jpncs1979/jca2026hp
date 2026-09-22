@@ -46,6 +46,7 @@ export default function PatronageRequestPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
+  const [flyerError, setFlyerError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,6 +70,11 @@ export default function PatronageRequestPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
+    if (!flyerFile || flyerFile.size <= 0) {
+      setFlyerError("チラシデータを添付してください");
+      return;
+    }
+    setFlyerError(null);
     setSubmitting(true);
     setErrorMessage(null);
     try {
@@ -76,9 +82,7 @@ export default function PatronageRequestPage() {
       Object.entries(values).forEach(([k, v]) => {
         if (v != null && v !== "") formData.append(k, String(v));
       });
-      if (flyerFile && flyerFile.size > 0) {
-        formData.append("flyer", flyerFile);
-      }
+      formData.append("flyer", flyerFile);
       const res = await fetch("/api/membership/patronage-request", {
         method: "POST",
         body: formData,
@@ -113,7 +117,11 @@ export default function PatronageRequestPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground">
-                  後援依頼を送信しました。事務局にて確認のうえ、ご連絡いたします。
+                  後援依頼を送信しました。事務局が承認すると、演奏会情報とチラシが
+                  <Link href="/members/supported-concerts" className="mx-1 text-gold underline-offset-2 hover:underline">
+                    後援演奏会のご案内
+                  </Link>
+                  に掲載されます。承諾書は別途お送りします。
                 </p>
               </CardContent>
             </Card>
@@ -130,6 +138,7 @@ export default function PatronageRequestPage() {
           <h1 className="text-3xl font-bold text-navy md:text-4xl">後援依頼の申し込み</h1>
           <p className="mt-2 text-muted-foreground">
             後援演奏会の後援をご希望の方は、下記フォームからお申し込みください。
+            事務局が承認すると、入力内容とチラシが後援演奏会のご案内ページに掲載されます。
           </p>
           <p className="mt-1 text-sm text-muted-foreground">（{REQUIRED_MARK}は必須項目）</p>
         </div>
@@ -209,8 +218,11 @@ export default function PatronageRequestPage() {
                       <FormItem>
                         <FormLabel>{REQUIRED_MARK} 期日</FormLabel>
                         <FormControl>
-                          <Input placeholder="複数ある場合は初日を記載。それ以降は備考欄に" {...field} />
+                          <Input type="date" {...field} />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          複数日にわたる場合は初日を選択し、2日目以降は備考欄へご記入ください。
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -222,7 +234,7 @@ export default function PatronageRequestPage() {
                       <FormItem>
                         <FormLabel>{REQUIRED_MARK} 開場時刻</FormLabel>
                         <FormControl>
-                          <Input placeholder="例：18:00" {...field} />
+                          <Input type="time" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -235,7 +247,7 @@ export default function PatronageRequestPage() {
                       <FormItem>
                         <FormLabel>{REQUIRED_MARK} 開演時刻</FormLabel>
                         <FormControl>
-                          <Input placeholder="例：18:30" {...field} />
+                          <Input type="time" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -351,13 +363,18 @@ export default function PatronageRequestPage() {
                   />
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium">チラシデータの添付</label>
+                    <label className="mb-2 block text-sm font-medium">
+                      {REQUIRED_MARK} チラシデータの添付
+                    </label>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                         className="text-sm text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-gold file:px-3 file:py-1.5 file:text-gold-foreground file:hover:bg-gold-muted"
-                        onChange={(e) => setFlyerFile(e.target.files?.[0] ?? null)}
+                        onChange={(e) => {
+                          setFlyerFile(e.target.files?.[0] ?? null);
+                          setFlyerError(null);
+                        }}
                       />
                       {flyerFile && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -366,7 +383,10 @@ export default function PatronageRequestPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">PDF・画像・Wordなど（任意）</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      PDF または JPEG / PNG（必須・4MB 以下）。承認後、案内ページにそのまま掲載されます。
+                    </p>
+                    {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>
 
                   <div className="flex gap-4 pt-4">
