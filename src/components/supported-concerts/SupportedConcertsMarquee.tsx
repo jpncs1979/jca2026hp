@@ -59,6 +59,7 @@ export function SupportedConcertsMarquee({
 
   const [scrollOffset, setScrollOffset] = useState(0);
   const [setWidth, setSetWidth] = useState(0);
+  const [shouldLoop, setShouldLoop] = useState(false);
 
   const rafRef = useRef<number>(0);
   const isDraggingRef = useRef(false);
@@ -67,20 +68,28 @@ export function SupportedConcertsMarquee({
   const clickTargetRef = useRef<string | null>(null); // 押し始めたリンクの href（クリック時のみ遷移用）
   scrollOffsetRef.current = scrollOffset;
 
-  // 1セット分の幅を計測
+  // 1セット分の幅を計測。画面に収まる場合は複製せず、同じチラシが2枚見えないようにする
   useEffect(() => {
     const el = firstSetRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setSetWidth(el.offsetWidth);
-    });
+    const container = containerRef.current;
+    if (!el || !container) return;
+    const update = () => {
+      const width = el.offsetWidth;
+      setSetWidth(width);
+      const fits = width <= container.clientWidth;
+      setShouldLoop(!fits);
+      if (fits) setScrollOffset(0);
+    };
+    const ro = new ResizeObserver(update);
     ro.observe(el);
-    setSetWidth(el.offsetWidth);
+    ro.observe(container);
+    update();
     return () => ro.disconnect();
   }, [concerts]);
 
-  // アニメーションループ（ドラッグ中は止める）
+  // はみ出すときだけ自動スクロール（ドラッグ中は止める）
   useEffect(() => {
+    if (!shouldLoop || setWidth <= 0) return;
     let lastTime = performance.now();
     const tick = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.2);
@@ -91,17 +100,15 @@ export function SupportedConcertsMarquee({
       }
       setScrollOffset((prev) => {
         let next = prev + NORMAL_SPEED * dt * 60;
-        if (setWidth > 0) {
-          while (next >= setWidth) next -= setWidth;
-          while (next < 0) next += setWidth;
-        }
+        while (next >= setWidth) next -= setWidth;
+        while (next < 0) next += setWidth;
         return next;
       });
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [setWidth]);
+  }, [setWidth, shouldLoop]);
 
   const touchStartRef = useRef<{ x: number } | null>(null);
 
@@ -187,20 +194,22 @@ export function SupportedConcertsMarquee({
 
   return (
     <div className="relative -mx-4 py-2 md:-mx-6">
-      <p className="mb-2 px-4 text-xs text-muted-foreground md:px-6">
-        ドラッグまたはスワイプでスクロール、クリックで公演詳細へ
-      </p>
+      {shouldLoop ? (
+        <p className="mb-2 px-4 text-xs text-muted-foreground md:px-6">
+          ドラッグまたはスワイプでスクロール、クリックで公演詳細へ
+        </p>
+      ) : null}
       <div
         ref={containerRef}
-        className="relative cursor-grab overflow-hidden touch-pan-y active:cursor-grabbing"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUpOrLeave}
-        onPointerLeave={onPointerUpOrLeave}
-        onClickCapture={onContainerClick}
+        className={`relative overflow-hidden touch-pan-y ${shouldLoop ? "cursor-grab active:cursor-grabbing" : ""}`}
+        onTouchStart={shouldLoop ? onTouchStart : undefined}
+        onTouchMove={shouldLoop ? onTouchMove : undefined}
+        onTouchEnd={shouldLoop ? onTouchEnd : undefined}
+        onPointerDown={shouldLoop ? onPointerDown : undefined}
+        onPointerMove={shouldLoop ? onPointerMove : undefined}
+        onPointerUp={shouldLoop ? onPointerUpOrLeave : undefined}
+        onPointerLeave={shouldLoop ? onPointerUpOrLeave : undefined}
+        onClickCapture={shouldLoop ? onContainerClick : undefined}
       >
         <div
           ref={trackRef}
@@ -212,11 +221,13 @@ export function SupportedConcertsMarquee({
               <FlyerThumb key={concert.slug} concert={concert} />
             ))}
           </div>
-          <div className="flex shrink-0 gap-4">
-            {concerts.map((concert) => (
-              <FlyerThumb key={`${concert.slug}-dup`} concert={concert} />
-            ))}
-          </div>
+          {shouldLoop ? (
+            <div className="flex shrink-0 gap-4" aria-hidden>
+              {concerts.map((concert) => (
+                <FlyerThumb key={`${concert.slug}-dup`} concert={concert} />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
