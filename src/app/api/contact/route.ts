@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
+import { clientIpFrom, guardPublicForm, SPAM_MESSAGES_JA } from "@/lib/form-spam";
 
 const MAX_BODY = 15_000;
 
@@ -37,6 +38,22 @@ export async function POST(request: Request) {
         { error: "問い合わせ内容が長すぎます。" },
         { status: 400 }
       );
+    }
+
+    const spam = await guardPublicForm({
+      honeypot: body.company_website,
+      startedAt: body.startedAt,
+      message,
+      turnstileToken: body.turnstileToken,
+      remoteIp: clientIpFrom(request),
+      messages: SPAM_MESSAGES_JA,
+    });
+    if (!spam.ok) {
+      if (spam.silent) {
+        console.info("[お問い合わせ] spam dropped:", spam.reason);
+        return NextResponse.json({ ok: true });
+      }
+      return NextResponse.json({ error: spam.error }, { status: 400 });
     }
 
     const emailUser = process.env.EMAIL_USER;

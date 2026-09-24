@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { TurnstileField, turnstileSiteKey } from "@/components/TurnstileField";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,6 +33,11 @@ export function ContactForm() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileEpoch, setTurnstileEpoch] = useState(0);
+  const startedAtRef = useRef(Date.now());
+  const honeypotRef = useRef<HTMLInputElement>(null);
+  const turnstileEnabled = Boolean(turnstileSiteKey());
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -42,9 +48,19 @@ export function ContactForm() {
     },
   });
 
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    setTurnstileEpoch((n) => n + 1);
+  };
+
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     setErrorMessage(null);
+    if (turnstileEnabled && !turnstileToken) {
+      setErrorMessage("確認が終わっていません。少し待ってからもう一度送信してください。");
+      setSubmitting(false);
+      return;
+    }
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -53,10 +69,14 @@ export function ContactForm() {
           name: values.name,
           email: values.email,
           message: values.message,
+          company_website: honeypotRef.current?.value ?? "",
+          startedAt: startedAtRef.current,
+          turnstileToken,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        resetTurnstile();
         setErrorMessage(
           (data as { error?: string }).error ??
             "送信に失敗しました。しばらくしてからお試しください。"
@@ -84,7 +104,11 @@ export function ContactForm() {
             type="button"
             variant="outline"
             className="mt-4"
-            onClick={() => setSuccess(false)}
+            onClick={() => {
+              startedAtRef.current = Date.now();
+              resetTurnstile();
+              setSuccess(false);
+            }}
           >
             続けて送信する
           </Button>
@@ -97,7 +121,7 @@ export function ContactForm() {
     <Card>
       <CardContent className="pt-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -137,6 +161,32 @@ export function ContactForm() {
                 </FormItem>
               )}
             />
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                overflow: "hidden",
+                clip: "rect(0, 0, 0, 0)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            >
+              <label htmlFor="company_website">Company website</label>
+              <input
+                ref={honeypotRef}
+                id="company_website"
+                name="company_website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                defaultValue=""
+              />
+            </div>
+            <TurnstileField key={turnstileEpoch} onToken={setTurnstileToken} language="ja" />
             {errorMessage ? (
               <div
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
