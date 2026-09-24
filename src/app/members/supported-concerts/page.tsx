@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Music2 } from "lucide-react";
+import { hasImageFlyer } from "@/data/supported-concerts";
 import { getApprovedUpcomingConcerts } from "@/lib/patronage-concerts.server";
 import { SupportedConcertsMarquee } from "@/components/supported-concerts/SupportedConcertsMarquee";
 import { SupportedConcertsCalendar } from "@/components/supported-concerts/SupportedConcertsCalendar";
@@ -15,6 +16,7 @@ export const metadata = {
 export default async function SupportedConcertsPage() {
   const concerts = await getApprovedUpcomingConcerts();
   const hasConcerts = concerts.length > 0;
+  const flyerConcerts = concerts.filter(hasImageFlyer);
 
   return (
     <div className="font-soft">
@@ -34,15 +36,21 @@ export default async function SupportedConcertsPage() {
         <div className="mx-auto max-w-4xl space-y-12">
           {hasConcerts ? (
             <section>
-              <h2 className="mb-4 text-xl font-semibold text-navy">チラシ一覧（スクロール）</h2>
-              <SupportedConcertsMarquee concerts={concerts} />
-              <div className="mt-8">
+              {flyerConcerts.length > 0 ? (
+                <>
+                  <h2 className="mb-4 text-xl font-semibold text-navy">チラシ一覧（スクロール）</h2>
+                  <SupportedConcertsMarquee concerts={flyerConcerts} />
+                </>
+              ) : null}
+              <div className={flyerConcerts.length > 0 ? "mt-8" : undefined}>
                 <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
                 <div className="max-w-md">
                   <SupportedConcertsCalendar concerts={concerts} />
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。
+                  {flyerConcerts.length > 0
+                    ? "チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。"
+                    : "カレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。"}
                 </p>
               </div>
             </section>

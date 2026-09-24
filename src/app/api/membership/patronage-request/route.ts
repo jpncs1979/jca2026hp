@@ -7,8 +7,9 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { resolvePublicSiteOrigin } from "@/lib/site-public-url";
 import {
   PATRONAGE_FLYER_BUCKET,
-  PATRONAGE_FLYER_MAX_BYTES,
+  flyerContentType,
   flyerExtension,
+  flyerFileError,
 } from "@/lib/patronage-concerts";
 
 export const runtime = "nodejs";
@@ -85,46 +86,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const flyer = formData.get("flyer") as File | null;
-    if (!flyer || flyer.size <= 0 || !flyer.name) {
-      return NextResponse.json(
-        { error: "チラシデータを添付してください。" },
-        { status: 400 }
-      );
+    const flyerRaw = formData.get("flyer");
+    const flyer =
+      flyerRaw instanceof File && flyerRaw.size > 0 && flyerRaw.name ? flyerRaw : null;
+    if (flyerRaw instanceof File && flyerRaw.name && !flyer) {
+      return NextResponse.json({ error: "チラシファイルが空です。" }, { status: 400 });
     }
-    if (flyer.size > PATRONAGE_FLYER_MAX_BYTES) {
-      return NextResponse.json(
-        { error: "チラシは 4MB 以下の PDF または画像にしてください。" },
-        { status: 400 }
-      );
-    }
-
-    const ext = flyerExtension(flyer.name, flyer.type);
-    if (!ext) {
-      return NextResponse.json(
-        { error: "チラシは PDF・JPEG・PNG のいずれかを添付してください。" },
-        { status: 400 }
-      );
+    if (flyer) {
+      const flyerErr = flyerFileError(flyer);
+      if (flyerErr) {
+        return NextResponse.json({ error: flyerErr }, { status: 400 });
+      }
     }
 
     const admin = createAdminClient();
     const id = randomUUID();
     const slug = `${body.event_date}-${id.slice(0, 8)}`;
-    const flyerPath = `${id}/${randomUUID()}.${ext}`;
-    const flyerBuffer = Buffer.from(await flyer.arrayBuffer());
-    const contentType =
-      flyer.type ||
-      (ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : "image/jpeg");
+    let flyerPath: string | null = null;
+    let flyerBuffer: Buffer | null = null;
+    let contentType: string | null = null;
 
-    const { error: upErr } = await admin.storage
-      .from(PATRONAGE_FLYER_BUCKET)
-      .upload(flyerPath, flyerBuffer, { contentType, upsert: false });
-    if (upErr) {
-      console.error("[後援依頼] チラシアップロード", upErr);
-      return NextResponse.json(
-        { error: "チラシの保存に失敗しました。しばらくしてからお試しください。" },
-        { status: 500 }
-      );
+    if (flyer) {
+      const ext = flyerExtension(flyer.name, flyer.type)!;
+      flyerPath = `${id}/${randomUUID()}.${ext}`;
+      flyerBuffer = Buffer.from(await flyer.arrayBuffer());
+      contentType = flyerContentType(ext, flyer.type);
+
+      const { error: upErr } = await admin.storage
+        .from(PATRONAGE_FLYER_BUCKET)
+        .upload(flyerPath, flyerBuffer, { contentType, upsert: false });
+      if (upErr) {
+        console.error("[後援依頼] チラシアップロード", upErr);
+        return NextResponse.json(
+          { error: "チラシの保存に失敗しました。しばらくしてからお試しください。" },
+          { status: 500 }
+        );
+      }
     }
 
     const { error: insErr } = await admin.from("patronage_concerts").insert({
@@ -147,12 +144,14 @@ export async function POST(request: Request) {
       notes: body.notes || null,
       flyer_path: flyerPath,
       flyer_content_type: contentType,
-      flyer_filename: flyer.name,
+      flyer_filename: flyer?.name ?? null,
       status: "pending",
     });
 
     if (insErr) {
-      await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove([flyerPath]);
+      if (flyerPath) {
+        await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove([flyerPath]);
+      }
       console.error("[後援依頼] DB保存", insErr);
       return NextResponse.json(
         { error: "送信に失敗しました。しばらくしてからお試しください。" },
@@ -183,7 +182,11 @@ export async function POST(request: Request) {
   <table style="border-collapse:collapse;">
     ${htmlRows}
   </table>
-  <p>チラシ: ${escapeHtml(flyer.name)}</p>
+  <p>チラシ: ${
+    flyer
+      ? escapeHtml(flyer.name)
+      : "未添付。できあがり次第、申請者から事務局へ送付されます。管理画面から登録してください。"
+  }</p>
   <hr />
   <p style="color:#666;font-size:12px;">一般社団法人 日本クラリネット協会 後援依頼フォーム</p>
 </body>
@@ -203,7 +206,9 @@ export async function POST(request: Request) {
           replyTo: email || undefined,
           subject: `【後援依頼】${(body.concert_title || "演奏会").slice(0, 40)} - ${name}`,
           html,
-          attachments: [{ filename: flyer.name, content: flyerBuffer }],
+          ...(flyer && flyerBuffer
+            ? { attachments: [{ filename: flyer.name, content: flyerBuffer }] }
+            : {}),
         });
       } catch (mailErr) {
         console.error("[後援依頼] メール送信エラー（申請自体は保存済み）:", mailErr);

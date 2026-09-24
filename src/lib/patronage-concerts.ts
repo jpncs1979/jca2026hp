@@ -53,8 +53,32 @@ export function todayInTokyo(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
 }
 
-export function patronageFlyerHref(id: string): string {
-  return `/api/patronage-concerts/${id}/flyer`;
+export function patronageFlyerHref(id: string, cacheKey?: string | null): string {
+  const base = `/api/patronage-concerts/${id}/flyer`;
+  if (!cacheKey) return base;
+  return `${base}?v=${encodeURIComponent(cacheKey)}`;
+}
+
+/** 添付ファイルがあるときだけ呼ぶ。問題なければ null。 */
+export function flyerFileError(file: { name: string; size: number; type: string }): string | null {
+  if (!file.name || file.size <= 0) {
+    return "チラシファイルが空です。";
+  }
+  if (file.size > PATRONAGE_FLYER_MAX_BYTES) {
+    return "チラシは 4MB 以下の PDF または画像にしてください。";
+  }
+  if (!flyerExtension(file.name, file.type)) {
+    return "チラシは PDF・JPEG・PNG のいずれかを添付してください。";
+  }
+  return null;
+}
+
+export function flyerContentType(ext: string, fileType: string): string {
+  if (fileType) return fileType;
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
 }
 
 export function isPdfFlyer(contentType: string | null, filename: string | null): boolean {

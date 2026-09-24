@@ -32,3 +32,10 @@ export interface SupportedConcert {
   flyerUrl: string | null;
   flyerIsPdf: boolean;
 }
+
+/** 流れるチラシ帯に出すのは、画像ファイルがある公演だけ */
+export function hasImageFlyer(
+  concert: Pick<SupportedConcert, "flyerUrl" | "flyerIsPdf">
+): boolean {
+  return Boolean(concert.flyerUrl) && !concert.flyerIsPdf;
+}

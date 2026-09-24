@@ -25,7 +25,7 @@ export function toSupportedConcert(row: PatronageConcertRow): SupportedConcert {
     contact: row.contact,
     notes: row.notes?.trim() || undefined,
     addedDate: (row.approved_at ?? row.created_at).slice(0, 10),
-    flyerUrl: row.flyer_path ? patronageFlyerHref(row.id) : null,
+    flyerUrl: row.flyer_path ? patronageFlyerHref(row.id, row.updated_at) : null,
     flyerIsPdf: isPdfFlyer(row.flyer_content_type, row.flyer_filename),
   };
 }

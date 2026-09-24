@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUp } from "lucide-react";
+import { flyerFileError } from "@/lib/patronage-concerts";
 
 const formSchema = z.object({
   name: z.string().min(1, "お名前を入力してください"),
@@ -47,6 +48,7 @@ export default function PatronageRequestPage() {
   const [success, setSuccess] = useState(false);
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const [flyerError, setFlyerError] = useState<string | null>(null);
+  const [submittedWithoutFlyer, setSubmittedWithoutFlyer] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -70,9 +72,12 @@ export default function PatronageRequestPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    if (!flyerFile || flyerFile.size <= 0) {
-      setFlyerError("チラシデータを添付してください");
-      return;
+    if (flyerFile) {
+      const err = flyerFileError(flyerFile);
+      if (err) {
+        setFlyerError(err);
+        return;
+      }
     }
     setFlyerError(null);
     setSubmitting(true);
@@ -82,7 +87,7 @@ export default function PatronageRequestPage() {
       Object.entries(values).forEach(([k, v]) => {
         if (v != null && v !== "") formData.append(k, String(v));
       });
-      formData.append("flyer", flyerFile);
+      if (flyerFile) formData.append("flyer", flyerFile);
       const res = await fetch("/api/membership/patronage-request", {
         method: "POST",
         body: formData,
@@ -92,6 +97,7 @@ export default function PatronageRequestPage() {
         setErrorMessage(data.error ?? "送信に失敗しました。しばらくしてからお試しください。");
         return;
       }
+      setSubmittedWithoutFlyer(!flyerFile);
       setSuccess(true);
     } catch (e) {
       console.error(e);
@@ -117,11 +123,15 @@ export default function PatronageRequestPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground">
-                  後援依頼を送信しました。事務局が承認すると、演奏会情報とチラシが
+                  後援依頼を送信しました。事務局が承認すると、演奏会情報が
                   <Link href="/members/supported-concerts" className="mx-1 text-gold underline-offset-2 hover:underline">
                     後援演奏会のご案内
                   </Link>
-                  に掲載されます。承諾書は別途お送りします。
+                  に掲載されます。
+                  {submittedWithoutFlyer
+                    ? "チラシはできあがり次第、事務局へお送りください。届き次第、案内ページに追加します。"
+                    : "添付いただいたチラシも、承認後に案内ページへ掲載します。"}
+                  承諾書は別途お送りします。
                 </p>
               </CardContent>
             </Card>
@@ -138,7 +148,8 @@ export default function PatronageRequestPage() {
           <h1 className="text-3xl font-bold text-navy md:text-4xl">後援依頼の申し込み</h1>
           <p className="mt-2 text-muted-foreground">
             後援演奏会の後援をご希望の方は、下記フォームからお申し込みください。
-            事務局が承認すると、入力内容とチラシが後援演奏会のご案内ページに掲載されます。
+            事務局が承認すると、演奏会情報が後援演奏会のご案内ページに掲載されます。
+            チラシは申請時にあれば一緒に、まだできていなければ後から事務局へお送りください。
           </p>
           <p className="mt-1 text-sm text-muted-foreground">（{REQUIRED_MARK}は必須項目）</p>
         </div>
@@ -364,7 +375,7 @@ export default function PatronageRequestPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium">
-                      {REQUIRED_MARK} チラシデータの添付
+                      チラシデータ（任意）
                     </label>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -384,7 +395,8 @@ export default function PatronageRequestPage() {
                       )}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      PDF または JPEG / PNG（必須・4MB 以下）。承認後、案内ページにそのまま掲載されます。
+                      まだできていない場合は、空欄のまま送信できます。できあがり次第、事務局へお送りください。
+                      PDF または JPEG / PNG（4MB 以下）。画像のチラシは、承認後に案内ページの流れる一覧へ公演日順で掲載されます。
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>

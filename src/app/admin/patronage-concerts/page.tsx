@@ -19,8 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Check, X, EyeOff, RotateCcw, Trash2 } from "lucide-react";
-import { patronageFlyerHref, type PatronageConcertRow } from "@/lib/patronage-concerts";
+import { Loader2, Check, X, EyeOff, RotateCcw, Trash2, FileUp } from "lucide-react";
+import {
+  flyerFileError,
+  patronageFlyerHref,
+  type PatronageConcertRow,
+} from "@/lib/patronage-concerts";
 
 const STATUS_LABEL: Record<PatronageConcertRow["status"], string> = {
   pending: "未承認",
@@ -46,6 +50,8 @@ export default function AdminPatronageConcertsPage() {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [detail, setDetail] = useState<PatronageConcertRow | null>(null);
+  const [flyerDraft, setFlyerDraft] = useState<File | null>(null);
+  const [flyerMessage, setFlyerMessage] = useState<string | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -59,10 +65,48 @@ export default function AdminPatronageConcertsPage() {
     void fetchItems();
   }, []);
 
+  const openDetail = (item: PatronageConcertRow) => {
+    setFlyerDraft(null);
+    setFlyerMessage(null);
+    setDetail(item);
+  };
+
+  const uploadFlyer = async () => {
+    if (!detail || !flyerDraft) return;
+    const err = flyerFileError(flyerDraft);
+    if (err) {
+      setFlyerMessage(err);
+      return;
+    }
+    setActingId(detail.id);
+    setFlyerMessage(null);
+    const body = new FormData();
+    body.append("flyer", flyerDraft);
+    const res = await fetch(`/api/admin/patronage-concerts/${detail.id}/flyer`, {
+      method: "POST",
+      credentials: "include",
+      body,
+    });
+    setActingId(null);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setFlyerMessage((data as { error?: string }).error ?? "チラシの登録に失敗しました");
+      return;
+    }
+    const row = (data as { item: PatronageConcertRow }).item;
+    setDetail(row);
+    setItems((prev) => prev.map((item) => (item.id === row.id ? row : item)));
+    setFlyerDraft(null);
+    setFlyerMessage("チラシを登録しました。掲載中の公演は案内ページに反映されます。");
+  };
+
   const setStatus = async (id: string, status: PatronageConcertRow["status"]) => {
+    const target = items.find((item) => item.id === id) ?? (detail?.id === id ? detail : null);
     const confirmMsg =
       status === "approved"
-        ? "この申請を承認し、後援演奏会のご案内ページに掲載します。よろしいですか？"
+        ? target && !target.flyer_path
+          ? "チラシはまだ届いていません。演奏会情報だけを掲載します。よろしいですか？"
+          : "この申請を承認し、後援演奏会のご案内ページに掲載します。よろしいですか？"
         : status === "rejected"
           ? "この申請を却下します。よろしいですか？"
           : status === "unpublished"
@@ -141,6 +185,7 @@ export default function AdminPatronageConcertsPage() {
                 <TableHead className="whitespace-nowrap">公演日</TableHead>
                 <TableHead>表題</TableHead>
                 <TableHead>申請者</TableHead>
+                <TableHead className="w-20 text-center">チラシ</TableHead>
                 <TableHead className="w-20 text-center">状態</TableHead>
                 <TableHead className="w-52 text-right">操作</TableHead>
               </TableRow>
@@ -158,13 +203,21 @@ export default function AdminPatronageConcertsPage() {
                     <button
                       type="button"
                       className="text-left hover:text-gold hover:underline"
-                      onClick={() => setDetail(item)}
+                      onClick={() => openDetail(item)}
                     >
                       {item.concert_title}
                     </button>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">
                     {item.applicant_name}
+                  </TableCell>
+                  <TableCell className="text-center text-xs">
+                    {!item.flyer_path
+                      ? "未着"
+                      : item.flyer_content_type?.includes("pdf") ||
+                          item.flyer_filename?.toLowerCase().endsWith(".pdf")
+                        ? "PDF"
+                        : "画像"}
                   </TableCell>
                   <TableCell className="text-center">
                     <span
@@ -238,14 +291,23 @@ export default function AdminPatronageConcertsPage() {
         </p>
       )}
 
-      <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
+      <Dialog
+        open={!!detail}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetail(null);
+            setFlyerDraft(null);
+            setFlyerMessage(null);
+          }
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           {detail && (
             <>
               <DialogHeader>
                 <DialogTitle>{detail.concert_title}</DialogTitle>
                 <DialogDescription>
-                  申請内容の確認です。承認すると案内ページに掲載されます。
+                  申請内容の確認です。チラシが未着でも承認できます。届いたファイルはこの画面から登録してください。
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-2 md:grid-cols-[180px_1fr]">
@@ -254,7 +316,7 @@ export default function AdminPatronageConcertsPage() {
                     detail.flyer_content_type?.includes("pdf") ||
                     detail.flyer_filename?.toLowerCase().endsWith(".pdf") ? (
                       <a
-                        href={patronageFlyerHref(detail.id)}
+                        href={patronageFlyerHref(detail.id, detail.updated_at)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block rounded-lg border border-border bg-muted/40 px-3 py-8 text-center text-sm text-navy hover:bg-muted"
@@ -264,14 +326,52 @@ export default function AdminPatronageConcertsPage() {
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={patronageFlyerHref(detail.id)}
+                        key={detail.updated_at}
+                        src={patronageFlyerHref(detail.id, detail.updated_at)}
                         alt="チラシ"
                         className="w-full rounded-lg border border-border object-cover object-top"
                       />
                     )
                   ) : (
-                    <p className="text-sm text-muted-foreground">チラシなし</p>
+                    <p className="rounded-lg border border-dashed border-border px-3 py-8 text-center text-sm text-muted-foreground">
+                      チラシ未着
+                    </p>
                   )}
+                  <div className="mt-3 space-y-2">
+                    <label className="block text-xs font-medium text-navy">
+                      {detail.flyer_path ? "チラシを差し替える" : "届いたチラシを登録する"}
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                      className="w-full text-xs text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-gold file:px-2 file:py-1 file:text-gold-foreground"
+                      onChange={(e) => {
+                        setFlyerDraft(e.target.files?.[0] ?? null);
+                        setFlyerMessage(null);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                      disabled={!flyerDraft || actingId === detail.id}
+                      onClick={() => void uploadFlyer()}
+                    >
+                      {actingId === detail.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <FileUp className="size-4" />
+                      )}
+                      登録
+                    </Button>
+                    {flyerMessage ? (
+                      <p className="text-xs text-muted-foreground">{flyerMessage}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        PDF・JPEG・PNG（4MB 以下）。画像は流れるチラシに公演日順で入ります。
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <dl className="grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-2 text-sm">
                   <dt className="text-muted-foreground">状態</dt>
