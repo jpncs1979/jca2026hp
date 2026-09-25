@@ -29,7 +29,6 @@ const FIELDS: { key: string; label: string; required?: boolean }[] = [
   { key: "program", label: "曲目", required: true },
   { key: "organizer", label: "主催", required: true },
   { key: "contact", label: "問い合わせ先（案内ページに掲載）", required: true },
-  { key: "consent_destination", label: "承諾書の送り先", required: true },
   { key: "notes", label: "備考（案内ページには掲載しません）" },
 ];
 
@@ -96,7 +95,6 @@ export async function POST(request: Request) {
       body.program,
       body.organizer,
       body.contact,
-      body.consent_destination,
       body.notes,
     ].filter((v): v is string => Boolean(v));
     const randomField = textForSpam.find((v) => looksLikeRandomToken(v));
@@ -170,7 +168,7 @@ export async function POST(request: Request) {
       program: body.program,
       organizer: body.organizer,
       contact: body.contact,
-      consent_destination: body.consent_destination,
+      consent_destination: "",
       notes: body.notes || null,
       flyer_path: flyerPath,
       flyer_content_type: contentType,

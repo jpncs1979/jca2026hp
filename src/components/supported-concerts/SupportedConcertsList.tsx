@@ -33,7 +33,7 @@ export function SupportedConcertsList({ concerts }: { concerts: SupportedConcert
             <Row label="出演者" value={concert.performers} />
             <Row label="曲目" value={concert.program} />
             <Row label="主催" value={concert.organizer} />
-            <Row label="問い合わせ" value={concert.contact} />
+            {concert.contact.trim() ? <Row label="問い合わせ" value={concert.contact} /> : null}
           </div>
         </li>
       ))}

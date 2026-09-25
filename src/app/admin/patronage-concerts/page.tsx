@@ -163,7 +163,7 @@ export default function AdminPatronageConcertsPage() {
           >
             後援演奏会のご案内
           </Link>
-          にそのまま掲載されます。承諾書の発送は別途行ってください。
+          にそのまま掲載されます。
         </p>
         {pendingCount > 0 && (
           <p className="mt-2 text-sm font-medium text-navy">
@@ -407,8 +407,6 @@ export default function AdminPatronageConcertsPage() {
                     <br />
                     {detail.applicant_email}
                   </dd>
-                  <dt className="text-muted-foreground">承諾書送先</dt>
-                  <dd className="whitespace-pre-wrap">{detail.consent_destination}</dd>
                   {detail.notes ? (
                     <>
                       <dt className="text-muted-foreground">備考（案内ページには掲載しません）</dt>

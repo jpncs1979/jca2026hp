@@ -49,10 +49,12 @@ export function SupportedConcertPanel({ concert }: { concert: SupportedConcert }
                 <Building2 className="mt-0.5 size-4 shrink-0 text-gold" />
                 <span>主催：{concert.organizer}</span>
               </p>
-              <p className="flex items-start gap-2 text-muted-foreground">
-                <Phone className="mt-0.5 size-4 shrink-0 text-gold" />
-                <span className="whitespace-pre-wrap">問い合わせ：{concert.contact}</span>
-              </p>
+              {concert.contact.trim() ? (
+                <p className="flex items-start gap-2 text-muted-foreground">
+                  <Phone className="mt-0.5 size-4 shrink-0 text-gold" />
+                  <span className="whitespace-pre-wrap">問い合わせ：{concert.contact}</span>
+                </p>
+              ) : null}
             </div>
             <p className="text-xs text-muted-foreground">掲載日：{concert.addedDate}</p>
           </div>

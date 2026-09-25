@@ -35,7 +35,6 @@ const formSchema = z.object({
   program: z.string().min(1, "曲目を入力してください"),
   organizer: z.string().min(1, "主催を入力してください"),
   contact: z.string().min(1, "問い合わせ先を入力してください"),
-  consent_destination: z.string().min(1, "承諾書の送り先を入力してください"),
   notes: z.string().optional(),
 });
 
@@ -72,7 +71,6 @@ export default function PatronageRequestPage() {
       program: "",
       organizer: "",
       contact: "",
-      consent_destination: "",
       notes: "",
     },
   });
@@ -145,9 +143,8 @@ export default function PatronageRequestPage() {
                   </Link>
                   に掲載されます。
                   {submittedWithoutFlyer
-                    ? "チラシはできあがり次第、事務局へお送りください。届き次第、案内ページに追加します。"
+                    ? "チラシは後日、事務局へお送りください。"
                     : "添付いただいたチラシも、承認後に案内ページへ掲載します。"}
-                  承諾書は別途お送りします。
                 </p>
               </CardContent>
             </Card>
@@ -165,7 +162,6 @@ export default function PatronageRequestPage() {
           <p className="mt-2 text-muted-foreground">
             後援演奏会の後援をご希望の方は、下記フォームからお申し込みください。
             事務局が承認すると、演奏会情報が後援演奏会のご案内ページに掲載されます。
-            チラシは申請時にあれば一緒に、まだできていなければ後から事務局へお送りください。
           </p>
           <p className="mt-1 text-sm text-muted-foreground">（{REQUIRED_MARK}は必須項目）</p>
         </div>
@@ -367,23 +363,6 @@ export default function PatronageRequestPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="consent_destination"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{REQUIRED_MARK} 承諾書の送り先</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="〒・住所・宛先、またはFAXを希望の場合FAX番号"
-                            className="min-h-[80px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
@@ -421,10 +400,7 @@ export default function PatronageRequestPage() {
                       )}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      まだできていない場合は、空欄のまま送信できます。できあがり次第、事務局へお送りください。
-                      チラシがなくても、承認後は案内ページの一覧とカレンダーに演奏会情報を掲載します。
-                      画像のチラシが届くと、流れるチラシにも公演日順で加わります。
-                      PDF または JPEG / PNG（4MB 以下）。
+                      ここで添付するか、後日事務局へ送付ください。PDF・JPEG・PNG（4MB以下）。
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>
