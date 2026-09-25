@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
+import { clientIpFrom, guardPublicForm, looksLikeRandomToken, SPAM_MESSAGES_JA } from "@/lib/form-spam";
 import { normalizeMemberNumberInput } from "@/lib/member-number";
 import { createAdminClient } from "@/lib/supabase/server";
 import { resolvePublicSiteOrigin } from "@/lib/site-public-url";
@@ -84,6 +85,35 @@ export async function POST(request: Request) {
         { error: "期日はカレンダーから選択してください。" },
         { status: 400 }
       );
+    }
+
+    const textForSpam = [
+      body.name,
+      body.concert_title,
+      body.venue,
+      body.admission,
+      body.performers,
+      body.program,
+      body.organizer,
+      body.contact,
+      body.consent_destination,
+      body.notes,
+    ].filter((v): v is string => Boolean(v));
+    const randomField = textForSpam.find((v) => looksLikeRandomToken(v));
+    const spam = await guardPublicForm({
+      honeypot: formData.get("company_website"),
+      startedAt: formData.get("startedAt"),
+      message: randomField ?? body.concert_title ?? "",
+      turnstileToken: formData.get("turnstileToken"),
+      remoteIp: clientIpFrom(request),
+      messages: SPAM_MESSAGES_JA,
+    });
+    if (!spam.ok) {
+      if (spam.silent) {
+        console.info("[後援依頼] spam dropped:", spam.reason);
+        return NextResponse.json({ success: true });
+      }
+      return NextResponse.json({ error: spam.error }, { status: 400 });
     }
 
     const flyerRaw = formData.get("flyer");

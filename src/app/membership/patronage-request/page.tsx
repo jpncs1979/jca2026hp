@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
+import { TurnstileField, turnstileSiteKey } from "@/components/TurnstileField";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -49,6 +50,11 @@ export default function PatronageRequestPage() {
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const [flyerError, setFlyerError] = useState<string | null>(null);
   const [submittedWithoutFlyer, setSubmittedWithoutFlyer] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileEpoch, setTurnstileEpoch] = useState(0);
+  const startedAtRef = useRef(Date.now());
+  const honeypotRef = useRef<HTMLInputElement>(null);
+  const turnstileEnabled = Boolean(turnstileSiteKey());
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -82,11 +88,19 @@ export default function PatronageRequestPage() {
     setFlyerError(null);
     setSubmitting(true);
     setErrorMessage(null);
+    if (turnstileEnabled && !turnstileToken) {
+      setErrorMessage("確認が終わっていません。少し待ってからもう一度送信してください。");
+      setSubmitting(false);
+      return;
+    }
     try {
       const formData = new FormData();
       Object.entries(values).forEach(([k, v]) => {
         if (v != null && v !== "") formData.append(k, String(v));
       });
+      formData.append("company_website", honeypotRef.current?.value ?? "");
+      formData.append("startedAt", String(startedAtRef.current));
+      formData.append("turnstileToken", turnstileToken);
       if (flyerFile) formData.append("flyer", flyerFile);
       const res = await fetch("/api/membership/patronage-request", {
         method: "POST",
@@ -94,6 +108,8 @@ export default function PatronageRequestPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setTurnstileToken("");
+        setTurnstileEpoch((n) => n + 1);
         setErrorMessage(data.error ?? "送信に失敗しました。しばらくしてからお試しください。");
         return;
       }
@@ -163,7 +179,7 @@ export default function PatronageRequestPage() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-6">
                   {errorMessage && (
                     <p className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                       {errorMessage}
@@ -400,6 +416,33 @@ export default function PatronageRequestPage() {
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>
+
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 1,
+                      padding: 0,
+                      margin: -1,
+                      overflow: "hidden",
+                      clip: "rect(0, 0, 0, 0)",
+                      whiteSpace: "nowrap",
+                      border: 0,
+                    }}
+                  >
+                    <label htmlFor="company_website">Company website</label>
+                    <input
+                      ref={honeypotRef}
+                      id="company_website"
+                      name="company_website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      defaultValue=""
+                    />
+                  </div>
+                  <TurnstileField key={turnstileEpoch} onToken={setTurnstileToken} language="ja" />
 
                   <div className="flex gap-4 pt-4">
                     <Button type="submit" disabled={submitting} className="bg-gold text-gold-foreground hover:bg-gold-muted">
