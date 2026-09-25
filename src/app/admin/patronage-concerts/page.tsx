@@ -398,7 +398,7 @@ export default function AdminPatronageConcertsPage() {
                   <dd className="whitespace-pre-wrap">{detail.program}</dd>
                   <dt className="text-muted-foreground">主催</dt>
                   <dd>{detail.organizer}</dd>
-                  <dt className="text-muted-foreground">問い合わせ</dt>
+                  <dt className="text-muted-foreground">問い合わせ（案内ページに掲載）</dt>
                   <dd className="whitespace-pre-wrap">{detail.contact}</dd>
                   <dt className="text-muted-foreground">申請者</dt>
                   <dd>
@@ -411,7 +411,7 @@ export default function AdminPatronageConcertsPage() {
                   <dd className="whitespace-pre-wrap">{detail.consent_destination}</dd>
                   {detail.notes ? (
                     <>
-                      <dt className="text-muted-foreground">備考</dt>
+                      <dt className="text-muted-foreground">備考（案内ページには掲載しません）</dt>
                       <dd className="whitespace-pre-wrap">{detail.notes}</dd>
                     </>
                   ) : null}

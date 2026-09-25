@@ -351,8 +351,15 @@ export default function PatronageRequestPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{REQUIRED_MARK} 問い合わせ先</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          ホームページに載せてよい連絡先をここにご記入ください。後援演奏会の案内ページに掲載します。
+                        </p>
                         <FormControl>
-                          <Input placeholder="電話番号・メールアドレスなど" {...field} />
+                          <Textarea
+                            placeholder="電話番号、メールアドレスなど"
+                            className="min-h-[80px]"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -381,6 +388,9 @@ export default function PatronageRequestPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>備考</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          この欄は案内ページには掲載しません。期日の2日目以降や、事務局への連絡にご利用ください。
+                        </p>
                         <FormControl>
                           <Textarea placeholder="期日の2日目以降、その他" className="min-h-[60px]" {...field} />
                         </FormControl>
@@ -412,7 +422,9 @@ export default function PatronageRequestPage() {
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       まだできていない場合は、空欄のまま送信できます。できあがり次第、事務局へお送りください。
-                      PDF または JPEG / PNG（4MB 以下）。画像のチラシは、承認後に案内ページの流れる一覧へ公演日順で掲載されます。
+                      チラシがなくても、承認後は案内ページの一覧とカレンダーに演奏会情報を掲載します。
+                      画像のチラシが届くと、流れるチラシにも公演日順で加わります。
+                      PDF または JPEG / PNG（4MB 以下）。
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>

@@ -25,8 +25,8 @@ export interface SupportedConcert {
   performers: string;
   program: string;
   organizer: string;
+  /** 案内ページに掲載する問い合わせ先 */
   contact: string;
-  notes?: string;
   /** 掲載日 */
   addedDate: string;
   flyerUrl: string | null;

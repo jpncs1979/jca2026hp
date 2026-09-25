@@ -53,9 +53,6 @@ export function SupportedConcertPanel({ concert }: { concert: SupportedConcert }
                 <Phone className="mt-0.5 size-4 shrink-0 text-gold" />
                 <span className="whitespace-pre-wrap">問い合わせ：{concert.contact}</span>
               </p>
-              {concert.notes ? (
-                <p className="whitespace-pre-wrap text-muted-foreground">{concert.notes}</p>
-              ) : null}
             </div>
             <p className="text-xs text-muted-foreground">掲載日：{concert.addedDate}</p>
           </div>

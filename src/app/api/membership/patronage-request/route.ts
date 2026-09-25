@@ -28,9 +28,9 @@ const FIELDS: { key: string; label: string; required?: boolean }[] = [
   { key: "performers", label: "出演者", required: true },
   { key: "program", label: "曲目", required: true },
   { key: "organizer", label: "主催", required: true },
-  { key: "contact", label: "問い合わせ先", required: true },
+  { key: "contact", label: "問い合わせ先（案内ページに掲載）", required: true },
   { key: "consent_destination", label: "承諾書の送り先", required: true },
-  { key: "notes", label: "備考" },
+  { key: "notes", label: "備考（案内ページには掲載しません）" },
 ];
 
 function escapeHtml(s: string): string {

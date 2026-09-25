@@ -4,6 +4,7 @@ import { hasImageFlyer } from "@/data/supported-concerts";
 import { getApprovedUpcomingConcerts } from "@/lib/patronage-concerts.server";
 import { SupportedConcertsMarquee } from "@/components/supported-concerts/SupportedConcertsMarquee";
 import { SupportedConcertsCalendar } from "@/components/supported-concerts/SupportedConcertsCalendar";
+import { SupportedConcertsList } from "@/components/supported-concerts/SupportedConcertsList";
 
 export const dynamic = "force-dynamic";
 
@@ -33,27 +34,29 @@ export default async function SupportedConcertsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="mx-auto max-w-4xl space-y-12">
+        <div className="mx-auto max-w-6xl space-y-12">
           {hasConcerts ? (
-            <section>
+            <>
               {flyerConcerts.length > 0 ? (
-                <>
+                <section>
                   <h2 className="mb-4 text-xl font-semibold text-navy">チラシ一覧（スクロール）</h2>
                   <SupportedConcertsMarquee concerts={flyerConcerts} />
-                </>
+                </section>
               ) : null}
-              <div className={flyerConcerts.length > 0 ? "mt-8" : undefined}>
-                <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
-                <div className="max-w-md">
+              <section className="grid items-start gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
+                <div>
+                  <p className="mb-3 text-sm font-medium text-navy">公演日カレンダー</p>
                   <SupportedConcertsCalendar concerts={concerts} />
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    日付をクリックすると、その演奏会の詳細ページが表示されます。
+                  </p>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {flyerConcerts.length > 0
-                    ? "チラシまたはカレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。"
-                    : "カレンダーの公演日をクリックすると、該当の演奏会の詳細ページが表示されます。"}
-                </p>
-              </div>
-            </section>
+                <div>
+                  <h2 className="mb-4 text-xl font-semibold text-navy">演奏会一覧</h2>
+                  <SupportedConcertsList concerts={concerts} />
+                </div>
+              </section>
+            </>
           ) : (
             <section className="rounded-lg border border-border bg-white px-6 py-12 text-center md:px-10">
               <p className="text-base text-navy md:text-lg">
@@ -63,7 +66,7 @@ export default async function SupportedConcertsPage() {
           )}
         </div>
 
-        <p className="mx-auto mt-12 max-w-4xl text-center text-sm text-muted-foreground">
+        <p className="mx-auto mt-12 max-w-6xl text-center text-sm text-muted-foreground">
           後援演奏会の掲載をご希望の会員の皆様は、
           <Link
             href="/membership/patronage-request"
