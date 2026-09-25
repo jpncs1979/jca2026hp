@@ -367,9 +367,6 @@ export default function PatronageRequestPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>備考</FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          この欄は案内ページには掲載しません。期日の2日目以降や、事務局への連絡にご利用ください。
-                        </p>
                         <FormControl>
                           <Textarea placeholder="期日の2日目以降、その他" className="min-h-[60px]" {...field} />
                         </FormControl>
@@ -400,7 +397,7 @@ export default function PatronageRequestPage() {
                       )}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      ここで添付するか、後日事務局へ送付ください。PDF・JPEG・PNG（4MB以下）。
+                      添付。もしくは後日事務局へ送付ください。
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>
