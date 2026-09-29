@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Trophy, ArrowRight, Megaphone, Music2 } from "lucide-react";
+import { Users, Trophy, ArrowRight, Megaphone, Music2, MessageCircle } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   let totalMembers = 0;
@@ -77,6 +77,13 @@ export default async function AdminDashboardPage() {
           <Button variant="outline">
             <Megaphone className="mr-1 size-4" />
             お知らせ管理へ
+            <ArrowRight className="ml-2 size-4" />
+          </Button>
+        </Link>
+        <Link href="/admin/consultation">
+          <Button variant="outline">
+            <MessageCircle className="mr-1 size-4" />
+            相談室
             <ArrowRight className="ml-2 size-4" />
           </Button>
         </Link>
