@@ -1,8 +1,21 @@
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 import { MessageCircle, ArrowLeft } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { ConsultationForm } from "./ConsultationForm";
 import { PublishedQAList } from "./PublishedQAList";
+
+export const dynamic = "force-dynamic";
+
+function publicSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  if (!url.startsWith("http") || key.length === 0) return null;
+  return createClient(url, key, {
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
+  });
+}
 
 export const metadata = {
   title: "クラリネット相談室 | 日本クラリネット協会",
@@ -21,6 +34,7 @@ export default async function ConsultationPage() {
     age: string | null;
   }[] = [];
 
+  const supabase = publicSupabase();
   if (supabase) {
     const { data } = await supabase
       .from("consultation_questions")
