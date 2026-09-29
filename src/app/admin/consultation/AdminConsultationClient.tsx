@@ -96,7 +96,7 @@ export function AdminConsultationClient() {
                 ...q,
                 answer: answerDraft,
                 status: publish ? "published" : "answered",
-                published_at: publish ? new Date().toISOString() : q.published_at,
+                published_at: publish ? new Date().toISOString() : null,
               }
             : q
         )
@@ -105,6 +105,53 @@ export function AdminConsultationClient() {
       setAnswerDraft("");
     } catch {
       alert("保存に失敗しました。");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const unpublish = async (id: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/consultation/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unpublish: true }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error ?? "公開の取り消しに失敗しました。");
+        return;
+      }
+      setList((prev) =>
+        prev.map((q) =>
+          q.id === id ? { ...q, status: "answered", published_at: null } : q
+        )
+      );
+    } catch {
+      alert("公開の取り消しに失敗しました。");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeQuestion = async (id: string) => {
+    if (!window.confirm("この質問と回答を削除します。元に戻せません。")) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/consultation/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error ?? "削除に失敗しました。");
+        return;
+      }
+      setList((prev) => prev.filter((q) => q.id !== id));
+      if (editingId === id) {
+        setEditingId(null);
+        setAnswerDraft("");
+      }
+    } catch {
+      alert("削除に失敗しました。");
     } finally {
       setSaving(false);
     }
@@ -154,7 +201,7 @@ export function AdminConsultationClient() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        回答を入力して「回答を保存」すると回答済みに、「HPに公開」で相談室ページに表示されます。
+        「HPに公開」で相談室ページに表示します。「公開をやめる」でページから外し、回答は残します。「削除」で質問ごと消します。
       </p>
 
       <div className="space-y-4">
@@ -240,14 +287,35 @@ export function AdminConsultationClient() {
                       ) : (
                         <p className="text-sm text-muted-foreground">（未回答）</p>
                       )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                        onClick={() => startEdit(q)}
-                      >
-                        {q.answer ? "回答を編集" : "回答を入力"}
-                      </Button>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => startEdit(q)}
+                        >
+                          {q.answer ? "回答を編集" : "回答を入力"}
+                        </Button>
+                        {q.status === "published" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={saving}
+                            onClick={() => unpublish(q.id)}
+                          >
+                            公開をやめる
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          disabled={saving}
+                          onClick={() => removeQuestion(q.id)}
+                        >
+                          削除
+                        </Button>
+                      </div>
                     </>
                   )}
                 </div>
