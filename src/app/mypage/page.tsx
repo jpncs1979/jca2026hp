@@ -84,7 +84,7 @@ function MypageContent(): any {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const adminDenied = searchParams.get("admin_denied") === "1";
-  const redirectToAdmin = searchParams.get("redirect") === "/admin";
+  const redirectToAdmin = (searchParams.get("redirect") ?? "").startsWith("/admin");
   const [showPasswordRecoveryForm, setShowPasswordRecoveryForm] = useState(false);
   const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
   const [recoveryNewPasswordConfirm, setRecoveryNewPasswordConfirm] = useState("");

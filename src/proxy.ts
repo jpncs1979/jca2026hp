@@ -7,8 +7,13 @@ export async function proxy(request: NextRequest) {
     const gated = siteAccessGateResponse(request);
     if (gated) return gated;
 
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(
+      "x-jca-path",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
     let response = NextResponse.next({
-      request: { headers: request.headers },
+      request: { headers: requestHeaders },
     });
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";

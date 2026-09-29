@@ -70,7 +70,11 @@ export async function POST(request: Request) {
         .eq("user_id", authData.user.id)
         .single();
       if (profile?.is_admin === true) {
-        dest = "/admin";
+        const toAnswerScreen =
+          redirectTo === "/admin" ||
+          redirectTo.startsWith("/admin/") ||
+          redirectTo.startsWith("/admin?");
+        dest = toAnswerScreen ? redirectTo : "/admin";
       }
     } catch {
       // 管理者チェック失敗時は通常のリダイレクト先を使用

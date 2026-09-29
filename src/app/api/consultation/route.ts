@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { getFromHeader } from "@/lib/email";
+import { resolvePublicSiteOrigin } from "@/lib/site-public-url";
 import { clientIpFrom, guardPublicForm, SPAM_MESSAGES_JA } from "@/lib/form-spam";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -67,17 +68,21 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
-    const { error } = await admin.from("consultation_questions").insert({
-      name,
-      email,
-      nickname: nickname || null,
-      age: age || null,
-      category,
-      body: questionBody || null,
-      status: "pending",
-    });
+    const { data: inserted, error } = await admin
+      .from("consultation_questions")
+      .insert({
+        name,
+        email,
+        nickname: nickname || null,
+        age: age || null,
+        category,
+        body: questionBody || null,
+        status: "pending",
+      })
+      .select("id")
+      .single();
 
-    if (error) {
+    if (error || !inserted?.id) {
       console.error("[相談室] insert error:", error);
       return NextResponse.json(
         { error: "送信に失敗しました。しばらくしてからお試しください。" },
@@ -85,7 +90,8 @@ export async function POST(request: Request) {
       );
     }
 
-    await notifyOffice({ name, email, nickname, age, category, questionBody });
+    const answerUrl = `${resolvePublicSiteOrigin(request)}/admin/consultation?id=${inserted.id}`;
+    await notifyOffice({ name, email, nickname, age, category, questionBody, answerUrl });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -113,6 +119,7 @@ async function notifyOffice(input: {
   age: string;
   category: string;
   questionBody: string;
+  answerUrl: string;
 }) {
   const emailUser = process.env.EMAIL_USER;
   const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
@@ -127,7 +134,8 @@ async function notifyOffice(input: {
 <html>
 <head><meta charset="utf-8"></head>
 <body>
-  <p>クラリネット相談室に質問が届きました。事務局画面で回答できます。</p>
+  <p>クラリネット相談室に質問が届きました。</p>
+  <p><a href="${escapeHtml(input.answerUrl)}">事務局画面で回答する</a></p>
   <table style="border-collapse:collapse;">
     <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">氏名</td><td style="padding:6px 0;">${escapeHtml(input.name)}</td></tr>
     <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">メールアドレス</td><td style="padding:6px 0;">${escapeHtml(input.email)}</td></tr>

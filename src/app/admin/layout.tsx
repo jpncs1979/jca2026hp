@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Users, Trophy, LayoutDashboard, LogOut, Megaphone, BookOpen, Music2, MessageCircle } from "lucide-react";
@@ -12,7 +13,12 @@ export default async function AdminLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/mypage?redirect=/admin");
+    const requested = (await headers()).get("x-jca-path") ?? "/admin";
+    const nextPath =
+      requested === "/admin" || requested.startsWith("/admin/") || requested.startsWith("/admin?")
+        ? requested
+        : "/admin";
+    redirect(`/mypage?redirect=${encodeURIComponent(nextPath)}`);
   }
 
   // profiles が存在するか確認し、is_admin をチェック
