@@ -203,7 +203,7 @@ export default function EventsPage() {
                         className={`rounded px-2 py-1 text-xs font-medium ${
                           event.status === "申込受付中" || event.status === "聴講受付中"
                             ? "bg-gold/20 text-gold"
-                            : event.status === "準備中"
+                            : event.status === "準備中" || event.status === "中止"
                               ? "bg-muted text-muted-foreground"
                               : "bg-navy/10 text-navy"
                         }`}
@@ -219,8 +219,15 @@ export default function EventsPage() {
                     <p className="mb-6 text-muted-foreground">{event.description}</p>
                     <div className="flex flex-wrap gap-3">
                       <Link href={event.href}>
-                        <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                          詳細・お申し込み
+                        <Button
+                          className={
+                            event.status === "中止"
+                              ? undefined
+                              : "bg-gold text-gold-foreground hover:bg-gold-muted"
+                          }
+                          variant={event.status === "中止" ? "outline" : "default"}
+                        >
+                          {event.status === "中止" ? "案内を見る" : "詳細・お申し込み"}
                           <ArrowRight className="ml-2 size-4" />
                         </Button>
                       </Link>

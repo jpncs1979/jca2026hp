@@ -10,7 +10,7 @@ export interface MasterclassSummary {
   description: string;
   period: string;
   venue: string;
-  status: "申込受付中" | "聴講受付中" | "準備中" | "終了";
+  status: "申込受付中" | "聴講受付中" | "準備中" | "終了" | "中止";
   /** 詳細（紹介）ページ */
   href: string;
 }

@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   ArrowRight,
@@ -37,13 +35,10 @@ export default function Masterclass31Page() {
           <p className="mt-2 text-muted-foreground">
             講師：{mc.instructor.nameJa}（{mc.instructor.title}）
           </p>
+          <p className="mt-4 inline-block rounded bg-muted px-3 py-1 text-sm font-medium text-navy">
+            中止
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="#apply">
-              <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                申込について
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
-            </a>
             <Link href="/events#masterclass">
               <Button variant="outline">マスタークラス一覧</Button>
             </Link>
@@ -53,6 +48,12 @@ export default function Masterclass31Page() {
 
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-3xl space-y-14">
+          <section className="rounded-lg border border-border bg-muted/40 p-6">
+            <p className="leading-relaxed text-muted-foreground">
+              2026年10月13日に予定していた第31回クラリネットマスタークラスは、中止となりました。
+            </p>
+          </section>
+
           {/* 講師紹介 */}
           <section>
             <h2 className="mb-6 text-xl font-medium text-navy">講師</h2>
@@ -146,51 +147,18 @@ export default function Masterclass31Page() {
             </Card>
           </section>
 
-          {/* 申込 */}
           <section id="apply" className="scroll-mt-24">
             <h2 className="mb-4 text-xl font-medium text-navy">お申し込み</h2>
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-base">受講</CardTitle>
-                    <span className="rounded bg-navy/10 px-2 py-1 text-xs font-medium text-navy">
-                      受付終了
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground">
-                    {mc.lessonClosedNote}
-                    書類選考のうえ受講者を決定し、ご連絡済みです。
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-gold/40">
-                <CardHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-base">聴講</CardTitle>
-                    <span className="rounded bg-gold/20 px-2 py-1 text-xs font-medium text-gold">
-                      受付中
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  <p className="text-sm text-muted-foreground">
-                    聴講は{mc.auditDeadline}です。
-                    会員は無料、一般は{mc.auditFee.general}です。
-                    ご希望の方はお問い合わせフォームよりご連絡ください。
-                  </p>
-                  <Link href={mc.contactHref}>
-                    <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
-                      聴講のお申し込み・お問い合わせ
-                      <ArrowRight className="ml-2 size-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardContent className="pt-6">
+                <Link href={mc.contactHref}>
+                  <Button variant="outline">
+                    お問い合わせ
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </section>
 
           <div className="border-t border-border pt-8">
