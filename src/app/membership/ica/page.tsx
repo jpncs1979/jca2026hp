@@ -16,6 +16,7 @@ import {
   Headphones,
   Shield,
   Sparkles,
+  BadgePercent,
   ExternalLink,
 } from "lucide-react";
 import { SHIKUMINET_JOIN_URL } from "@/lib/shikuminet";
@@ -209,6 +210,34 @@ export default function ICAMembershipPage() {
                     <span>
                       <strong className="text-foreground">Forza Clarinet Excerpts</strong> — オーケストラ・スタディのマイナスワン音源（バスクラ・エスクラ版あり、テンポ・ピッチ調整可）
                     </span>
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base text-navy">
+                    <BadgePercent className="size-5 text-gold" />
+                    パートナー企業の割引
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0 text-sm text-muted-foreground">
+                  <p className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-gold" />
+                    <span>
+                      <strong className="text-foreground">電子楽譜アプリ Tomplay</strong>
+                      — 年間プレミアムの利用料金が30%割引。楽譜の自動スクロール、テンポ調整、運指表示、部分ループなどが使えます
+                    </span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-gold" />
+                    <span>
+                      <strong className="text-foreground">RATstands</strong>
+                      — 譜面台、マイクスタンド、タブレットスタンド、演奏用チェア、譜面灯など対象製品が15%割引（一部対象外あり）
+                    </span>
+                  </p>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    ※割引コードはICAサイトにログインすると確認できます。
                   </p>
                 </CardContent>
               </Card>
