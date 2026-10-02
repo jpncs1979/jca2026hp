@@ -64,11 +64,11 @@ export const competitions: CompetitionSummary[] = [
     slug: "ensemble",
     title: "クラリネット・アンサンブルコンクール",
     description:
-      "第19回は2027年2月開催。予選は2027年1月上旬の動画審査、本選は東広島芸術文化ホール くららホールにて実施します。",
+      "第19回は2027年2月開催。予選は2027年1月上旬の動画審査、本選は東広島芸術文化ホールくらら大ホールにて実施します。",
     period: "予選：2027年1月上旬（動画）／本選：2027年2月27日（土）",
     applicationPeriod: ENSEMBLE_2027.applicationPeriod,
     videoSubmissionDeadline: ENSEMBLE_2027.videoSubmissionDeadline,
-    venue: "東広島芸術文化ホール くららホール（本選）",
+    venue: "東広島芸術文化ホールくらら大ホール（本選）",
     href: "/events/ensemble",
     applyHref: "/events/ensemble/apply",
     status: "概要公開",

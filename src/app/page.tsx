@@ -104,8 +104,8 @@ const HERO_SLIDES: HeroSlide[] = [
     bg: "from-navy/88",
   },
   {
-    title: "第３９回日本クラリネットフェスティバル in 広島",
-    copy: "2027年2月28日（日）（予定）。詳細は公式案内サイトでご確認ください。",
+    title: "第３９回日本クラリネットフェスティバル in 東広島",
+    copy: "2027年2月28日（日）。詳細は公式案内サイトでご確認ください。",
     buttons: [
       { label: "公式案内サイト", href: FESTIVAL_39_HIROSHIMA_OFFICIAL_URL, external: true },
     ],

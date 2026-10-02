@@ -136,12 +136,12 @@ export default function EventsPage() {
               フェスティバル
             </h2>
             <div className="space-y-6">
-              {/* 第39回日本クラリネットフェスティバル（広島） */}
+              {/* 第39回日本クラリネットフェスティバル（東広島） */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl">第３９回日本クラリネットフェスティバル in 広島</CardTitle>
+                  <CardTitle className="text-xl">第３９回日本クラリネットフェスティバル in 東広島</CardTitle>
                   <CardDescription>
-                    2027年2月28日（日）（予定）。詳細は
+                    2027年2月28日（日）。詳細は
                     <a
                       href={FESTIVAL_39_HIROSHIMA_OFFICIAL_URL}
                       target="_blank"
