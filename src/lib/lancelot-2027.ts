@@ -6,7 +6,7 @@ export const LANCELOT_COMPETITION = {
   editionLabel: "第8回",
   organiser: "一般社団法人 日本クラリネット協会",
   href: "/events/lancelot",
-  officialUrl: "https://www.lancelot-competition.jp/",
+  officialUrl: "https://jlicc.jp/",
   period: "2027年8月（予定）",
   venue: "立川（東京都）",
   cycleNote: "日本開催は4年に一度",
