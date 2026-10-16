@@ -19,7 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Check, X, EyeOff, RotateCcw, Trash2, FileUp } from "lucide-react";
+import { Loader2, Check, X, EyeOff, RotateCcw, Trash2, FileUp, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   flyerFileError,
   patronageFlyerHref,
@@ -45,11 +47,51 @@ function formatDate(iso: string | null) {
   return iso.slice(0, 10);
 }
 
+type ContentDraft = {
+  applicant_name: string;
+  applicant_email: string;
+  member_number: string;
+  concert_title: string;
+  event_date: string;
+  doors_open: string;
+  curtain_time: string;
+  venue: string;
+  admission: string;
+  performers: string;
+  program: string;
+  organizer: string;
+  contact: string;
+  notes: string;
+};
+
+function draftFromRow(row: PatronageConcertRow): ContentDraft {
+  return {
+    applicant_name: row.applicant_name,
+    applicant_email: row.applicant_email,
+    member_number: row.member_number ?? "",
+    concert_title: row.concert_title,
+    event_date: row.event_date.slice(0, 10),
+    doors_open: row.doors_open,
+    curtain_time: row.curtain_time,
+    venue: row.venue,
+    admission: row.admission,
+    performers: row.performers,
+    program: row.program,
+    organizer: row.organizer,
+    contact: row.contact,
+    notes: row.notes ?? "",
+  };
+}
+
 export default function AdminPatronageConcertsPage() {
   const [items, setItems] = useState<PatronageConcertRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [detail, setDetail] = useState<PatronageConcertRow | null>(null);
+  const [draft, setDraft] = useState<ContentDraft | null>(null);
+  const [contentMessage, setContentMessage] = useState<string | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [savingContent, setSavingContent] = useState(false);
   const [flyerDraft, setFlyerDraft] = useState<File | null>(null);
   const [flyerMessage, setFlyerMessage] = useState<string | null>(null);
 
@@ -68,7 +110,49 @@ export default function AdminPatronageConcertsPage() {
   const openDetail = (item: PatronageConcertRow) => {
     setFlyerDraft(null);
     setFlyerMessage(null);
+    setContentMessage(null);
+    setContentError(null);
+    setDraft(draftFromRow(item));
     setDetail(item);
+  };
+
+  const setDraftField = (key: keyof ContentDraft, value: string) => {
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+    setContentMessage(null);
+    setContentError(null);
+  };
+
+  const saveContent = async () => {
+    if (!detail || !draft) return;
+    setSavingContent(true);
+    setContentMessage(null);
+    setContentError(null);
+    try {
+      const res = await fetch(`/api/admin/patronage-concerts/${detail.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: draft }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setContentError((data as { error?: string }).error ?? "保存に失敗しました");
+        return;
+      }
+      const row = (data as { item: PatronageConcertRow }).item;
+      setDetail(row);
+      setDraft(draftFromRow(row));
+      setItems((prev) => prev.map((item) => (item.id === row.id ? row : item)));
+      setContentMessage(
+        row.status === "approved"
+          ? "保存しました。案内ページの掲載内容も更新されます。"
+          : "保存しました。"
+      );
+    } catch {
+      setContentError("保存に失敗しました");
+    } finally {
+      setSavingContent(false);
+    }
   };
 
   const uploadFlyer = async () => {
@@ -163,7 +247,7 @@ export default function AdminPatronageConcertsPage() {
           >
             後援演奏会のご案内
           </Link>
-          にそのまま掲載されます。
+          に掲載されます。掲載の前後を問わず、この画面から内容を修正できます。
         </p>
         {pendingCount > 0 && (
           <p className="mt-2 text-sm font-medium text-navy">
@@ -296,18 +380,21 @@ export default function AdminPatronageConcertsPage() {
         onOpenChange={(open) => {
           if (!open) {
             setDetail(null);
+            setDraft(null);
             setFlyerDraft(null);
             setFlyerMessage(null);
+            setContentMessage(null);
+            setContentError(null);
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
           {detail && (
             <>
               <DialogHeader>
                 <DialogTitle>{detail.concert_title}</DialogTitle>
                 <DialogDescription>
-                  申請内容の確認です。チラシが未着でも承認できます。届いたファイルはこの画面から登録してください。
+                  掲載の前後を問わず内容を修正できます。掲載中の公演は、保存すると案内ページに反映されます。チラシが未着でも承認できます。
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-2 md:grid-cols-[180px_1fr]">
@@ -373,54 +460,160 @@ export default function AdminPatronageConcertsPage() {
                     )}
                   </div>
                 </div>
-                <dl className="grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-2 text-sm">
-                  <dt className="text-muted-foreground">状態</dt>
-                  <dd>
-                    <span
-                      className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[detail.status]}`}
-                    >
-                      {STATUS_LABEL[detail.status]}
-                    </span>
-                  </dd>
-                  <dt className="text-muted-foreground">公演日</dt>
-                  <dd>{detail.event_date}</dd>
-                  <dt className="text-muted-foreground">開場 / 開演</dt>
-                  <dd>
-                    {detail.doors_open} / {detail.curtain_time}
-                  </dd>
-                  <dt className="text-muted-foreground">会場</dt>
-                  <dd>{detail.venue}</dd>
-                  <dt className="text-muted-foreground">入場料</dt>
-                  <dd className="whitespace-pre-wrap">{detail.admission}</dd>
-                  <dt className="text-muted-foreground">出演者</dt>
-                  <dd className="whitespace-pre-wrap">{detail.performers}</dd>
-                  <dt className="text-muted-foreground">曲目</dt>
-                  <dd className="whitespace-pre-wrap">{detail.program}</dd>
-                  <dt className="text-muted-foreground">主催</dt>
-                  <dd>{detail.organizer}</dd>
-                  <dt className="text-muted-foreground">問い合わせ（案内ページに掲載）</dt>
-                  <dd className="whitespace-pre-wrap">{detail.contact}</dd>
-                  <dt className="text-muted-foreground">申請者</dt>
-                  <dd>
-                    {detail.applicant_name}
-                    {detail.member_number ? `（会員番号 ${detail.member_number}）` : ""}
-                    <br />
-                    {detail.applicant_email}
-                  </dd>
-                  {detail.notes ? (
-                    <>
-                      <dt className="text-muted-foreground">備考（案内ページには掲載しません）</dt>
-                      <dd className="whitespace-pre-wrap">{detail.notes}</dd>
-                    </>
-                  ) : null}
-                </dl>
+                {draft && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">状態</span>
+                      <span
+                        className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[detail.status]}`}
+                      >
+                        {STATUS_LABEL[detail.status]}
+                      </span>
+                    </div>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">演奏会表題</span>
+                      <Input
+                        value={draft.concert_title}
+                        onChange={(e) => setDraftField("concert_title", e.target.value)}
+                      />
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-navy">期日</span>
+                        <Input
+                          type="date"
+                          value={draft.event_date}
+                          onChange={(e) => setDraftField("event_date", e.target.value)}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-navy">開場</span>
+                        <Input
+                          value={draft.doors_open}
+                          onChange={(e) => setDraftField("doors_open", e.target.value)}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-navy">開演</span>
+                        <Input
+                          value={draft.curtain_time}
+                          onChange={(e) => setDraftField("curtain_time", e.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">場所</span>
+                      <Input
+                        value={draft.venue}
+                        onChange={(e) => setDraftField("venue", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">入場料</span>
+                      <Input
+                        value={draft.admission}
+                        onChange={(e) => setDraftField("admission", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">出演者</span>
+                      <Textarea
+                        value={draft.performers}
+                        className="min-h-[72px]"
+                        onChange={(e) => setDraftField("performers", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">曲目</span>
+                      <Textarea
+                        value={draft.program}
+                        className="min-h-[72px]"
+                        onChange={(e) => setDraftField("program", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">主催</span>
+                      <Input
+                        value={draft.organizer}
+                        onChange={(e) => setDraftField("organizer", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">問い合わせ先</span>
+                      <span className="block text-xs text-muted-foreground">
+                        案内ページに掲載します。
+                      </span>
+                      <Textarea
+                        value={draft.contact}
+                        className="min-h-[72px]"
+                        onChange={(e) => setDraftField("contact", e.target.value)}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">備考</span>
+                      <span className="block text-xs text-muted-foreground">
+                        案内ページには掲載しません。
+                      </span>
+                      <Textarea
+                        value={draft.notes}
+                        className="min-h-[60px]"
+                        onChange={(e) => setDraftField("notes", e.target.value)}
+                      />
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-navy">申請者名</span>
+                        <Input
+                          value={draft.applicant_name}
+                          onChange={(e) => setDraftField("applicant_name", e.target.value)}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-navy">会員番号</span>
+                        <Input
+                          value={draft.member_number}
+                          placeholder="例: 0001"
+                          onChange={(e) => setDraftField("member_number", e.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-navy">申請者メール</span>
+                      <Input
+                        type="email"
+                        value={draft.applicant_email}
+                        onChange={(e) => setDraftField("applicant_email", e.target.value)}
+                      />
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        type="button"
+                        className="bg-gold text-gold-foreground hover:bg-gold-muted"
+                        disabled={savingContent || actingId === detail.id}
+                        onClick={() => void saveContent()}
+                      >
+                        {savingContent ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Save className="size-4" />
+                        )}
+                        内容を保存
+                      </Button>
+                      {contentError ? (
+                        <p className="text-sm text-destructive">{contentError}</p>
+                      ) : contentMessage ? (
+                        <p className="text-sm text-navy">{contentMessage}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter className="gap-2">
                 {detail.status === "pending" && (
                   <>
                     <Button
                       className="bg-gold text-gold-foreground hover:bg-gold-muted"
-                      disabled={actingId === detail.id}
+                      disabled={actingId === detail.id || savingContent}
                       onClick={() => setStatus(detail.id, "approved")}
                     >
                       <Check className="size-4" />
@@ -428,7 +621,7 @@ export default function AdminPatronageConcertsPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      disabled={actingId === detail.id}
+                      disabled={actingId === detail.id || savingContent}
                       onClick={() => setStatus(detail.id, "rejected")}
                     >
                       却下
@@ -438,7 +631,7 @@ export default function AdminPatronageConcertsPage() {
                 {detail.status === "approved" && (
                   <Button
                     variant="outline"
-                    disabled={actingId === detail.id}
+                    disabled={actingId === detail.id || savingContent}
                     onClick={() => setStatus(detail.id, "unpublished")}
                   >
                     掲載を外す
@@ -447,7 +640,7 @@ export default function AdminPatronageConcertsPage() {
                 {(detail.status === "rejected" || detail.status === "unpublished") && (
                   <Button
                     className="bg-gold text-gold-foreground hover:bg-gold-muted"
-                    disabled={actingId === detail.id}
+                    disabled={actingId === detail.id || savingContent}
                     onClick={() => setStatus(detail.id, "approved")}
                   >
                     掲載する
@@ -455,7 +648,7 @@ export default function AdminPatronageConcertsPage() {
                 )}
                 <Button
                   variant="destructive"
-                  disabled={actingId === detail.id}
+                  disabled={actingId === detail.id || savingContent}
                   onClick={() => handleDelete(detail.id)}
                 >
                   <Trash2 className="size-4" />

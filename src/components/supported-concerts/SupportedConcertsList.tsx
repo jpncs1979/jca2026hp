@@ -2,39 +2,19 @@ import Link from "next/link";
 import type { SupportedConcert } from "@/data/supported-concerts";
 import { supportedConcertDetailHref } from "@/data/supported-concerts";
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="text-sm text-muted-foreground">
-      <span className="font-medium text-navy">{label}</span>
-      <span className="whitespace-pre-wrap">　{value}</span>
-    </p>
-  );
-}
-
-/** チラシの有無にかかわらず、承認済み公演の情報を一覧する */
+/** 承認済み公演を、日付と表題だけ並べる。行のクリックで詳細ページへ。 */
 export function SupportedConcertsList({ concerts }: { concerts: SupportedConcert[] }) {
   return (
-    <ul className="space-y-4">
+    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
       {concerts.map((concert) => (
-        <li key={concert.slug} className="rounded-lg border border-border bg-card p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <Link
-              href={supportedConcertDetailHref(concert.slug)}
-              className="text-lg font-semibold text-navy underline-offset-2 hover:text-gold hover:underline"
-            >
-              {concert.title}
-            </Link>
-            <span className="text-sm font-medium text-navy">{concert.dateLabel}</span>
-          </div>
-          <div className="mt-3 space-y-1.5">
-            <Row label="開場・開演" value={concert.time} />
-            <Row label="場所" value={concert.venue} />
-            <Row label="入場料" value={concert.price} />
-            <Row label="出演者" value={concert.performers} />
-            <Row label="曲目" value={concert.program} />
-            <Row label="主催" value={concert.organizer} />
-            {concert.contact.trim() ? <Row label="問い合わせ" value={concert.contact} /> : null}
-          </div>
+        <li key={concert.slug}>
+          <Link
+            href={supportedConcertDetailHref(concert.slug)}
+            className="flex flex-col gap-1 px-4 py-3 text-navy transition-colors hover:bg-muted/60 hover:text-gold sm:flex-row sm:items-baseline sm:gap-6"
+          >
+            <span className="shrink-0 text-sm font-medium tabular-nums">{concert.dateLabel}</span>
+            <span className="font-semibold sm:min-w-0">{concert.title}</span>
+          </Link>
         </li>
       ))}
     </ul>
