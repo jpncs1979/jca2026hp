@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { isCurrentUserAdmin } from "@/lib/is-current-user-admin";
 import { createAdminClient } from "@/lib/supabase/server";
 
+const ADMIN_COLUMNS =
+  "id, name, email, nickname, age, category, body, status, answer, published_at, created_at, publish_wanted, public_name, public_question, consent_status, consent_requested_at, consent_expires_at, consented_at, answer_sent_at";
+
 export async function GET() {
   if (!(await isCurrentUserAdmin())) {
     return NextResponse.json({ error: "権限がありません" }, { status: 403 });
@@ -11,7 +14,7 @@ export async function GET() {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("consultation_questions")
-      .select("id, name, email, nickname, age, category, body, status, answer, published_at, created_at")
+      .select(ADMIN_COLUMNS)
       .order("created_at", { ascending: false });
 
     if (error) {

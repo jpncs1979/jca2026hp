@@ -1,16 +1,58 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-type Item = {
+export type PublicQAItem = {
   id: string;
   category: string;
-  body: string | null;
-  answer: string | null;
-  published_at: string;
-  nickname: string | null;
+  public_name: string | null;
   age: string | null;
+  public_question: string | null;
+  answer: string | null;
+  published_at: string | null;
 };
 
-export function PublishedQAList({ items }: { items: Item[] }) {
+function formatPublishedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function PublicQACard({ item }: { item: PublicQAItem }) {
+  const meta = [
+    item.published_at ? formatPublishedDate(item.published_at) : null,
+    item.age,
+    item.public_name ? `${item.public_name}さん` : null,
+  ]
+    .filter(Boolean)
+    .join(" ・ ");
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        {meta ? <p className="text-sm text-muted-foreground">{meta}</p> : null}
+        <p className="font-medium text-navy">{item.category}</p>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+        {item.public_question ? (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">質問</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm">{item.public_question}</p>
+          </div>
+        ) : null}
+        {item.answer ? (
+          <div className="rounded-lg bg-gold/10 p-4">
+            <p className="text-xs font-medium text-gold">回答</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm">{item.answer}</p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PublishedQAList({ items }: { items: PublicQAItem[] }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -24,34 +66,7 @@ export function PublishedQAList({ items }: { items: Item[] }) {
   return (
     <div className="space-y-6">
       {items.map((item) => (
-        <Card key={item.id}>
-          <CardHeader className="pb-2">
-            <p className="text-sm text-muted-foreground">
-              {new Date(item.published_at).toLocaleDateString("ja-JP", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-              {item.age && ` ・ ${item.age}`}
-              {item.nickname && ` ・ ${item.nickname}さん`}
-            </p>
-            <p className="font-medium text-navy">{item.category}</p>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-0">
-            {item.body && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">質問</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
-              </div>
-            )}
-            {item.answer && (
-              <div className="rounded-lg bg-gold/10 p-4">
-                <p className="text-xs font-medium text-gold">回答</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{item.answer}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <PublicQACard key={item.id} item={item} />
       ))}
     </div>
   );

@@ -1,52 +1,58 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
-import { getFromHeader } from "@/lib/email";
-import { resolvePublicSiteOrigin } from "@/lib/site-public-url";
+import {
+  CONSULTATION_AGES,
+  CONSULTATION_CATEGORIES,
+  CONSULTATION_TEXT_MAX,
+  PUBLIC_NAME_MAX,
+  buildOfficeQuestionMail,
+  cleanPublicName,
+} from "@/lib/consultation";
+import { consultationMailReady, officeNotifyAddress, sendConsultationMail } from "@/lib/consultation-mail";
 import { clientIpFrom, guardPublicForm, SPAM_MESSAGES_JA } from "@/lib/form-spam";
+import { resolvePublicSiteOrigin } from "@/lib/site-public-url";
 import { createAdminClient } from "@/lib/supabase/server";
-
-const CATEGORIES = [
-  "音が出ない、どうして？どうしよう",
-  "リードはどうしたらよいの？",
-  "奏法について（アンブシュア、呼吸）",
-  "楽器について",
-  "特殊管について",
-  "その他",
-] as const;
-
-const AGES = ["小学生", "中学生", "高校生"] as const;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = String(body.name ?? "").trim();
     const email = String(body.email ?? "").trim();
-    const nickname = String(body.nickname ?? "").trim();
+    const publicName = cleanPublicName(String(body.publicName ?? ""));
     const age = String(body.age ?? "").trim();
     const category = String(body.category ?? "").trim();
     const questionBody = String(body.body ?? "").trim();
+    const publishWanted = body.publishWanted === true;
 
     if (!name || !email) {
-      return NextResponse.json(
-        { error: "氏名とメールアドレスは必須です。" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "氏名とメールアドレスは必須です。" }, { status: 400 });
     }
-    if (!age || !AGES.includes(age as (typeof AGES)[number])) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
+      return NextResponse.json({ error: "有効なメールアドレスを入力してください。" }, { status: 400 });
+    }
+    if (name.length > 200) {
+      return NextResponse.json({ error: "氏名が長すぎます。" }, { status: 400 });
+    }
+    if (!age || !CONSULTATION_AGES.includes(age as (typeof CONSULTATION_AGES)[number])) {
       return NextResponse.json(
         { error: "年齢は小学生・中学生・高校生のいずれかを選択してください。" },
         { status: 400 }
       );
     }
-    if (!category || !CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
+    if (!category || !CONSULTATION_CATEGORIES.includes(category as (typeof CONSULTATION_CATEGORIES)[number])) {
+      return NextResponse.json({ error: "質問の内容を選択してください。" }, { status: 400 });
+    }
+    if (questionBody.length > CONSULTATION_TEXT_MAX) {
+      return NextResponse.json({ error: "質問の詳細が長すぎます。" }, { status: 400 });
+    }
+    if (publicName.length > PUBLIC_NAME_MAX) {
       return NextResponse.json(
-        { error: "質問の内容を選択してください。" },
+        { error: `HP掲載時のお名前は${PUBLIC_NAME_MAX}文字以内で入力してください。` },
         { status: 400 }
       );
     }
-    if (questionBody.length > 15_000) {
+    if (publishWanted && !publicName) {
       return NextResponse.json(
-        { error: "質問の詳細が長すぎます。" },
+        { error: "HPに掲載する場合は、掲載時のお名前を入力してください。" },
         { status: 400 }
       );
     }
@@ -73,10 +79,14 @@ export async function POST(request: Request) {
       .insert({
         name,
         email,
-        nickname: nickname || null,
-        age: age || null,
+        nickname: publicName || null,
+        public_name: publicName || null,
+        age,
         category,
         body: questionBody || null,
+        public_question: questionBody || null,
+        publish_wanted: publishWanted,
+        consent_status: "not_requested",
         status: "pending",
       })
       .select("id")
@@ -91,11 +101,20 @@ export async function POST(request: Request) {
     }
 
     const answerUrl = `${resolvePublicSiteOrigin(request)}/admin/consultation?id=${inserted.id}`;
-    await notifyOffice({ name, email, nickname, age, category, questionBody, answerUrl });
+    await notifyOffice({
+      name,
+      email,
+      publicName,
+      publishWanted,
+      age,
+      category,
+      questionBody,
+      answerUrl,
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("[相談室] POST error:", e);
+    console.error("[相談室] POST error:", e instanceof Error ? e.message : e);
     return NextResponse.json(
       { error: "送信に失敗しました。しばらくしてからお試しください。" },
       { status: 500 }
@@ -103,66 +122,32 @@ export async function POST(request: Request) {
   }
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/\n/g, "<br>");
-}
-
 async function notifyOffice(input: {
   name: string;
   email: string;
-  nickname: string;
+  publicName: string;
+  publishWanted: boolean;
   age: string;
   category: string;
   questionBody: string;
   answerUrl: string;
 }) {
-  const emailUser = process.env.EMAIL_USER;
-  const emailAppPassword = process.env.EMAIL_APP_PASSWORD;
-  const officeNotifyEmail = process.env.OFFICE_NOTIFY_EMAIL || emailUser;
-  if (!emailUser || !emailAppPassword || !officeNotifyEmail) {
+  const to = officeNotifyAddress();
+  if (!to || !consultationMailReady()) {
     console.error("[相談室] メール設定が不足しているため、事務局への通知を省略しました");
     return;
   }
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body>
-  <p>クラリネット相談室に質問が届きました。</p>
-  <p><a href="${escapeHtml(input.answerUrl)}">事務局画面で回答する</a></p>
-  <table style="border-collapse:collapse;">
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">氏名</td><td style="padding:6px 0;">${escapeHtml(input.name)}</td></tr>
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">メールアドレス</td><td style="padding:6px 0;">${escapeHtml(input.email)}</td></tr>
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">ニックネーム</td><td style="padding:6px 0;">${escapeHtml(input.nickname || "（なし）")}</td></tr>
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">年齢</td><td style="padding:6px 0;">${escapeHtml(input.age)}</td></tr>
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">内容</td><td style="padding:6px 0;">${escapeHtml(input.category)}</td></tr>
-    <tr><td style="vertical-align:top;padding:6px 12px 6px 0;font-weight:600;">詳細</td><td style="padding:6px 0;">${escapeHtml(input.questionBody || "（なし）")}</td></tr>
-  </table>
-</body>
-</html>`;
-
+  const mail = buildOfficeQuestionMail({ ...input, answerUrl: input.answerUrl });
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: emailUser,
-        pass: emailAppPassword.replace(/\s/g, ""),
-      },
-    });
-    await transporter.sendMail({
-      from: getFromHeader(),
-      to: officeNotifyEmail,
+    await sendConsultationMail({
+      to,
       replyTo: input.email,
-      subject: `【クラリネット相談室】${input.category.slice(0, 40)}`,
-      html,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
     });
   } catch (e) {
-    console.error("[相談室] 通知メールの送信に失敗しました:", e);
+    console.error("[相談室] 通知メールの送信に失敗しました:", e instanceof Error ? e.message : e);
   }
 }

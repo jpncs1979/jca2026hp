@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { MessageCircle, ArrowLeft } from "lucide-react";
 import { ConsultationForm } from "./ConsultationForm";
-import { PublishedQAList } from "./PublishedQAList";
+import { PublishedQAList, type PublicQAItem } from "./PublishedQAList";
 
 export const dynamic = "force-dynamic";
 
@@ -20,29 +20,22 @@ function publicSupabase() {
 export const metadata = {
   title: "クラリネット相談室 | 日本クラリネット協会",
   description:
-    "クラリネットお助け110番。奏法・リード・楽器など、フォームから質問できます。質問と回答の一部を公開しています。",
+    "クラリネットお助け110番。奏法・リード・楽器など、フォームから質問できます。ご本人の承諾をいただいた質問と回答を掲載しています。",
 };
 
 export default async function ConsultationPage() {
-  let published: {
-    id: string;
-    category: string;
-    body: string | null;
-    answer: string | null;
-    published_at: string;
-    nickname: string | null;
-    age: string | null;
-  }[] = [];
+  let published: PublicQAItem[] = [];
 
   const supabase = publicSupabase();
   if (supabase) {
-    const { data } = await supabase
-      .from("consultation_questions")
-      .select("id, category, body, answer, published_at, nickname, age")
-      .eq("status", "published")
-      .not("published_at", "is", null)
+    const { data, error } = await supabase
+      .from("consultation_public_qa")
+      .select("id, category, public_name, age, public_question, answer, published_at")
       .order("published_at", { ascending: false })
       .limit(50);
+    if (error) {
+      console.error("[相談室] 公開Q&Aの取得に失敗:", error.message);
+    }
     published = data ?? [];
   }
 
@@ -55,7 +48,7 @@ export default async function ConsultationPage() {
             クラリネット相談室（クラリネットお助け110番！）
           </h1>
           <p className="mt-2 text-muted-foreground">
-            フォームから質問できます。質問と回答は選択してこのページに公開しています。
+            フォームから質問できます。ご本人の承諾をいただいた質問と回答を掲載しています。
           </p>
         </div>
       </div>
