@@ -1,0 +1,11 @@
+---
+description: 変更は特別な指示がない限り main に commit して push する
+alwaysApply: true
+---
+
+# 公開ブランチ
+
+ホームページに載せる変更は `main` に commit し、`origin/main` へ push する。
+`staging` には置かない。別ブランチにする指示があったときだけ、その指示に従う。
+
+コミットの作者は `jpncs1979 <jpncs1979@gmail.com>` にする。作者が違うと Vercel の本番公開が止まる。
