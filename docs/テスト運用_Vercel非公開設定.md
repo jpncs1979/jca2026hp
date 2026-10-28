@@ -111,10 +111,10 @@
 
 | 開く URL | 期待する動作 |
 |----------|----------------|
-| `https://japan-clarinet-association.jp/` | **認証ダイアログ**が出る（見えない） |
-| `https://japan-clarinet-association.jp/membership` | **認証ダイアログ**が出る |
-| `https://japan-clarinet-association.jp/events/ensemble` | **そのまま**ページが表示される |
-| `https://japan-clarinet-association.jp/events/young-2026` | **そのまま**ページが表示される |
+| `https://jp-clarinet.org/` | **認証ダイアログ**が出る（見えない） |
+| `https://jp-clarinet.org/membership` | **認証ダイアログ**が出る |
+| `https://jp-clarinet.org/events/ensemble` | **そのまま**ページが表示される |
+| `https://jp-clarinet.org/events/young-2026` | **そのまま**ページが表示される |
 
 認証ダイアログが出たとき:
 
@@ -127,13 +127,13 @@
 
 ```
 【サイト閲覧用・準備中】
-URL: https://japan-clarinet-association.jp/
+URL: https://jp-clarinet.org/
 ユーザー名: jca
 パスワード: （SITE_ACCESS_PASSWORD に設定した値）
 
 ※ 次のページはパスワード不要で一般の方も閲覧できます。
-・ https://japan-clarinet-association.jp/events/ensemble
-・ https://japan-clarinet-association.jp/events/young-2026
+・ https://jp-clarinet.org/events/ensemble
+・ https://jp-clarinet.org/events/young-2026
 ```
 
 ---

@@ -41,7 +41,7 @@ Vercel は GitHub と連携してデプロイできます。まず、本プロ�
 
 1. GitHub の画面右上 **「+」** → **「New repository」** をクリック
 2. 以下を設定する
-   - **Repository name**：任意の名前（例：`2026clHP`、`japan-clarinet-association`）
+   - **Repository name**：任意の名前（例：`2026clHP`、`jca2026hp`）
    - **Description**：任意（例：日本クラリネット協会公式サイト）
    - **Public** を選択
    - **「Add a README file」** はチェックしない（ローカルに既にファイルがあるため）

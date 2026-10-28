@@ -324,7 +324,7 @@ export default function MembershipJoinPage() {
                           </FormLabel>
                           <p className="text-sm text-muted-foreground">
                             <a
-                              href="https://japan-clarinet-association.jp/membership/ica"
+                              href="/membership/ica"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="underline underline-offset-2 hover:text-foreground"

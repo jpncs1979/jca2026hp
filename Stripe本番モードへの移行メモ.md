@@ -47,7 +47,7 @@
 
 その他、決済完了メール等に必要な変数（本番でも同様に Production に設定）:
 
-- `NEXT_PUBLIC_SITE_URL` … 本番 URL（例: `https://japan-clarinet-association.jp`）
+- `NEXT_PUBLIC_SITE_URL` … 本番 URL（例: `https://jp-clarinet.org`）
 - `EMAIL_USER` / `EMAIL_APP_PASSWORD` / `EMAIL_FROM`
 - `OFFICE_NOTIFY_EMAIL`（省略時は `EMAIL_USER`）
 - `CRON_SECRET` … 1月22日の自動引き落とし Cron 用（本番でも必須）
@@ -99,7 +99,7 @@
 
    例:
 
-   - `https://japan-clarinet-association.jp/api/webhooks/stripe`
+   - `https://jp-clarinet.org/api/webhooks/stripe`
    - または `https://jca2026hp.vercel.app/api/webhooks/stripe`
 
 6. 作成後、**署名シークレット**（`whsec_...`）を表示してコピーする。
