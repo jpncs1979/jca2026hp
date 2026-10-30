@@ -397,7 +397,7 @@ export default function PatronageRequestPage() {
                       )}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      添付。もしくは後日事務局へ送付ください。
+                      PDF・JPEG・PNG（4MBまで）を添付。もしくは後日事務局へ送付ください。
                     </p>
                     {flyerError && <p className="mt-1 text-sm text-destructive">{flyerError}</p>}
                   </div>

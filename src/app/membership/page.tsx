@@ -155,11 +155,16 @@ export default function MembershipPage() {
                   口座振替をご希望の方は、事務局までお問い合わせください。
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <p className="rounded-md border border-gold/40 bg-gold/5 px-4 py-3 text-sm leading-relaxed">
+                  会費支払い方法は「<strong>口座振替</strong>」または「<strong>クレジットカード</strong>」のご選択をお願い致します。
+                  「コンビニエンスストア」は現在利用できません。
+                </p>
                 <a
                   href={SHIKUMINET_JOIN_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="inline-block"
                 >
                   <Button className="bg-gold text-gold-foreground hover:bg-gold-muted">
                     ウェブで入会申し込み
