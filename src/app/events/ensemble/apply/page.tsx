@@ -39,7 +39,11 @@ const formSchema = z.object({
   category: z.enum(["小・中学生部門", "高校生部門", "専門部門", "一般部門"]),
   program_title: z.string().min(1, "演奏曲名を入力してください"),
   ensemble_details: z.string().min(1, "団体人数・メンバー名簿等を入力してください"),
-  video_url: z.string().optional(),
+  video_url: z
+    .string()
+    .trim()
+    .min(1, "予選動画のURLを入力してください")
+    .url("URLの形式で入力してください（https:// から始まるURL）"),
 }).refine((data) => {
   if (data.member_type === "会員" && !data.member_number?.trim()) return false;
   return true;
@@ -460,7 +464,7 @@ export default function EnsembleApplyPage() {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-lg font-medium text-navy">会員種別（審査料）</h2>
+              <h2 className="text-lg font-medium text-navy">会員種別</h2>
               <FormField
                 control={form.control}
                 name="member_type"
@@ -501,18 +505,18 @@ export default function EnsembleApplyPage() {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-lg font-medium text-navy">予選動画（任意）</h2>
+              <h2 className="text-lg font-medium text-navy">予選動画</h2>
               <FormField
                 control={form.control}
                 name="video_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>YouTube 限定公開 URL</FormLabel>
+                    <FormLabel>YouTube 限定公開 URL *</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="https://..." />
                     </FormControl>
                     <FormDescription>
-                      申込時点で未準備の場合は空欄でも構いません。{ENSEMBLE_2027.videoSubmissionDeadline}までに提出してください。
+                      予選曲の演奏動画を YouTube に「限定公開」でアップロードし、そのURLを入力してください。申込時に必須です。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -578,7 +582,7 @@ export default function EnsembleApplyPage() {
                       category: values.category,
                       program_title: values.program_title,
                       ensemble_details: values.ensemble_details,
-                      video_url: values.video_url?.trim() || null,
+                      video_url: values.video_url.trim(),
                     });
                     router.push("/events/ensemble/apply/confirm");
                   } finally {

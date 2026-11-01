@@ -177,19 +177,10 @@ export default function EnsembleApplyConfirmPage() {
                 <dd className="font-mono">{data.member_number.trim()}</dd>
               </div>
             ) : null}
-            {data.video_url?.trim() ? (
-              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">予選動画URL</dt>
-                <dd className="break-all">{data.video_url.trim()}</dd>
-              </div>
-            ) : (
-              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">予選動画URL</dt>
-                <dd className="text-muted-foreground">
-                  （未入力・{ENSEMBLE_2027.videoSubmissionDeadline}までに提出）
-                </dd>
-              </div>
-            )}
+            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+              <dt className="text-muted-foreground">予選動画URL</dt>
+              <dd className="break-all">{data.video_url?.trim()}</dd>
+            </div>
             <div className="border-t border-border pt-4">
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
                 <dt className="text-muted-foreground">動画審査料</dt>

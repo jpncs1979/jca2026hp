@@ -34,7 +34,7 @@ export type Ensemble2027ApplicationParsed = {
   program_title: string;
   /** 団体人数・メンバー名簿等 */
   ensemble_details: string;
-  video_url: string | null;
+  video_url: string;
 };
 
 export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027ApplicationParsed | null {
@@ -71,8 +71,9 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
   if (member_type !== "会員" && member_type !== "非会員") return null;
   if (!CATEGORY_IDS.includes(category as Ensemble2027CategoryId)) return null;
 
-  const video_url =
-    typeof o.video_url === "string" && o.video_url.trim() ? o.video_url.trim() : null;
+  // 予選動画URLは申込時に必須
+  const video_url = typeof o.video_url === "string" ? o.video_url.trim() : "";
+  if (!/^https?:\/\/\S+$/.test(video_url)) return null;
 
   return {
     name,
