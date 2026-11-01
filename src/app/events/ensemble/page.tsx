@@ -269,7 +269,7 @@ export default function EnsemblePage() {
               お申し込み（Web申込・審査料の入金確認）：{ENSEMBLE_2027.applicationPeriod}
             </p>
             <p className="mt-2 text-foreground">
-              予選動画（YouTube 限定公開）のURLは、申込時に入力してください。
+              予選動画の提出：{ENSEMBLE_2027.videoSubmissionDeadline}まで（申込とは別日程）
             </p>
           </section>
 

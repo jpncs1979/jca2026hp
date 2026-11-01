@@ -281,7 +281,7 @@ export default function EnsembleApplyPage() {
             申込受付期間は {ENSEMBLE_2027.applicationPeriod} です。
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            予選動画（YouTube 限定公開）のURLは、申込時に入力していただきます。
+            予選動画の提出期限は {ENSEMBLE_2027.videoSubmissionDeadline} までです（動画URLは申込時に入力）。
           </p>
           <Link href="/events/ensemble" className="mt-8 inline-block">
             <Button variant="outline">コンクール詳細に戻る</Button>
@@ -299,7 +299,7 @@ export default function EnsembleApplyPage() {
             {ENSEMBLE_2027.name} 参加申込
           </h1>
           <p className="mt-2 text-muted-foreground">
-            申込（予選動画URLの入力を含む）：{ENSEMBLE_2027.applicationPeriod}
+            申込：{ENSEMBLE_2027.applicationPeriod}／動画提出：{ENSEMBLE_2027.videoSubmissionDeadline}まで
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             動画審査料のお支払いは<strong className="text-foreground">クレジットカードのみ</strong>です。
