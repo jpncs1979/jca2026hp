@@ -35,7 +35,8 @@ const formSchema = z.object({
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   phone: z.string().min(1, "電話番号を入力してください"),
   member_type: z.enum(["会員", "非会員"]),
-  member_number: z.string().optional(),
+  member_name: z.string().optional(),
+  member_email: z.string().optional(),
   category: z.enum(["小・中学生部門", "高校生部門", "専門部門", "一般部門"]),
   program_title: z.string().min(1, "演奏曲名を入力してください"),
   ensemble_details: z.string().min(1, "団体人数・メンバー名簿等を入力してください"),
@@ -45,16 +46,22 @@ const formSchema = z.object({
     .min(1, "予選動画のURLを入力してください")
     .url("URLの形式で入力してください（https:// から始まるURL）"),
 }).refine((data) => {
-  if (data.member_type === "会員" && !data.member_number?.trim()) return false;
+  if (data.member_type === "会員" && !data.member_name?.trim()) return false;
   return true;
 }, {
-  message: "会員価格の場合は会員番号を入力してください",
-  path: ["member_number"],
+  message: "会員の方の氏名を入力してください",
+  path: ["member_name"],
+}).refine((data) => {
+  if (data.member_type !== "会員") return true;
+  return z.string().email().safeParse(data.member_email?.trim() ?? "").success;
+}, {
+  message: "会員の方のメールアドレスを入力してください",
+  path: ["member_email"],
 }).refine((data) => {
   if (data.member_type === "会員" && !data.birth_date?.trim()) return false;
   return true;
 }, {
-  message: "会員でお申し込みの場合は代表者の生年月日を入力してください",
+  message: "会員の方の生年月日を入力してください",
   path: ["birth_date"],
 });
 
@@ -181,7 +188,8 @@ export default function EnsembleApplyPage() {
       email: "",
       phone: "",
       member_type: "非会員",
-      member_number: "",
+      member_name: "",
+      member_email: "",
       category: "小・中学生部門",
       program_title: "",
       ensemble_details: "",
@@ -231,7 +239,8 @@ export default function EnsembleApplyPage() {
       email: raw.email,
       phone: raw.phone,
       member_type: raw.member_type,
-      member_number: raw.member_number ?? "",
+      member_name: raw.member_name ?? "",
+      member_email: raw.member_email ?? "",
       category: raw.category,
       program_title: raw.program_title,
       ensemble_details: raw.ensemble_details,
@@ -471,22 +480,38 @@ export default function EnsembleApplyPage() {
                 )}
               />
               {memberType === "会員" && (
-                <FormField
-                  control={form.control}
-                  name="member_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>会員番号（4桁）*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="例: 0001" />
-                      </FormControl>
-                      <FormDescription>
-                        会員番号・メール・代表者生年月日が会員データと一致している必要があります。
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    演奏者のうち、協会会員の方1名の情報を入力してください。会員データと照合します（会員番号は不要です）。
+                  </p>
+                  <FormField
+                    control={form.control}
+                    name="member_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>会員の方の氏名 *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="山田 花子" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="member_email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>会員の方のメールアドレス *</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" placeholder="example@example.com" />
+                        </FormControl>
+                        <FormDescription>協会に登録しているメールアドレスを入力してください。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
               {memberType === "会員" && (
                 <FormField
@@ -494,7 +519,7 @@ export default function EnsembleApplyPage() {
                   name="birth_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>代表者生年月日 *</FormLabel>
+                      <FormLabel>会員の方の生年月日 *</FormLabel>
                       <FormControl>
                         <BirthDateInput
                           value={field.value ?? ""}
@@ -503,7 +528,7 @@ export default function EnsembleApplyPage() {
                         />
                       </FormControl>
                       <FormDescription>
-                        会員番号・メールアドレスと合わせて、会員データと照合します（会員でお申し込みの場合のみ）。
+                        生年月日に加えて、氏名またはメールアドレスのどちらかが会員データと一致すれば確認できます。
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -563,8 +588,8 @@ export default function EnsembleApplyPage() {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          member_number: values.member_number,
-                          email: values.email,
+                          member_name: values.member_name,
+                          member_email: values.member_email,
                           birth_date: values.birth_date,
                         }),
                       });
@@ -586,7 +611,8 @@ export default function EnsembleApplyPage() {
                       email: values.email,
                       phone: values.phone,
                       member_type: values.member_type,
-                      member_number: values.member_number?.trim() || undefined,
+                      member_name: values.member_type === "会員" ? values.member_name?.trim() : undefined,
+                      member_email: values.member_type === "会員" ? values.member_email?.trim() : undefined,
                       category: values.category,
                       program_title: values.program_title,
                       ensemble_details: values.ensemble_details,

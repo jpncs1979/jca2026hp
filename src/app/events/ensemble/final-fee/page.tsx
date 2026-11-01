@@ -80,7 +80,7 @@ export default async function EnsembleFinalFeePage({
             </dl>
             <p className="mt-4 text-sm text-muted-foreground">
               参加料は演奏者1人ごとにかかります。演奏者に1人以上協会会員が含まれる団体は、全員が会員価格です。
-              お支払いはクレジットカードのみです。お支払い後の返金はできません。
+              お支払いはクレジットカードのみで、金額は決済手数料込みです。お支払い後の返金はできません。
             </p>
             <FinalFeeForm
               id={id}

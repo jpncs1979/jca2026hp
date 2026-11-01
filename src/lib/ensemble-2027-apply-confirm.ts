@@ -9,7 +9,9 @@ export type Ensemble2027ApplyConfirmPayload = {
   email: string;
   birth_date: string;
   member_type: "会員" | "非会員";
-  member_number?: string;
+  /** 会員申込のとき：照合に使う会員1名の氏名・メール（生年月日は birth_date） */
+  member_name?: string;
+  member_email?: string;
   category: Ensemble2027CategoryId;
   representative_name: string;
   phone: string;

@@ -55,7 +55,8 @@ export default function EnsembleApplyConfirmPage() {
     email: p.email,
     birth_date: p.birth_date,
     member_type: p.member_type,
-    member_number: p.member_number ?? "",
+    member_name: p.member_name ?? "",
+    member_email: p.member_email ?? "",
     category: p.category,
     representative_name: p.representative_name,
     phone: p.phone,
@@ -72,7 +73,8 @@ export default function EnsembleApplyConfirmPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          member_number: data.member_number ?? "",
+          member_name: data.member_name ?? "",
+          member_email: data.member_email ?? "",
           email: data.email,
           birth_date: data.birth_date,
         }),
@@ -114,7 +116,7 @@ export default function EnsembleApplyConfirmPage() {
             本選の参加料は予選通過後に別途ご案内します。
             {data.member_type === "会員" ? (
               <span className="mt-2 block text-sm">
-                会員価格の場合は、会員番号・メール・代表者生年月日を会員データと照合します。
+                会員価格の場合は、会員の方の氏名・メールアドレス・生年月日を会員データと照合します。
               </span>
             ) : null}
           </p>
@@ -157,7 +159,7 @@ export default function EnsembleApplyConfirmPage() {
             </div>
             {data.birth_date ? (
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">代表者生年月日</dt>
+                <dt className="text-muted-foreground">会員の方の生年月日</dt>
                 <dd>{formatBirthDisplay(data.birth_date)}</dd>
               </div>
             ) : null}
@@ -173,10 +175,12 @@ export default function EnsembleApplyConfirmPage() {
               <dt className="text-muted-foreground">会員種別</dt>
               <dd>{data.member_type}</dd>
             </div>
-            {data.member_type === "会員" && data.member_number?.trim() ? (
+            {data.member_type === "会員" ? (
               <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-muted-foreground">会員番号</dt>
-                <dd className="font-mono">{data.member_number.trim()}</dd>
+                <dt className="text-muted-foreground">会員の方</dt>
+                <dd className="break-all">
+                  {data.member_name}（{data.member_email}）
+                </dd>
               </div>
             ) : null}
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">

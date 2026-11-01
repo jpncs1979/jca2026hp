@@ -2,8 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCompetitionId } from "@/lib/competition-application-gate";
 import { ENSEMBLE_2027, type Ensemble2027CategoryId } from "@/lib/ensemble-2027";
 import { isEnsemble2027ApplicationOpen } from "@/lib/ensemble-2027";
-import { normalizeMemberNumberInput } from "@/lib/member-number";
-import { verifyYoung2026MemberCredentials } from "@/lib/young-2026-verify-member";
+import { verifyEnsemble2027Member } from "@/lib/ensemble-2027-verify-member";
 
 const CATEGORY_IDS = ENSEMBLE_2027.categories.map((c) => c.id);
 
@@ -24,7 +23,9 @@ export type Ensemble2027ApplicationParsed = {
   /** 代表者生年月日 */
   birth_date: string;
   member_type: "会員" | "非会員";
-  member_number: string;
+  /** 会員申込のとき：照合に使う会員1名の氏名・メール */
+  member_name: string;
+  member_email: string;
   category: Ensemble2027CategoryId;
   /** 代表者氏名 */
   representative_name: string;
@@ -46,7 +47,8 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
   const birth_date = typeof o.birth_date === "string" ? o.birth_date.trim() : "";
   const member_type = typeof o.member_type === "string" ? o.member_type.trim() : "";
   const category = typeof o.category === "string" ? o.category.trim() : "";
-  const member_number = typeof o.member_number === "string" ? o.member_number : "";
+  const member_name = typeof o.member_name === "string" ? o.member_name.trim() : "";
+  const member_email = typeof o.member_email === "string" ? o.member_email.trim() : "";
   const representative_name =
     typeof o.representative_name === "string" ? o.representative_name.trim() : "";
   const phone = typeof o.phone === "string" ? o.phone.trim() : "";
@@ -69,7 +71,7 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
   }
   if (member_type !== "会員" && member_type !== "非会員") return null;
   // 代表者生年月日は会員照合にだけ使うので、会員のときだけ必須
-  if (member_type === "会員" && !birth_date) return null;
+  if (member_type === "会員" && (!birth_date || !member_name || !member_email)) return null;
   if (!CATEGORY_IDS.includes(category as Ensemble2027CategoryId)) return null;
 
   // 予選動画URLは申込時に必須
@@ -82,7 +84,8 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
     email,
     birth_date: member_type === "会員" ? birth_date : "",
     member_type,
-    member_number,
+    member_name: member_type === "会員" ? member_name : "",
+    member_email: member_type === "会員" ? member_email : "",
     category: category as Ensemble2027CategoryId,
     representative_name,
     phone,
@@ -124,25 +127,20 @@ export async function createEnsemble2027Application(
     return { ok: false, message: "代表者の生年月日が不正です。", status: 400 };
   }
 
-  const memberNumberNorm =
-    parsed.member_type === "会員" ? normalizeMemberNumberInput(parsed.member_number) : null;
-  if (parsed.member_type === "会員" && !memberNumberNorm) {
-    return {
-      ok: false,
-      message: "会員価格でお申し込みの場合は、有効な会員番号を入力してください（例: 0001）。",
-      status: 400,
-    };
-  }
-
-  if (parsed.member_type === "会員" && memberNumberNorm) {
-    const verifyResult = await verifyYoung2026MemberCredentials(db, {
-      memberNumberRaw: memberNumberNorm,
-      email: parsed.email,
+  let memberNumberNorm: string | null = null;
+  let verifiedMemberLine: string | null = null;
+  if (parsed.member_type === "会員") {
+    const verifyResult = await verifyEnsemble2027Member(db, {
+      name: parsed.member_name,
+      email: parsed.member_email,
       birthDateRaw: parsed.birth_date,
     });
     if (!verifyResult.ok) {
       return { ok: false, message: verifyResult.message, status: 400 };
     }
+    memberNumberNorm =
+      verifyResult.memberNumber != null ? String(verifyResult.memberNumber).padStart(4, "0") : null;
+    verifiedMemberLine = `照合した会員：${verifyResult.memberName}（入力：${parsed.member_name}／${parsed.member_email}）`;
   }
 
   const competitionId = await resolveCompetitionId(
@@ -160,6 +158,7 @@ export async function createEnsemble2027Application(
     `代表者氏名：${parsed.representative_name}`,
     `電話：${parsed.phone}`,
     `演奏曲：${parsed.program_title}`,
+    ...(verifiedMemberLine ? [verifiedMemberLine] : []),
     parsed.ensemble_details,
   ].join("\n");
 
