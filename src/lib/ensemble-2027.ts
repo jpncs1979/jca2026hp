@@ -41,10 +41,10 @@ export const ENSEMBLE_2027 = {
     ],
   },
 
-  /** Web申込・審査料入金の受付期間（12月31日まで） */
-  applicationPeriod: "2026年12月10日（木）～2026年12月31日（木）",
+  /** Web申込・審査料入金の受付期間（予選動画URLも申込時に入力・2027年1月7日まで） */
+  applicationPeriod: "2026年12月10日（木）～2027年1月7日（木）",
 
-  /** 予選動画の提出期限のみ（申込後、1月7日まで別途受付） */
+  /** 予選動画の提出期限（＝申込締切。URLは申込時に入力） */
   videoSubmissionDeadline: "2027年1月7日（木）",
 
   schedule: {
@@ -123,7 +123,7 @@ export const ENSEMBLE_2027 = {
 
   applicationMethod: [
     "1）一般社団法人日本クラリネット協会ホームページよりWeb申込。",
-    "2）予選曲の演奏動画をYouTube「限定公開」でアップロードし、URLを申込フォームに記載してください（動画は申込締切後も提出期限まで提出可能です）。",
+    "2）予選曲の演奏動画をYouTube「限定公開」でアップロードし、URLを申込フォームに記載してください（申込時に必須）。",
     "3）Web申込時の自動返信メールを必ず確認してください。返信がない場合、受付されていないことがあります。",
     "4）クレジットカードによる動画審査料の決済完了をもって受付完了とします。",
     "5）本選出場団体は、メールで指定した期日（1月下旬予定）までに参加料をお支払いください。",
@@ -164,8 +164,8 @@ function ymdInJst(d: Date): string {
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
 }
 
-/** 申込受付（JST）：2026-12-10 ～ 2026-12-31 */
+/** 申込受付（JST）：2026-12-10 ～ 2027-01-07 */
 export function isEnsemble2027ApplicationOpen(now = new Date()): boolean {
   const ymd = ymdInJst(now);
-  return ymd >= "2026-12-10" && ymd <= "2026-12-31";
+  return ymd >= "2026-12-10" && ymd <= "2027-01-07";
 }

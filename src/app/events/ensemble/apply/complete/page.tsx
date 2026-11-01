@@ -22,8 +22,7 @@ function ApplyCompleteContent() {
           {ENSEMBLE_2027.name}へのお申し込みと、クレジットカードによる動画審査料のお支払いを確認しました。
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
-          登録内容の確認メールをお送りしています。予選動画は
-          {ENSEMBLE_2027.videoSubmissionDeadline}までに提出してください（申込時にURLを入力していない場合）。
+          登録内容の確認メールをお送りしています。
         </p>
       </>
     );
