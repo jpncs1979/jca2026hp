@@ -155,9 +155,14 @@ export function buildYoung2026ApplicationDetailsSection(
   parts.push(
     `<li>${isEnsemble ? "団体名" : "お名前"}：${escapeHtml(app.name)}</li>`,
     `<li>${isEnsemble ? "団体名ふりがな" : "ふりがな"}：${escapeHtml(app.furigana)}</li>`,
-    `<li>メールアドレス：${escapeHtml(app.email)}</li>`,
-    `<li>${isEnsemble ? "代表者生年月日" : "生年月日"}：${escapeHtml(formatBirthDisplay(app.birth_date))}</li>`
+    `<li>メールアドレス：${escapeHtml(app.email)}</li>`
   );
+  // アンコンは会員申込のときだけ代表者生年月日がある
+  if (!isEnsemble || app.birth_date?.trim()) {
+    parts.push(
+      `<li>${isEnsemble ? "代表者生年月日" : "生年月日"}：${escapeHtml(formatBirthDisplay(app.birth_date))}</li>`
+    );
+  }
 
   if (!isEnsemble) {
     if (app.affiliation) {

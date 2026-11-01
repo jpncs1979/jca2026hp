@@ -75,7 +75,7 @@ export function isRestorableEnsemble2027ApplyPayload(
     VALID_MEMBER_TYPES.includes(p.member_type as (typeof VALID_MEMBER_TYPES)[number]) &&
     VALID_CATEGORIES.includes(p.category as Ensemble2027CategoryId) &&
     typeof p.birth_date === "string" &&
-    p.birth_date.length > 0 &&
+    (p.member_type !== "会員" || p.birth_date.length > 0) &&
     typeof p.furigana === "string" &&
     typeof p.representative_name === "string" &&
     typeof p.phone === "string" &&

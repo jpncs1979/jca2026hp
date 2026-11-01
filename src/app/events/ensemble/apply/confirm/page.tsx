@@ -155,10 +155,12 @@ export default function EnsembleApplyConfirmPage() {
               <dt className="text-muted-foreground">代表者氏名</dt>
               <dd>{data.representative_name}</dd>
             </div>
-            <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-              <dt className="text-muted-foreground">代表者生年月日</dt>
-              <dd>{formatBirthDisplay(data.birth_date)}</dd>
-            </div>
+            {data.birth_date ? (
+              <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
+                <dt className="text-muted-foreground">代表者生年月日</dt>
+                <dd>{formatBirthDisplay(data.birth_date)}</dd>
+              </div>
+            ) : null}
             <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
               <dt className="text-muted-foreground">メール</dt>
               <dd className="break-all">{data.email}</dd>

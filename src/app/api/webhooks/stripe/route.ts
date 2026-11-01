@@ -17,6 +17,11 @@ import {
 } from "@/lib/young-2026-application-mail-html";
 import { ENSEMBLE_2027 } from "@/lib/ensemble-2027";
 import { YOUNG_2026 } from "@/lib/young-2026";
+import { ensemble2027FinalUnitFee, parsePerformerCount } from "@/lib/ensemble-2027-final-fee";
+import {
+  recordEnsemble2027FinalFee,
+  sendEnsemble2027FinalFeeEmail,
+} from "@/lib/ensemble-2027-final-fee-server";
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -155,6 +160,57 @@ async function sendCompetitionApplicationPaidEmail(
       console.error("[コンクール申込メール] 事務局宛送信失敗:", msg, err);
     }
   }
+}
+
+/** アンコン本選参加料の決済完了：申込に記録し、代表者・事務局へメール */
+async function handleEnsembleFinalFeeCompleted(
+  session: Stripe.Checkout.Session,
+  db: SupabaseClient
+): Promise<"recorded" | "already" | "skipped" | "error"> {
+  const applicationId = session.metadata?.application_id ?? "";
+  const performerCount = parsePerformerCount(session.metadata?.performer_count);
+  if (!applicationId || performerCount == null) return "skipped";
+
+  const { data: app } = await db
+    .from("applications")
+    .select("id, name, email, category, member_type")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (!app) return "skipped";
+
+  const unitFee = ensemble2027FinalUnitFee(String(app.category), String(app.member_type)) ?? 0;
+  const amount = typeof session.amount_total === "number" ? session.amount_total : unitFee * performerCount;
+
+  const rec = await recordEnsemble2027FinalFee(db, applicationId, {
+    status: "paid",
+    amount,
+    performerCount,
+    paymentIntent: typeof session.payment_intent === "string" ? session.payment_intent : null,
+  });
+  if (rec.error) {
+    console.error("[Stripe Webhook] ensemble_final_fee 保存失敗", rec.error);
+    return "error";
+  }
+  if (!rec.updated) return "already";
+
+  try {
+    await sendEnsemble2027FinalFeeEmail({
+      app: {
+        id: String(app.id),
+        name: String(app.name ?? ""),
+        email: typeof app.email === "string" ? app.email : null,
+        category: String(app.category),
+        member_type: String(app.member_type),
+      },
+      status: "paid",
+      amount,
+      performerCount,
+      unitFee,
+    });
+  } catch (err) {
+    console.error("[Stripe Webhook] ensemble_final_fee メール送信失敗", err);
+  }
+  return "recorded";
 }
 
 /** 入会決済完了時: プロフィール・会員契約・入金記録を作成し、入会完了メールを送信 */
@@ -629,6 +685,18 @@ export async function POST(request: Request) {
       const supabaseCard = createClient(supabaseUrl, serviceRoleKey);
       const result = await handleMypageCardSetupCompleted(session, supabaseCard);
       console.log("[Stripe Webhook] mypage_card_setup 処理結果", result);
+      return NextResponse.json({ received: true });
+    }
+
+    if (session.metadata?.type === "ensemble_final_fee") {
+      if (!supabaseUrl || !serviceRoleKey) {
+        return NextResponse.json({ error: "Server config error" }, { status: 500 });
+      }
+      const result = await handleEnsembleFinalFeeCompleted(session, createClient(supabaseUrl, serviceRoleKey));
+      console.log("[Stripe Webhook] ensemble_final_fee 処理結果", result);
+      if (result === "error") {
+        return NextResponse.json({ error: "Update failed" }, { status: 500 });
+      }
       return NextResponse.json({ received: true });
     }
 

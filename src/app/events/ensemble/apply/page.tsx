@@ -31,7 +31,7 @@ const formSchema = z.object({
   name: z.string().min(1, "団体名を入力してください"),
   furigana: z.string().min(1, "団体名のふりがなを入力してください"),
   representative_name: z.string().min(1, "代表者氏名を入力してください"),
-  birth_date: z.string().min(1, "代表者の生年月日を入力してください"),
+  birth_date: z.string().optional(),
   email: z.string().min(1, "メールアドレスを入力してください").email("有効なメールアドレスを入力してください"),
   phone: z.string().min(1, "電話番号を入力してください"),
   member_type: z.enum(["会員", "非会員"]),
@@ -50,6 +50,12 @@ const formSchema = z.object({
 }, {
   message: "会員価格の場合は会員番号を入力してください",
   path: ["member_number"],
+}).refine((data) => {
+  if (data.member_type === "会員" && !data.birth_date?.trim()) return false;
+  return true;
+}, {
+  message: "会員でお申し込みの場合は代表者の生年月日を入力してください",
+  path: ["birth_date"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -414,26 +420,6 @@ export default function EnsembleApplyPage() {
               />
               <FormField
                 control={form.control}
-                name="birth_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>代表者生年月日 *</FormLabel>
-                    <FormControl>
-                      <BirthDateInput
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      会員価格でお申し込みの場合、会員データと照合します。
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -496,6 +482,28 @@ export default function EnsembleApplyPage() {
                       </FormControl>
                       <FormDescription>
                         会員番号・メール・代表者生年月日が会員データと一致している必要があります。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {memberType === "会員" && (
+                <FormField
+                  control={form.control}
+                  name="birth_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>代表者生年月日 *</FormLabel>
+                      <FormControl>
+                        <BirthDateInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        会員番号・メールアドレスと合わせて、会員データと照合します（会員でお申し込みの場合のみ）。
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -574,7 +582,7 @@ export default function EnsembleApplyPage() {
                       name: values.name,
                       furigana: values.furigana,
                       representative_name: values.representative_name,
-                      birth_date: values.birth_date,
+                      birth_date: values.member_type === "会員" ? values.birth_date ?? "" : "",
                       email: values.email,
                       phone: values.phone,
                       member_type: values.member_type,

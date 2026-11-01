@@ -58,7 +58,6 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
     !name ||
     !furigana ||
     !email ||
-    !birth_date ||
     !member_type ||
     !category ||
     !representative_name ||
@@ -69,6 +68,8 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
     return null;
   }
   if (member_type !== "会員" && member_type !== "非会員") return null;
+  // 代表者生年月日は会員照合にだけ使うので、会員のときだけ必須
+  if (member_type === "会員" && !birth_date) return null;
   if (!CATEGORY_IDS.includes(category as Ensemble2027CategoryId)) return null;
 
   // 予選動画URLは申込時に必須
@@ -79,7 +80,7 @@ export function parseEnsemble2027ApplicationBody(body: unknown): Ensemble2027App
     name,
     furigana,
     email,
-    birth_date,
+    birth_date: member_type === "会員" ? birth_date : "",
     member_type,
     member_number,
     category: category as Ensemble2027CategoryId,
@@ -118,8 +119,8 @@ export async function createEnsemble2027Application(
     return { ok: false, message: "必須項目が入力されていません。", status: 400 };
   }
 
-  const birth = new Date(parsed.birth_date);
-  if (Number.isNaN(birth.getTime())) {
+  const birth = parsed.birth_date ? new Date(parsed.birth_date) : null;
+  if (birth && Number.isNaN(birth.getTime())) {
     return { ok: false, message: "代表者の生年月日が不正です。", status: 400 };
   }
 
@@ -167,7 +168,7 @@ export async function createEnsemble2027Application(
     name: parsed.name,
     furigana: parsed.furigana,
     email: parsed.email,
-    birth_date: parsed.birth_date,
+    birth_date: parsed.birth_date || null,
     age_at_reference: 0,
     member_type: parsed.member_type,
     member_number: memberNumberNorm,
