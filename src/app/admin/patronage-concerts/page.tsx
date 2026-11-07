@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   flyerFileError,
   patronageFlyerHref,
+  patronageFlyerPreviewHref,
   type PatronageConcertRow,
 } from "@/lib/patronage-concerts";
 
@@ -406,9 +407,16 @@ export default function AdminPatronageConcertsPage() {
                         href={patronageFlyerHref(detail.id, detail.updated_at)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block rounded-lg border border-border bg-muted/40 px-3 py-8 text-center text-sm text-navy hover:bg-muted"
+                        className="block overflow-hidden rounded-lg border border-border bg-muted/40 text-center text-sm text-navy hover:bg-muted"
                       >
-                        チラシ（PDF）を開く
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          key={detail.updated_at}
+                          src={patronageFlyerPreviewHref(detail.id, detail.updated_at)}
+                          alt="チラシ（PDFの1ページ目）"
+                          className="w-full object-cover object-top"
+                        />
+                        <span className="block px-3 py-2">チラシ（PDF）を開く</span>
                       </a>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element

@@ -61,6 +61,13 @@ export function patronageFlyerHref(id: string, cacheKey?: string | null): string
   return `${base}?v=${encodeURIComponent(cacheKey)}`;
 }
 
+/** 表示用画像（PDF は1ページ目を画像にしたもの）の URL */
+export function patronageFlyerPreviewHref(id: string, cacheKey?: string | null): string {
+  const base = `/api/patronage-concerts/${id}/flyer/preview`;
+  if (!cacheKey) return base;
+  return `${base}?v=${encodeURIComponent(cacheKey)}`;
+}
+
 /** 添付ファイルがあるときだけ呼ぶ。問題なければ null。 */
 export function flyerFileError(file: { name: string; size: number; type: string }): string | null {
   if (!file.name || file.size <= 0) {

@@ -9,6 +9,7 @@ import {
   parsePatronageConcertEdit,
   type PatronageConcertStatus,
 } from "@/lib/patronage-concerts";
+import { flyerStoragePaths } from "@/lib/patronage-flyer-preview.server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -112,7 +113,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   if (existing?.flyer_path) {
-    await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove([existing.flyer_path]);
+    await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove(flyerStoragePaths(existing.flyer_path));
   }
 
   revalidateListing();

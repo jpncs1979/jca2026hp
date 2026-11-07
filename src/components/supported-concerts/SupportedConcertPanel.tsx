@@ -13,6 +13,7 @@ export function SupportedConcertPanel({ concert }: { concert: SupportedConcert }
             <div className="relative aspect-[3/4] w-full md:aspect-auto md:h-full md:min-h-[280px]">
               <ConcertFlyer
                 flyerUrl={concert.flyerUrl}
+                flyerImageUrl={concert.flyerImageUrl}
                 flyerIsPdf={concert.flyerIsPdf}
                 alt={`${concert.title} チラシ`}
               />

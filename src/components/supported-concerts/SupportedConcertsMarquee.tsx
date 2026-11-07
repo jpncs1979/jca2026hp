@@ -21,19 +21,26 @@ function FlyerThumb({ concert }: { concert: SupportedConcert }) {
       title={`${concert.dateLabel} ${concert.title}`}
     >
       <div className="relative aspect-[3/4] w-[120px] overflow-hidden rounded-lg border border-border bg-muted/50 shadow-md sm:w-[140px]">
-        {!concert.flyerUrl || failed ? (
+        {!concert.flyerUrl ? (
           <div className="flex size-full items-center justify-center text-muted-foreground">
             <FileImage className="size-8" />
           </div>
-        ) : concert.flyerIsPdf ? (
-          <div className="flex size-full flex-col items-center justify-center gap-1 bg-muted/40 text-navy">
-            <FileText className="size-8 text-gold" />
-            <span className="text-[10px] font-medium">PDF</span>
-          </div>
+        ) : failed ? (
+          concert.flyerIsPdf ? (
+            <div className="flex size-full flex-col items-center justify-center gap-1 bg-muted/40 text-navy">
+              <FileText className="size-8 text-gold" />
+              <span className="text-[10px] font-medium">PDF</span>
+            </div>
+          ) : (
+            <div className="flex size-full items-center justify-center text-muted-foreground">
+              <FileImage className="size-8" />
+            </div>
+          )
         ) : (
+          // PDF は1ページ目を画像にしたものを表示する
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={concert.flyerUrl}
+            src={concert.flyerImageUrl ?? concert.flyerUrl}
             alt={`${concert.title} チラシ`}
             className="size-full object-cover object-top"
             onError={() => setFailed(true)}

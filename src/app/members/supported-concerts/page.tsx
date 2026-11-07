@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Music2 } from "lucide-react";
-import { hasImageFlyer } from "@/data/supported-concerts";
+import { hasFlyer } from "@/data/supported-concerts";
 import { getApprovedUpcomingConcerts } from "@/lib/patronage-concerts.server";
 import { SupportedConcertsMarquee } from "@/components/supported-concerts/SupportedConcertsMarquee";
 import { SupportedConcertsCalendar } from "@/components/supported-concerts/SupportedConcertsCalendar";
@@ -17,7 +17,7 @@ export const metadata = {
 export default async function SupportedConcertsPage() {
   const concerts = await getApprovedUpcomingConcerts();
   const hasConcerts = concerts.length > 0;
-  const flyerConcerts = concerts.filter(hasImageFlyer);
+  const flyerConcerts = concerts.filter(hasFlyer);
 
   return (
     <div className="font-soft">

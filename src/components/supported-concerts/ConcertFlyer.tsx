@@ -1,19 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { FileImage, FileText } from "lucide-react";
 
 /**
  * 後援演奏会チラシ。申請時に添付された画像 / PDF を表示する。
+ * PDF は1ページ目を画像にして見せ、クリックで元の PDF を開く。
  */
 export function ConcertFlyer({
   flyerUrl,
+  flyerImageUrl,
   flyerIsPdf,
   alt,
 }: {
   flyerUrl: string | null;
+  flyerImageUrl?: string | null;
   flyerIsPdf?: boolean;
   alt: string;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
   if (!flyerUrl) {
     return (
       <div
@@ -29,16 +35,35 @@ export function ConcertFlyer({
   }
 
   if (flyerIsPdf) {
+    const imageUrl = flyerImageUrl ?? null;
     return (
       <a
         href={flyerUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/40 text-navy shadow-lg transition-colors hover:bg-muted"
-        aria-label={`${alt}のチラシ（PDF）`}
+        className="group relative block size-full overflow-hidden rounded-xl border border-border bg-muted/40 text-navy shadow-lg"
+        aria-label={`${alt}（PDFを開く）`}
       >
-        <FileText className="size-12 text-gold" />
-        <span className="text-sm font-medium">チラシ（PDF）を開く</span>
+        {imageUrl && !imageFailed ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={alt}
+              className="size-full object-cover object-top"
+              onError={() => setImageFailed(true)}
+            />
+            <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-navy/85 px-2 py-1 text-xs font-medium text-white shadow transition-colors group-hover:bg-navy">
+              <FileText className="size-3.5" />
+              PDFを開く
+            </span>
+          </>
+        ) : (
+          <span className="flex aspect-[3/4] size-full flex-col items-center justify-center gap-3 transition-colors hover:bg-muted">
+            <FileText className="size-12 text-gold" />
+            <span className="text-sm font-medium">チラシ（PDF）を開く</span>
+          </span>
+        )}
       </a>
     );
   }
