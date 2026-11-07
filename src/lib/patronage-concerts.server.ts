@@ -4,12 +4,15 @@ import {
   formatConcertDateLabel,
   isPdfFlyer,
   patronageFlyerHref,
+  patronageFlyerPreviewHref,
   PATRONAGE_SELECT_COLS,
   todayInTokyo,
   type PatronageConcertRow,
 } from "@/lib/patronage-concerts";
 
 export function toSupportedConcert(row: PatronageConcertRow): SupportedConcert {
+  const flyerIsPdf = isPdfFlyer(row.flyer_content_type, row.flyer_filename);
+  const flyerUrl = row.flyer_path ? patronageFlyerHref(row.id, row.updated_at) : null;
   return {
     id: row.id,
     slug: row.slug,
@@ -24,8 +27,11 @@ export function toSupportedConcert(row: PatronageConcertRow): SupportedConcert {
     organizer: row.organizer,
     contact: row.contact,
     addedDate: (row.approved_at ?? row.created_at).slice(0, 10),
-    flyerUrl: row.flyer_path ? patronageFlyerHref(row.id, row.updated_at) : null,
-    flyerIsPdf: isPdfFlyer(row.flyer_content_type, row.flyer_filename),
+    flyerUrl,
+    // PDF は1ページ目を画像にしたもの、画像はそのまま
+    flyerImageUrl:
+      flyerUrl && flyerIsPdf ? patronageFlyerPreviewHref(row.id, row.updated_at) : flyerUrl,
+    flyerIsPdf,
   };
 }
 

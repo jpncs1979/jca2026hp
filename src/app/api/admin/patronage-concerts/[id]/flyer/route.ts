@@ -10,6 +10,7 @@ import {
   flyerExtension,
   flyerFileError,
 } from "@/lib/patronage-concerts";
+import { flyerStoragePaths } from "@/lib/patronage-flyer-preview.server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -80,7 +81,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const previous = existing.flyer_path as string | null;
   if (previous && previous !== flyerPath) {
-    await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove([previous]);
+    await admin.storage.from(PATRONAGE_FLYER_BUCKET).remove(flyerStoragePaths(previous));
   }
 
   revalidateListing();

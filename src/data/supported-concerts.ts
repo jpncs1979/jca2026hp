@@ -29,13 +29,14 @@ export interface SupportedConcert {
   contact: string;
   /** 掲載日 */
   addedDate: string;
+  /** 元のチラシ（画像 / PDF）。PDF はこのリンクで開く */
   flyerUrl: string | null;
+  /** 表示用の画像。PDF は1ページ目を画像にしたもの */
+  flyerImageUrl: string | null;
   flyerIsPdf: boolean;
 }
 
-/** 流れるチラシ帯に出すのは、画像ファイルがある公演だけ */
-export function hasImageFlyer(
-  concert: Pick<SupportedConcert, "flyerUrl" | "flyerIsPdf">
-): boolean {
-  return Boolean(concert.flyerUrl) && !concert.flyerIsPdf;
+/** 流れるチラシ帯に出すのは、チラシ（画像・PDF）がある公演だけ */
+export function hasFlyer(concert: Pick<SupportedConcert, "flyerUrl">): boolean {
+  return Boolean(concert.flyerUrl);
 }
