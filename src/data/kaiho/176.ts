@@ -13,8 +13,8 @@ const img = (name: string, width: number, height: number, caption?: string): Kai
   caption,
 });
 
-/** ヤングコンクールの顔写真（675×900） */
-const face = (id: string) => img(`young-${id}.jpg`, 675, 900);
+/** ヤングコンクールの顔写真（元写真から顔〜胸元を切り出したもの・600×800） */
+const face = (id: string) => img(`face-${id}.jpg`, 600, 800);
 
 export const KAIHO_176: KaihoIssue = {
   number: "176",
@@ -52,6 +52,8 @@ export const KAIHO_176: KaihoIssue = {
       author: "日本クラリネット協会 事務局",
       page: 3,
       public: true,
+      // 目次の記事カード用（本文には出さない）
+      card: img("cover-1.jpg", 1200, 1600),
       blocks: [
         {
           type: "p",
@@ -122,6 +124,7 @@ export const KAIHO_176: KaihoIssue = {
       title: "第15回ヤング・クラリネッティストコンクール　入賞者紹介",
       author: "日本クラリネット協会",
       page: 4,
+      card: img("young-hero.jpg", 1600, 1200),
       blocks: [
         {
           type: "p",
@@ -180,6 +183,7 @@ export const KAIHO_176: KaihoIssue = {
           rank: "1位",
           name: "守谷　日菜乃",
           affiliation: "東京藝術大学音楽学部1年",
+          photo: face("y03"),
           text: [
             "私は埼玉県出身で中学校の吹奏楽部でクラリネットを始めました。",
             "この度は第1位という大変光栄な賞をいただき、心より嬉しく思っております。そしていつもご指導してくださっている先生方をはじめ周りの方々、何より一緒に曲と向き合ってくれた伴奏の萩原麻理子さんに感謝申し上げます。",
@@ -192,6 +196,7 @@ export const KAIHO_176: KaihoIssue = {
           rank: "2位",
           name: "遠藤　茉央",
           affiliation: "東京藝術大学音楽学部1年",
+          photo: face("y04"),
           text: [
             "このたびは、2位という賞をいただき、大変光栄に思います。昔からヤング・アーティスト部門への出場に強い憧れを抱いていたので、今回このような素晴らしい賞をいただけて本当に嬉しいです！",
             "コンクールを振り返って特に印象に残っているのは、音楽における「間」の重要性について、新たな気づきを得られたことです。予選で演奏したE. ヤズジンスキでは、練習を重ねる中で、休符での間の取り方によって曲の面白さが大きく変わることを実感しました。一方、本選のC. M. v.ウェーバーでは、間をとりすぎてしまうことでソルフェージュが崩壊し、音楽の流れを止めてしまうことで曲の美しさを損なってしまう場面がありました。同じ「間」であっても、その在り方は曲ごとに大きく異なります。今回のコンクールを通して、その選択が音楽全体に与える影響の大きさを、学ぶことができました。",
@@ -204,6 +209,7 @@ export const KAIHO_176: KaihoIssue = {
           rank: "3位",
           name: "山田　悠葵",
           affiliation: "東京藝術大学音楽学部2年",
+          photo: face("y02"),
           text: [
             "この度は、第15回ヤング・クラリネッティストコンクールにて第3位をいただき、大変光栄に思っております。日頃から熱心にご指導くださる先生方、いつも支えてくれる家族、そしてコンクールの開催にあたりご尽力いただいた全ての皆様に、心より感謝申し上げます。",
             "昨年も同部門で出場させていただきましたが、思うような演奏、結果を残すことができず大変悔しい経験をしました。その後、本番に臨むこと自体を怖いと感じる時期もありましたが、この悔しさを乗り越えるためには自分自身が努力を重ねるしかないと思い、今回のコンクールに向けて練習に励んでまいりました。",
@@ -214,7 +220,12 @@ export const KAIHO_176: KaihoIssue = {
         {
           type: "honorees",
           label: "入選",
-          people: [{ name: "岡田　菜沙" }, { name: "鈴木　かえ" }, { name: "山中　遙" }, { name: "山本　葵子" }],
+          people: [
+            { name: "岡田　菜沙", photo: face("y01") },
+            { name: "鈴木　かえ", photo: face("y06") },
+            { name: "山中　遙", photo: face("y07") },
+            { name: "山本　葵子", photo: face("y05") },
+          ],
         },
 
         { type: "h", text: "ジュニアB部門" },
@@ -358,7 +369,6 @@ export const KAIHO_176: KaihoIssue = {
           type: "winner",
           rank: "金賞",
           name: "吉國　希望",
-          nameRuby: "ののん",
           affiliation: "鹿児島大学教育学部附属中学校2年",
           photo: face("a09"),
           text: [

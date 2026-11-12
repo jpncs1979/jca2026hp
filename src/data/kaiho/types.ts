@@ -29,8 +29,6 @@ export type KaihoBlock =
       type: "winner";
       rank: string;
       name: string;
-      /** 名前の読み（原稿にルビがある場合） */
-      nameRuby?: string;
       affiliation?: string;
       photo?: KaihoImage;
       /** コメントの見出し（任意） */
@@ -52,6 +50,8 @@ export type KaihoArticle = {
   /** 誌面のページ番号（目次と対応） */
   page: number;
   hero?: KaihoImage;
+  /** 号の目次ページの記事カードに出す写真（hero が無い記事用・本文には出ない） */
+  card?: KaihoImage;
   /** 記事冒頭のリード文（一般公開部分にも出る） */
   lead?: string;
   /** true なら会員でなくても全文を表示（協会からのお知らせ など） */

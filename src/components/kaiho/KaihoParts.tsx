@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import type { KaihoArticle, KaihoBlock, KaihoImage, KaihoIssue } from "@/data/kaiho";
+import { isKaihoPreviewEnv } from "@/lib/kaiho-access";
 
 /** 会報誌面の水色（特集の帯・見出し） */
 export const KAIHO_BLUE = "#1a8bd0";
@@ -256,16 +257,7 @@ function KaihoWinner({ w }: { w: WinnerBlock }) {
             {w.rank}
           </span>
         </p>
-        <p className="mt-2 text-xl font-bold text-navy">
-          {w.nameRuby ? (
-            <ruby>
-              {w.name}
-              <rt className="text-[10px] font-normal text-muted-foreground">{w.nameRuby}</rt>
-            </ruby>
-          ) : (
-            w.name
-          )}
-        </p>
+        <p className="mt-2 text-xl font-bold text-navy">{w.name}</p>
         {w.affiliation && <p className="mt-0.5 text-sm text-muted-foreground">{w.affiliation}</p>}
         {w.heading && <p className="mt-3 font-bold text-navy">{w.heading}</p>}
         {w.text.map((t, j) => (
@@ -327,7 +319,7 @@ export function KaihoMemberGate({ redirectTo }: { redirectTo: string }) {
 
 /** 開発サーバーだけに出る「一般／会員」表示の切り替え */
 export function KaihoPreviewSwitch({ path, isMember }: { path: string; isMember: boolean }) {
-  if (process.env.NODE_ENV !== "development") return null;
+  if (!isKaihoPreviewEnv()) return null;
   const tab = (active: boolean) =>
     `rounded-md px-3 py-1 ${active ? "bg-white font-bold text-navy" : "text-white/80 hover:text-white"}`;
   return (

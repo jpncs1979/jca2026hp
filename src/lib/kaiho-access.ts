@@ -15,8 +15,13 @@ export type KaihoReader = {
  * - それ以外 → 冒頭のみ
  * - 開発サーバー（npm run dev）に限り ?preview=member で会員表示を確認できる。本番では無効。
  */
+/** 見本の「一般／会員」切り替えを使ってよい環境（開発サーバー、Vercel のプレビュー用URL）。本番では false */
+export function isKaihoPreviewEnv(): boolean {
+  return process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview";
+}
+
 export async function getKaihoReader(previewParam?: string | string[]): Promise<KaihoReader> {
-  if (process.env.NODE_ENV === "development" && previewParam === "member") {
+  if (isKaihoPreviewEnv() && previewParam === "member") {
     return { full: true, preview: true, readerLabel: "見本 太郎 様（会員番号 0000）" };
   }
   try {
