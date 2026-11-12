@@ -1,8 +1,9 @@
 import type { KaihoIssue } from "./types";
 import { KAIHO_175 } from "./175";
+import { KAIHO_176 } from "./176";
 
 /** Web 版のある号（新しい順） */
-export const KAIHO_ISSUES: KaihoIssue[] = [KAIHO_175];
+export const KAIHO_ISSUES: KaihoIssue[] = [KAIHO_176, KAIHO_175];
 
 export function getKaihoIssue(number: string): KaihoIssue | undefined {
   return KAIHO_ISSUES.find((i) => i.number === number);

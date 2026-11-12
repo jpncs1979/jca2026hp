@@ -94,6 +94,7 @@ export default async function KaihoIssuePage({
           </section>
         )}
 
+        {!issue.intro && <h2 className="mt-12 text-xl font-bold text-navy">この号の記事</h2>}
         <section className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {issue.articles.map((a) => (
             <Link
@@ -101,7 +102,7 @@ export default async function KaihoIssuePage({
               href={`${base}/${a.slug}${q}`}
               className="group overflow-hidden rounded-xl border border-border bg-white shadow-sm transition hover:shadow-md"
             >
-              {a.hero && (
+              {a.hero ? (
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image
                     src={a.hero.src}
@@ -110,6 +111,14 @@ export default async function KaihoIssuePage({
                     sizes="(max-width: 640px) 100vw, 340px"
                     className="object-cover transition group-hover:scale-[1.02]"
                   />
+                </div>
+              ) : (
+                <div
+                  className="flex aspect-[4/3] flex-col items-center justify-center gap-1 px-4 text-center text-white"
+                  style={{ backgroundColor: KAIHO_BLUE }}
+                >
+                  <span className="text-sm opacity-90">p.{a.page}</span>
+                  <span className="text-xl font-bold leading-snug">{a.section ?? a.kicker}</span>
                 </div>
               )}
               <div className="p-4">
@@ -121,7 +130,7 @@ export default async function KaihoIssuePage({
                 <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-foreground/80">
                   {firstText(a.blocks)}
                 </p>
-                {!reader.full && (
+                {!reader.full && !a.public && (
                   <p className="mt-3 flex items-center gap-1 text-xs text-gold-foreground">
                     <Lock className="size-3.5 text-gold" /> 続きは会員の方のみ
                   </p>

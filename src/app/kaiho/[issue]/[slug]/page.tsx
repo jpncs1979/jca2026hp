@@ -9,6 +9,7 @@ import {
   KaihoLogo,
   KaihoMemberGate,
   KaihoPreviewSwitch,
+  KaihoProfile,
 } from "@/components/kaiho/KaihoParts";
 
 export const dynamic = "force-dynamic";
@@ -96,11 +97,17 @@ export default async function KaihoArticlePage({
         {article.hero && <KaihoFigure image={article.hero} priority />}
         {article.lead && <p className="my-6 font-medium leading-loose text-navy">{article.lead}</p>}
 
-        {reader.full ? (
+        {article.public ? (
+          <>
+            <KaihoBlocks blocks={article.blocks} />
+            <p className="mt-12 text-xs text-muted-foreground">このページはどなたでもご覧いただけます。</p>
+          </>
+        ) : reader.full ? (
           <>
             {/* 印刷時は本文を出さない（転載・配布の抑止） */}
             <div className="print:hidden">
               <KaihoBlocks blocks={article.blocks} />
+              {article.profile && <KaihoProfile profile={article.profile} />}
             </div>
             <p className="hidden print:block">この記事は会員専用のため印刷できません。</p>
 
