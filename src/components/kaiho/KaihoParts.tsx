@@ -204,21 +204,21 @@ export function KaihoBlocks({ blocks }: { blocks: KaihoBlock[] }) {
             return (
               <section key={i} className="my-8">
                 <p className="mb-3 text-sm font-bold text-navy">{b.label}</p>
-                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                   {b.people.map((p) => (
                     <li key={p.name} className="text-center">
                       {p.photo ? (
-                        <div className="relative aspect-[3/4] overflow-hidden rounded-md bg-muted">
+                        <div className="relative aspect-[3/4] overflow-hidden rounded bg-muted">
                           <Image
                             src={p.photo.src}
                             alt={p.name}
                             fill
-                            sizes="(max-width: 640px) 33vw, 140px"
+                            sizes="(max-width: 640px) 25vw, 90px"
                             className="object-cover object-[center_30%]"
                           />
                         </div>
                       ) : null}
-                      <p className="mt-1.5 text-sm font-medium text-navy">{p.name}</p>
+                      <p className="mt-1 text-xs font-medium leading-tight text-navy">{p.name}</p>
                     </li>
                   ))}
                 </ul>
@@ -235,7 +235,7 @@ type WinnerBlock = Extract<KaihoBlock, { type: "winner" }>;
 function KaihoWinner({ w }: { w: WinnerBlock }) {
   return (
     <section
-      className={`my-8 gap-4 border-t border-border pt-6 sm:gap-6 ${w.photo ? "grid grid-cols-[6.5rem_1fr] sm:grid-cols-[9rem_1fr]" : ""}`}
+      className={`my-8 gap-4 border-t border-border pt-6 sm:gap-6 ${w.photo ? "grid grid-cols-[8.5rem_1fr] sm:grid-cols-[13rem_1fr]" : ""}`}
     >
       {w.photo && (
         <div className="relative aspect-[3/4] self-start overflow-hidden rounded-md bg-muted">
@@ -243,7 +243,7 @@ function KaihoWinner({ w }: { w: WinnerBlock }) {
             src={w.photo.src}
             alt={w.name}
             fill
-            sizes="(max-width: 640px) 104px, 144px"
+            sizes="(max-width: 640px) 136px, 208px"
             className="object-cover object-[center_30%]"
           />
         </div>
